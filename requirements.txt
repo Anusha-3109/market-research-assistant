@@ -1,0 +1,22 @@
+# Agent framework
+langchain>=1.5,<2.0
+langchain-core>=1.8,<2.0
+langgraph>=1.2,<2.0
+langgraph-checkpoint-sqlite>=3.1,<4.0
+
+# Model provider (OpenAI-compatible client, used with OpenRouter)
+langchain-openai>=1.7,<2.0
+
+# Tools
+langchain-tavily>=0.2.18
+yfinance>=1.8
+
+# Observability
+langsmith>=0.14
+
+# App
+streamlit>=1.67
+python-dotenv>=1.2
+
+# Tests
+pytest>=9.2
