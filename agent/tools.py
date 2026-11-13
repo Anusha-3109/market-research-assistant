@@ -30,6 +30,7 @@ from agent.sources import (
     google_trends,
     tavily,
     webpage,
+    wikidata,
     wikipedia,
     yahoo,
 )
@@ -208,30 +209,68 @@ def get_demand_trend(term: str, country: str) -> str:
 # Company financials
 # ---------------------------------------------------------------------------
 
+# Legal forms and country words that are not part of a brand name.
+LEGAL_WORDS = {
+    "gmbh", "ag", "se", "kg", "co", "ug", "ohg", "inc", "ltd", "llc", "plc",
+    "corp", "corporation", "limited", "sa", "sas", "bv", "nv", "ab", "oy",
+    "group", "holding", "holdings", "deutschland", "germany", "international",
+}
+
+
+def brand_name(company: str) -> str:
+    """Strip legal forms from a company name:
+    'HelloFresh Deutschland GmbH & Co. KG' -> 'HelloFresh'."""
+    words = re.findall(r"[^\W_]+", company)
+    kept = [word for word in words if word.lower() not in LEGAL_WORDS]
+    return " ".join(kept) or company
+
+
+FINANCIAL_SOURCES = [
+    ("Yahoo Finance", yahoo.company_financials),
+    ("Wikidata", wikidata.company_facts),
+]
+
+
 @tool
 def get_company_financials(company: str) -> str:
-    """Get public financial figures for a stock-market-listed company:
-    revenue, market value, employees, sector and country, from Yahoo Finance.
+    """Get public figures about a company: revenue, employees, market value,
+    sector, country and founding year.
 
-    Use this for large competitors that are listed on a stock exchange.
-    Small and private companies have no public financials; for those the
-    tool says so and you should report "not found".
+    It reads Yahoo Finance for stock-market-listed companies, and Wikidata
+    for others. Many small private companies are in neither; the tool then
+    says so and you should report "not found". Wikidata figures can be years
+    old, so always quote the year shown next to a figure.
 
     Args:
-        company: The company name, for example "HelloFresh".
+        company: The brand name people know the company by, for example
+            "HelloFresh", not the legal name of a local subsidiary.
     """
-    try:
-        figures = yahoo.company_financials(company)
-    except SourceError as error:
-        return f"Financial lookup failed: {error}. Report this as 'not found'."
+    outcome = try_sources(FINANCIAL_SOURCES, company)
 
-    if figures is None:
+    # The model sometimes passes a legal name such as "HelloFresh
+    # Deutschland GmbH & Co. KG", which no source lists. Try the brand name.
+    brand = brand_name(company)
+    if not outcome.succeeded and brand != company:
+        retry = try_sources(FINANCIAL_SOURCES, brand)
+        if retry.succeeded:
+            outcome, company = retry, brand
+    # "no results" means the source worked but does not know the company.
+    if outcome.succeeded:
+        note = outcome.source_note()
+        if outcome.failures == [("Yahoo Finance", "no results")]:
+            note = f"Source used: {outcome.used} (not listed on Yahoo Finance)"
+        return f"{note}\n{outcome.value}"
+
+    if all(reason == "no results" for _, reason in outcome.failures):
         return (
-            f"No listed company found for '{company}'. It is probably a "
-            "private company, so no public financials are available. Report "
-            "this as 'not found'."
+            f"No public figures found for '{company}' in Yahoo Finance or "
+            "Wikidata. It is probably a small private company. Report this "
+            "as 'not found'."
         )
-    return figures
+    return (
+        f"Financial lookup failed. {outcome.source_note()}. Report this as "
+        "'not found'."
+    )
 
 
 # ---------------------------------------------------------------------------

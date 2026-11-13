@@ -6,6 +6,7 @@ be the same every time.
 """
 
 from dataclasses import dataclass
+from statistics import median
 
 # A change smaller than this, in either direction, counts as stable.
 STABLE_BAND_PERCENT = 15
@@ -20,6 +21,9 @@ class TrendSeries:
     points: list[tuple[str, float]]  # (date, value), oldest first
     url: str                         # where a person can check it
     note: str = ""                   # any limitation of this source
+    # Set only for a 0-100 index: a typical (median) value below this means
+    # there were too few searches for the trend to be trusted.
+    low_volume_below: float | None = None
 
 
 def average(values: list[float]) -> float:
@@ -58,6 +62,15 @@ def summarise(series: TrendSeries) -> str:
         f"Unit: {series.unit}",
         f"Source: {series.url}",
     ]
+    # The median is used, not the average: one unusually busy week can lift
+    # the average of an otherwise empty chart above the threshold.
+    if (series.low_volume_below is not None
+            and median(values) < series.low_volume_below):
+        lines.append(
+            "Reliability: low. There are very few searches for this term, so "
+            "the direction may be noise. Say this when you report the trend, "
+            "or try a more common term."
+        )
     if series.note:
         lines.append(f"Note: {series.note}")
     return "\n".join(lines)

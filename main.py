@@ -11,7 +11,8 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
 from agent.agent import build_agent, stream_steps
-from agent.config import MODEL_NAME, MissingKeyError
+from agent.config import MODEL_NAME, REPORT_HEADING, MissingKeyError
+from agent.report_check import check_report, format_check
 
 
 def print_step(message) -> None:
@@ -30,6 +31,9 @@ def print_step(message) -> None:
         print(f"  [tool result] {len(str(message.content))} characters: {first_line[:80]}")
     elif isinstance(message, AIMessage):
         print(f"\nAssistant:\n{message.content}\n")
+        # A full report is checked against the format rules.
+        if isinstance(message.content, str) and REPORT_HEADING in message.content:
+            print(format_check(check_report(message.content)) + "\n")
 
 
 def run_turn(agent, history: list, question: str) -> None:

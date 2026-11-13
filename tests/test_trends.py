@@ -246,3 +246,39 @@ def test_tool_says_not_found_when_no_source_has_data(monkeypatch):
 
     assert result.startswith("No trend data found")
     assert "'not found'" in result
+
+
+# --- low search volume ---------------------------------------------------------------
+
+def low_volume_series(values: list[float]) -> TrendSeries:
+    result = series(values)
+    result.low_volume_below = 10
+    return result
+
+
+def test_a_trend_built_on_very_few_searches_is_marked_unreliable():
+    text = summarise(low_volume_series([2, 3, 2, 3, 100, 2, 3, 2, 3, 2, 3, 2]))
+
+    assert "Reliability: low" in text
+
+
+def test_a_trend_with_plenty_of_searches_has_no_warning():
+    text = summarise(low_volume_series([40, 45, 50, 55, 60, 60, 65, 70, 70, 75, 80, 80]))
+
+    assert "Reliability" not in text
+
+
+def test_page_view_counts_never_get_the_low_volume_warning():
+    # Wikipedia counts are real numbers, not a 0-100 index, so the rule
+    # does not apply even when the numbers are small.
+    text = summarise(series([2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3]))
+
+    assert "Reliability" not in text
+
+
+def test_google_trends_results_carry_the_low_volume_threshold(monkeypatch):
+    fake_trends(monkeypatch, weekly_table("Kochbox", [10, 20, 30]))
+
+    result = google_trends.interest("Kochbox", find_country("Germany"))
+
+    assert result.low_volume_below == 10

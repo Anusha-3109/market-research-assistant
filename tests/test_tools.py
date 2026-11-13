@@ -11,6 +11,7 @@ from datetime import date
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent import tools
+from agent.formatting import format_money
 from agent.sources import tavily, yahoo
 
 
@@ -163,9 +164,9 @@ def test_saving_without_a_report_saves_nothing(tmp_path):
 # --- company financials ------------------------------------------------------
 
 def test_format_money_uses_readable_units():
-    assert yahoo.format_money(6_200_000_000, "EUR") == "6.2 billion EUR"
-    assert yahoo.format_money(430_100_000, "EUR") == "430.1 million EUR"
-    assert yahoo.format_money(None, "EUR") == "not found"
+    assert format_money(6_200_000_000, "EUR") == "6.2 billion EUR"
+    assert format_money(430_100_000, "EUR") == "430.1 million EUR"
+    assert format_money(None, "EUR") == "not found"
 
 
 def test_private_company_is_reported_as_not_found(monkeypatch):
@@ -175,10 +176,12 @@ def test_private_company_is_reported_as_not_found(monkeypatch):
 
     monkeypatch.setattr(yahoo.yf, "Search", EmptySearch)
 
+    monkeypatch.setattr(tools, "FINANCIAL_SOURCES",
+                        [("Yahoo Finance", yahoo.company_financials)])
     result = tools.get_company_financials.invoke({"company": "Tiny Private Ltd"})
 
-    assert "No listed company found" in result
-    assert "not found" in result
+    assert "No public figures found for 'Tiny Private Ltd'" in result
+    assert "'not found'" in result
 
 
 def test_listed_company_returns_figures_and_a_source(monkeypatch):
@@ -194,6 +197,8 @@ def test_listed_company_returns_figures_and_a_source(monkeypatch):
     monkeypatch.setattr(yahoo.yf, "Search", OneShare)
     monkeypatch.setattr(yahoo.yf, "Ticker", FakeTicker)
 
+    monkeypatch.setattr(tools, "FINANCIAL_SOURCES",
+                        [("Yahoo Finance", yahoo.company_financials)])
     result = tools.get_company_financials.invoke({"company": "HelloFresh"})
 
     assert "HelloFresh SE (ticker HFG.DE)" in result
@@ -207,6 +212,8 @@ def test_financial_lookup_failure_returns_a_message(monkeypatch):
 
     monkeypatch.setattr(yahoo.yf, "Search", broken)
 
+    monkeypatch.setattr(tools, "FINANCIAL_SOURCES",
+                        [("Yahoo Finance", yahoo.company_financials)])
     result = tools.get_company_financials.invoke({"company": "Anything"})
 
     assert result.startswith("Financial lookup failed")

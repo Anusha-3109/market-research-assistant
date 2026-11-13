@@ -15,6 +15,9 @@ from agent.sources import SourceError
 from agent.trends import TrendSeries
 
 TIMEFRAME = "today 12-m"
+# On Google's 0-100 index, a typical week under 10 means the term is rarely
+# searched and one busy week dominates the chart.
+LOW_VOLUME_AVERAGE = 10
 
 
 def interest(term: str, country) -> TrendSeries:
@@ -48,6 +51,7 @@ def interest(term: str, country) -> TrendSeries:
         unit="index from 0 to 100, where 100 is the busiest week in the "
              "period (not a number of searches)",
         points=points,
+        low_volume_below=LOW_VOLUME_AVERAGE,
         url=("https://trends.google.com/trends/explore"
              f"?date={quote(TIMEFRAME)}&geo={country.alpha_2}&q={quote(term)}"),
     )
