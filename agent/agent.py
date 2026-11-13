@@ -6,35 +6,16 @@ model decides -> tool runs -> model reads the result -> repeat or answer.
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelFallbackMiddleware
-from langchain_openai import ChatOpenAI
 
 from agent.config import (
     FALLBACK_MODELS,
     MAX_TOOL_ROUNDS,
     MODEL_NAME,
-    MODEL_TIMEOUT_SECONDS,
-    OPENROUTER_BASE_URL,
-    TEMPERATURE,
     check_keys,
-    get_key,
 )
+from agent.models import make_model
 from agent.prompts import build_system_prompt
 from agent.tools import TOOLS
-
-
-def make_model(name: str) -> ChatOpenAI:
-    """Create a chat model that is reached through OpenRouter.
-
-    OpenRouter speaks the same API as OpenAI, so the OpenAI client works
-    once it is pointed at OpenRouter's address.
-    """
-    return ChatOpenAI(
-        model=name,
-        base_url=OPENROUTER_BASE_URL,
-        api_key=get_key("OPENROUTER_API_KEY"),
-        temperature=TEMPERATURE,
-        timeout=MODEL_TIMEOUT_SECONDS,
-    )
 
 
 def assemble_agent(model, fallback_models: list, tools: list):

@@ -53,6 +53,11 @@ REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 # report in the conversation.
 REPORT_HEADING = "# Market research report"
 
+# Report workflow: how many candidate companies are checked, and how many
+# verified competitors go into the report.
+REPORT_MAX_CANDIDATES = 8
+REPORT_MAX_COMPETITORS = 5
+
 # Upper limit on tool rounds for one question. One round is "the model asks
 # for tools, the tools run". It stops a runaway loop from burning credit.
 MAX_TOOL_ROUNDS = 12
