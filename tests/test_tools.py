@@ -11,6 +11,7 @@ from datetime import date
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent import tools
+from agent.sources import tavily, yahoo
 
 
 # --- formatting search results ---------------------------------------------
@@ -56,12 +57,42 @@ def test_search_failure_returns_a_message_instead_of_crashing(monkeypatch):
         def invoke(self, request):
             raise ConnectionError("no internet")
 
-    monkeypatch.setattr(tools, "TavilySearch", BrokenSearch)
+    monkeypatch.setattr(tavily, "TavilySearch", BrokenSearch)
+    # Only Tavily in the list, so the test never reaches a real backup.
+    monkeypatch.setattr(tools, "WEB_SEARCH_SOURCES", [("Tavily", tavily.search)])
 
     result = tools.web_search.invoke({"query": "anything"})
 
     assert result.startswith("Search failed")
-    assert "no internet" in result
+    assert "Tavily (no internet)" in result
+
+
+def test_search_result_starts_with_the_source_that_answered(monkeypatch):
+    def fake_search(query):
+        return [{"title": "Hit", "url": "https://h.example", "content": "Text"}]
+
+    monkeypatch.setattr(tools, "WEB_SEARCH_SOURCES", [("FakeSearch", fake_search)])
+
+    result = tools.web_search.invoke({"query": "anything"})
+
+    assert result.startswith("Source used: FakeSearch")
+    assert "[1] Hit" in result
+
+
+def test_search_uses_the_backup_and_says_so_when_the_first_source_is_down(monkeypatch):
+    def down(query):
+        raise ConnectionError("outage")
+
+    def backup(query):
+        return [{"title": "Hit", "url": "https://h.example", "content": "Text"}]
+
+    monkeypatch.setattr(tools, "WEB_SEARCH_SOURCES",
+                        [("Primary", down), ("Backup", backup)])
+
+    result = tools.web_search.invoke({"query": "anything"})
+
+    assert result.startswith("Source used: Backup (Primary unavailable)")
+    assert "[1] Hit" in result
 
 
 # --- saving reports ----------------------------------------------------------
@@ -132,9 +163,9 @@ def test_saving_without_a_report_saves_nothing(tmp_path):
 # --- company financials ------------------------------------------------------
 
 def test_format_money_uses_readable_units():
-    assert tools.format_money(6_200_000_000, "EUR") == "6.2 billion EUR"
-    assert tools.format_money(430_100_000, "EUR") == "430.1 million EUR"
-    assert tools.format_money(None, "EUR") == "not found"
+    assert yahoo.format_money(6_200_000_000, "EUR") == "6.2 billion EUR"
+    assert yahoo.format_money(430_100_000, "EUR") == "430.1 million EUR"
+    assert yahoo.format_money(None, "EUR") == "not found"
 
 
 def test_private_company_is_reported_as_not_found(monkeypatch):
@@ -142,7 +173,7 @@ def test_private_company_is_reported_as_not_found(monkeypatch):
         def __init__(self, name, max_results=5):
             self.quotes = []
 
-    monkeypatch.setattr(tools.yf, "Search", EmptySearch)
+    monkeypatch.setattr(yahoo.yf, "Search", EmptySearch)
 
     result = tools.get_company_financials.invoke({"company": "Tiny Private Ltd"})
 
@@ -160,8 +191,8 @@ def test_listed_company_returns_figures_and_a_source(monkeypatch):
             self.info = {"longName": "HelloFresh SE", "currency": "EUR",
                          "totalRevenue": 6_200_000_000, "sector": "Consumer"}
 
-    monkeypatch.setattr(tools.yf, "Search", OneShare)
-    monkeypatch.setattr(tools.yf, "Ticker", FakeTicker)
+    monkeypatch.setattr(yahoo.yf, "Search", OneShare)
+    monkeypatch.setattr(yahoo.yf, "Ticker", FakeTicker)
 
     result = tools.get_company_financials.invoke({"company": "HelloFresh"})
 
@@ -174,7 +205,7 @@ def test_financial_lookup_failure_returns_a_message(monkeypatch):
     def broken(name, max_results=5):
         raise TimeoutError("yahoo is slow")
 
-    monkeypatch.setattr(tools.yf, "Search", broken)
+    monkeypatch.setattr(yahoo.yf, "Search", broken)
 
     result = tools.get_company_financials.invoke({"company": "Anything"})
 

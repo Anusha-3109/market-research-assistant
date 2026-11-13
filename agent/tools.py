@@ -13,16 +13,23 @@ import re
 from datetime import date
 from pathlib import Path
 
-import yfinance as yf
 from langchain.tools import ToolRuntime, tool
-from langchain_tavily import TavilySearch
 
 from agent.config import (
-    NEWS_TIME_RANGE,
+    PAGE_MAX_CHARS,
     REPORT_HEADING,
     REPORTS_DIR,
-    SEARCH_MAX_RESULTS,
     SNIPPET_MAX_CHARS,
+)
+from agent.fallback import try_sources
+from agent.sources import (
+    SourceError,
+    metasearch,
+    google_news,
+    tavily,
+    webpage,
+    wikipedia,
+    yahoo,
 )
 
 
@@ -50,19 +57,30 @@ def format_results(results: list[dict]) -> str:
     return "\n\n".join(blocks)
 
 
-def run_search(query: str, **options) -> str:
-    """Call Tavily and return formatted results, or a readable error."""
-    try:
-        search = TavilySearch(max_results=SEARCH_MAX_RESULTS, **options)
-        response = search.invoke({"query": query})
-    except Exception as error:  # network problem, bad key, rate limit
-        return f"Search failed: {error}. Try again or use a different query."
+# Each list is tried in order: the first source that answers wins. Backups
+# are added here as they are built.
+WEB_SEARCH_SOURCES = [
+    ("Tavily", tavily.search),
+    ("Web metasearch", metasearch.search),
+    ("Wikipedia", wikipedia.search),
+]
+NEWS_SOURCES = [
+    ("Tavily", tavily.search_news),
+    ("Google News", google_news.search_news),
+    ("Metasearch news", metasearch.search_news),
+]
 
-    if isinstance(response, dict) and response.get("error"):
-        return f"Search failed: {response['error']}."
 
-    results = response.get("results", []) if isinstance(response, dict) else []
-    return format_results(results)
+def run_search(sources: list, query: str) -> str:
+    """Try the sources in order and return formatted results that start
+    with a line naming the source, or a readable message if all fail."""
+    outcome = try_sources(sources, query)
+    if not outcome.succeeded:
+        return (
+            f"Search failed. {outcome.source_note()}. Try a different query, "
+            "or tell the user this information could not be retrieved."
+        )
+    return f"{outcome.source_note()}\n\n{format_results(outcome.value)}"
 
 
 @tool
@@ -79,7 +97,7 @@ def web_search(query: str) -> str:
             country or region, for example "meal kit delivery competitors
             Germany".
     """
-    return run_search(query)
+    return run_search(WEB_SEARCH_SOURCES, query)
 
 
 @tool
@@ -96,58 +114,54 @@ def search_news(query: str) -> str:
         query: A focused news query of 3 to 10 words, for example
             "meal delivery Germany funding".
     """
-    return run_search(query, topic="news", time_range=NEWS_TIME_RANGE)
+    return run_search(NEWS_SOURCES, query)
+
+
+# ---------------------------------------------------------------------------
+# Reading one web page
+# ---------------------------------------------------------------------------
+
+PAGE_SOURCES = [
+    ("Tavily Extract", tavily.read_page),
+    ("Direct fetch", webpage.fetch),
+]
+
+
+@tool
+def read_webpage(url: str) -> str:
+    """Open one web page and read its full text.
+
+    Use this to get facts first-hand, above all a competitor's own pricing
+    or product page. Search results only show a short extract; this returns
+    the whole page. Only pass a URL that appeared in a search result or that
+    the user gave you.
+
+    Args:
+        url: The full address of the page, starting with http:// or https://.
+    """
+    # Checked here, before any source runs, so a blocked address is never
+    # sent anywhere and the model gets one clear reason.
+    try:
+        webpage.check_url(url)
+    except webpage.UnsafeUrlError as error:
+        return f"This page cannot be opened: {error}."
+
+    outcome = try_sources(PAGE_SOURCES, url)
+    if not outcome.succeeded:
+        return (
+            f"The page could not be read. {outcome.source_note()}. Use the "
+            "search extract instead, or report the detail as 'not found'."
+        )
+
+    text = outcome.value
+    shortened = len(text) > PAGE_MAX_CHARS
+    note = " (page shortened)" if shortened else ""
+    return f"{outcome.source_note()}{note}\nURL: {url}\n\n{text[:PAGE_MAX_CHARS]}"
 
 
 # ---------------------------------------------------------------------------
 # Company financials
 # ---------------------------------------------------------------------------
-
-def format_money(value, currency: str) -> str:
-    """Format a large number as, for example, '7.6 billion EUR'."""
-    if not isinstance(value, (int, float)):
-        return "not found"
-    for size, name in ((1e12, "trillion"), (1e9, "billion"), (1e6, "million")):
-        if abs(value) >= size:
-            return f"{value / size:.1f} {name} {currency}".strip()
-    return f"{value:,.0f} {currency}".strip()
-
-
-def lookup_financials(company: str) -> str:
-    """Find a listed company by name and return its key public figures."""
-    not_listed = (
-        f"No listed company found for '{company}'. It is probably a private "
-        "company, so no public financials are available. Report this as "
-        "'not found'."
-    )
-
-    quotes = yf.Search(company, max_results=5).quotes
-    shares = [quote for quote in quotes if quote.get("quoteType") == "EQUITY"]
-    if not shares:
-        return not_listed
-
-    symbol = shares[0]["symbol"]
-    info = yf.Ticker(symbol).info or {}
-    name = info.get("longName") or shares[0].get("shortname") or symbol
-    price_currency = info.get("currency") or ""
-    report_currency = info.get("financialCurrency") or price_currency
-    employees = info.get("fullTimeEmployees")
-
-    return "\n".join([
-        f"Company: {name} (ticker {symbol})",
-        f"Sector: {info.get('sector') or 'not found'}",
-        f"Industry: {info.get('industry') or 'not found'}",
-        f"Country: {info.get('country') or 'not found'}",
-        f"Revenue (last 12 months): "
-        f"{format_money(info.get('totalRevenue'), report_currency)}",
-        f"Market value: {format_money(info.get('marketCap'), price_currency)}",
-        f"Employees: {employees if employees else 'not found'}",
-        f"Source: https://finance.yahoo.com/quote/{symbol}",
-        f"Retrieved: {date.today().isoformat()}",
-        "Check that the company name above is the company you meant. If it "
-        "is a different company, ignore this result and report 'not found'.",
-    ])
-
 
 @tool
 def get_company_financials(company: str) -> str:
@@ -162,9 +176,17 @@ def get_company_financials(company: str) -> str:
         company: The company name, for example "HelloFresh".
     """
     try:
-        return lookup_financials(company)
-    except Exception as error:  # network problem or unexpected data
+        figures = yahoo.company_financials(company)
+    except SourceError as error:
         return f"Financial lookup failed: {error}. Report this as 'not found'."
+
+    if figures is None:
+        return (
+            f"No listed company found for '{company}'. It is probably a "
+            "private company, so no public financials are available. Report "
+            "this as 'not found'."
+        )
+    return figures
 
 
 # ---------------------------------------------------------------------------
@@ -234,4 +256,10 @@ def save_report(title: str, runtime: ToolRuntime) -> str:
     return save_latest_report(title, runtime.state["messages"], REPORTS_DIR)
 
 
-TOOLS = [web_search, search_news, get_company_financials, save_report]
+TOOLS = [
+    web_search,
+    search_news,
+    read_webpage,
+    get_company_financials,
+    save_report,
+]

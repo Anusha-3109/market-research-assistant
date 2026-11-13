@@ -11,6 +11,12 @@ langchain-openai>=1.7,<2.0
 langchain-tavily>=0.2.18
 yfinance>=1.8
 
+# Backup sources (no API key needed)
+ddgs>=9.16          # free metasearch: Bing, Yahoo, Google, DuckDuckGo
+feedparser>=6.0
+requests>=2.34
+beautifulsoup4>=4.15
+
 # Observability
 langsmith>=0.14
 

@@ -15,6 +15,15 @@ load_dotenv()
 MODEL_NAME = "openai/gpt-4.1-mini"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
+# Backup models, tried in order when the main model fails. Empty means the
+# agent uses the main model only. To turn the fallback on, list models from
+# other companies here, for example:
+#   ["anthropic/claude-haiku-5.5", "google/gemini-3.1-flash-lite"]
+FALLBACK_MODELS: list[str] = []
+
+# Give up on one model call after this many seconds and try the next model.
+MODEL_TIMEOUT_SECONDS = 90
+
 # Low temperature: research answers should be factual and repeatable.
 TEMPERATURE = 0.2
 
@@ -24,8 +33,18 @@ SEARCH_MAX_RESULTS = 5
 # Longest extract kept from each search result.
 SNIPPET_MAX_CHARS = 1200
 
+# Reading a web page: the most we download, and the most text we pass on
+# to the model (about 2,500 words).
+PAGE_MAX_BYTES = 2_000_000
+PAGE_MAX_CHARS = 12_000
+
+# How long to wait for one data source before trying the next one.
+SOURCE_TIMEOUT_SECONDS = 15
+
 # How far back the news search looks: "day", "week", "month" or "year".
 NEWS_TIME_RANGE = "month"
+# The same window in days, for sources that take a number.
+NEWS_DAYS = 30
 
 # Folder where saved reports are written.
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"

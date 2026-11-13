@@ -5,11 +5,14 @@ model decides -> tool runs -> model reads the result -> repeat or answer.
 """
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import ModelFallbackMiddleware
 from langchain_openai import ChatOpenAI
 
 from agent.config import (
+    FALLBACK_MODELS,
     MAX_TOOL_ROUNDS,
     MODEL_NAME,
+    MODEL_TIMEOUT_SECONDS,
     OPENROUTER_BASE_URL,
     TEMPERATURE,
     check_keys,
@@ -19,23 +22,51 @@ from agent.prompts import build_system_prompt
 from agent.tools import TOOLS
 
 
-def build_agent():
-    """Create the market research agent."""
-    check_keys()
+def make_model(name: str) -> ChatOpenAI:
+    """Create a chat model that is reached through OpenRouter.
 
-    # OpenRouter speaks the same API as OpenAI, so the OpenAI client works
-    # once it is pointed at OpenRouter's address.
-    model = ChatOpenAI(
-        model=MODEL_NAME,
+    OpenRouter speaks the same API as OpenAI, so the OpenAI client works
+    once it is pointed at OpenRouter's address.
+    """
+    return ChatOpenAI(
+        model=name,
         base_url=OPENROUTER_BASE_URL,
         api_key=get_key("OPENROUTER_API_KEY"),
         temperature=TEMPERATURE,
+        timeout=MODEL_TIMEOUT_SECONDS,
     )
+
+
+def assemble_agent(model, fallback_models: list, tools: list):
+    """Wire a model, its backups and the tools into an agent.
+
+    Middleware wraps every model call. If the call fails, for example
+    because the model is down or rate limited, ModelFallbackMiddleware
+    repeats the same call with the next backup model.
+    """
+    middleware = []
+    if fallback_models:
+        middleware.append(ModelFallbackMiddleware(*fallback_models))
 
     return create_agent(
         model=model,
-        tools=TOOLS,
+        tools=tools,
         system_prompt=build_system_prompt(),
+        middleware=middleware,
+    )
+
+
+def build_agent(model_name: str = MODEL_NAME,
+                fallback_names: list[str] | None = None):
+    """Create the market research agent with its real models and tools."""
+    check_keys()
+    if fallback_names is None:
+        fallback_names = FALLBACK_MODELS
+
+    return assemble_agent(
+        model=make_model(model_name),
+        fallback_models=[make_model(name) for name in fallback_names],
+        tools=TOOLS,
     )
 
 

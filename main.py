@@ -11,11 +11,17 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
 from agent.agent import build_agent, stream_steps
-from agent.config import MissingKeyError
+from agent.config import MODEL_NAME, MissingKeyError
 
 
 def print_step(message) -> None:
     """Print one message from the agent loop in a readable form."""
+    if isinstance(message, AIMessage):
+        # Say so when a backup model answered instead of the main one.
+        answered_by = message.response_metadata.get("model_name", "")
+        if answered_by and not answered_by.startswith(MODEL_NAME):
+            print(f"  [backup model] {answered_by}")
+
     if isinstance(message, AIMessage) and message.tool_calls:
         for call in message.tool_calls:
             print(f"  [tool call] {call['name']}({call['args']})")
