@@ -21,16 +21,19 @@ from agent.config import (
     REPORTS_DIR,
     SNIPPET_MAX_CHARS,
 )
+from agent.countries import find_country
 from agent.fallback import try_sources
 from agent.sources import (
     SourceError,
     metasearch,
     google_news,
+    google_trends,
     tavily,
     webpage,
     wikipedia,
     yahoo,
 )
+from agent.trends import summarise
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +163,48 @@ def read_webpage(url: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Demand trend
+# ---------------------------------------------------------------------------
+
+TREND_SOURCES = [
+    ("Google Trends", google_trends.interest),
+    ("Wikipedia pageviews", wikipedia.pageviews),
+]
+
+
+@tool
+def get_demand_trend(term: str, country: str) -> str:
+    """Find out whether public interest in a product or category has been
+    rising, falling or stable over the last 12 months.
+
+    Use this once per report for the Trends section. It returns the
+    direction, the percentage change and the source. The figures measure
+    interest (searches or page views), not sales or market size.
+
+    Args:
+        term: A short, common name for the product, 1 to 3 words, as people
+            in that country would type it into a search engine, in their
+            own language, for example "Kochbox" for meal kits in Germany.
+        country: The country name in English, for example "Germany".
+    """
+    found = find_country(country)
+    if found is None:
+        return (
+            f"The country '{country}' was not recognised. Call this tool "
+            "again with the English name of one country, for example "
+            "'Germany'."
+        )
+
+    outcome = try_sources(TREND_SOURCES, term, found)
+    if not outcome.succeeded:
+        return (
+            f"No trend data found. {outcome.source_note()}. Try a shorter, "
+            "more common term, or report the demand trend as 'not found'."
+        )
+    return f"{outcome.source_note()}\n{summarise(outcome.value)}"
+
+
+# ---------------------------------------------------------------------------
 # Company financials
 # ---------------------------------------------------------------------------
 
@@ -260,6 +305,7 @@ TOOLS = [
     web_search,
     search_news,
     read_webpage,
+    get_demand_trend,
     get_company_financials,
     save_report,
 ]

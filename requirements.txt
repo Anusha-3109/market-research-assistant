@@ -16,6 +16,8 @@ ddgs>=9.16          # free metasearch: Bing, Yahoo, Google, DuckDuckGo
 feedparser>=6.0
 requests>=2.34
 beautifulsoup4>=4.15
+pytrends>=4.9         # unofficial Google Trends client
+pycountry>=26.2       # country names and codes
 
 # Observability
 langsmith>=0.14
