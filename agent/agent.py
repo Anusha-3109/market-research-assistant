@@ -15,7 +15,7 @@ from agent.config import (
     check_keys,
     get_key,
 )
-from agent.prompts import SYSTEM_PROMPT
+from agent.prompts import build_system_prompt
 from agent.tools import TOOLS
 
 
@@ -35,7 +35,7 @@ def build_agent():
     return create_agent(
         model=model,
         tools=TOOLS,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=build_system_prompt(),
     )
 
 
