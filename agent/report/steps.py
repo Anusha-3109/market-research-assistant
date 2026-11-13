@@ -186,7 +186,8 @@ def make_steps(deps: Deps) -> dict:
 
         return {"verified": [Competitor(name=name, shop_url=clean_url(shop_url),
                                         evidence_url=clean_url(evidence_url),
-                                        reason=verdict.reason)]}
+                                        reason=verdict.reason,
+                                        offer=verdict.offer)]}
 
     def select_competitors(state: ReportState) -> dict:
         """Put the verified companies back in the order they were found

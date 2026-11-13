@@ -15,7 +15,11 @@ from agent.config import (
 )
 from agent.models import make_model
 from agent.prompts import build_system_prompt
+from agent.report.tool import create_market_report
 from agent.tools import TOOLS
+
+# The chat agent's tools: the report workflow plus the single-question tools.
+ALL_TOOLS = [create_market_report] + TOOLS
 
 
 def assemble_agent(model, fallback_models: list, tools: list):
@@ -47,7 +51,7 @@ def build_agent(model_name: str = MODEL_NAME,
     return assemble_agent(
         model=make_model(model_name),
         fallback_models=[make_model(name) for name in fallback_names],
-        tools=TOOLS,
+        tools=ALL_TOOLS,
     )
 
 

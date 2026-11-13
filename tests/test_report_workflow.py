@@ -8,10 +8,22 @@ test tells it to; the tests then check what the CODE does with that answer.
 from agent.report import steps
 from agent.report.deps import Deps
 from agent.report.graph import build_report_graph
-from agent.report.state import Candidate, CandidateList, ResearchBrief, Verdict
+from agent.report.state import (
+    Candidate,
+    CandidateList,
+    MarketFigureList,
+    NewsList,
+    PriceList,
+    ResearchBrief,
+    TermCheck,
+    Verdict,
+)
 
-BRIEF = ResearchBrief(local_language="German", category_terms=["Kochbox"],
-                      competitor_query="Kochbox Anbieter Deutschland")
+BRIEF = ResearchBrief(
+    local_language="German", category_terms=["Kochbox"],
+    competitor_query="Kochbox Anbieter Deutschland",
+    market_query="Kochbox Markt Deutschland", price_word="Preise",
+    trend_terms=["Kochbox", "Fertiggerichte", "Essenslieferung"])
 
 
 def page(url: str, title: str = "", content: str = "") -> dict:
@@ -35,6 +47,16 @@ def make_deps(candidates: list[Candidate], verdicts: dict[str, Verdict],
             return BRIEF
         if schema is CandidateList:
             return CandidateList(candidates=candidates)
+        # The later research steps get empty answers: these tests are about
+        # choosing competitors. test_report_research.py covers the rest.
+        if schema is PriceList:
+            return PriceList(prices=[])
+        if schema is MarketFigureList:
+            return MarketFigureList(figures=[])
+        if schema is TermCheck:
+            return TermCheck(specific=True, reason="test")
+        if schema is NewsList:
+            return NewsList(items=[])
         for name, verdict in verdicts.items():
             if f"'{name}'" in instructions:
                 return verdict
@@ -43,7 +65,9 @@ def make_deps(candidates: list[Candidate], verdicts: dict[str, Verdict],
     def search(query):
         return pages.get(query, DEFAULT_PAGES)
 
-    return Deps(ask=ask, search=search)
+    return Deps(ask=ask, search=search, news=lambda query: [],
+                read_page=lambda url: None, financials=lambda name: None,
+                trend=lambda term, country: None)
 
 
 DEFAULT_PAGES = [

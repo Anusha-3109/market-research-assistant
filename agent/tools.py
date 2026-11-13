@@ -296,14 +296,16 @@ def write_report(title: str, content: str, folder: Path) -> Path:
 
 
 def find_last_report(messages: list) -> str | None:
-    """Return the most recent report the assistant wrote, or None.
+    """Return the most recent report in the conversation, or None.
 
-    A report is an assistant message that contains the report heading. The
-    text is taken from the heading onwards.
+    A report is a message that contains the report heading and was written
+    by the assistant or returned by one of its tools (the report workflow).
+    A message typed by the user never counts. The text is taken from the
+    heading onwards.
     """
     for message in reversed(messages):
         content = getattr(message, "content", "")
-        if getattr(message, "type", "") == "ai" and isinstance(content, str):
+        if getattr(message, "type", "") in ("ai", "tool") and isinstance(content, str):
             position = content.find(REPORT_HEADING)
             if position != -1:
                 return content[position:].strip()

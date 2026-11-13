@@ -12,6 +12,7 @@ from langgraph.errors import GraphRecursionError
 
 from agent.agent import build_agent, stream_steps
 from agent.config import MODEL_NAME, REPORT_HEADING, MissingKeyError
+from agent.report.tool import REPORT_TOOL_NAME
 from agent.report_check import check_report, format_check
 
 
@@ -26,6 +27,14 @@ def print_step(message) -> None:
     if isinstance(message, AIMessage) and message.tool_calls:
         for call in message.tool_calls:
             print(f"  [tool call] {call['name']}({call['args']})")
+    elif isinstance(message, ToolMessage) and message.name == REPORT_TOOL_NAME:
+        # The report workflow's result is the answer itself.
+        details = message.artifact or {}
+        for line in details.get("log", []):
+            print(f"  [workflow] {line}")
+        print(f"\nAssistant:\n{message.content}\n")
+        if "problems" in details:
+            print(format_check(details["problems"]) + "\n")
     elif isinstance(message, ToolMessage):
         first_line = str(message.content).splitlines()[0] if message.content else ""
         print(f"  [tool result] {len(str(message.content))} characters: {first_line[:80]}")

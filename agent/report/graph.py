@@ -2,14 +2,24 @@
 
     START
       |
-  understand_request      step 1
+  understand_request                      step 1
       |
-  find_candidates         step 2
+  find_candidates                         step 2
       |
-  (one branch per candidate, run in parallel)
-  verify_competitor       step 3
+  verify_competitor   (one per candidate, in parallel)       step 3
       |
   select_competitors
+      |
+      +-- research_competitor  (one per competitor)          steps 4, 5
+      +-- research_market                                    step 6
+      +-- research_news                                      step 7
+      +-- research_trend                                     step 7
+      |        (all of these run in parallel)
+  collect_facts
+      |
+  write_swot  <--+   retried once if the answer is incomplete     step 8
+      |----------+
+  assemble_report                                                step 9
       |
      END
 
@@ -21,8 +31,10 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
 from agent.report.deps import Deps, default_deps
+from agent.report.research import make_research_steps
 from agent.report.state import ReportState
 from agent.report.steps import make_steps
+from agent.report.writing import after_swot, make_writing_steps
 
 
 def fan_out_to_verification(state: ReportState):
@@ -47,9 +59,34 @@ def fan_out_to_verification(state: ReportState):
     ]
 
 
+def fan_out_to_research(state: ReportState):
+    """After the competitors are chosen, start all the fact-finding at once:
+    one branch per competitor, plus the market, the news and the trend."""
+    branches = [
+        Send("research_competitor", {
+            "competitor": competitor,
+            "country": state["country"],
+            "price_word": state["brief"].price_word,
+        })
+        for competitor in state.get("competitors", [])
+    ]
+    branches += [
+        Send("research_market", state),
+        Send("research_news", state),
+        Send("research_trend", state),
+    ]
+    return branches
+
+
+RESEARCH_NODES = ["research_competitor", "research_market", "research_news",
+                  "research_trend"]
+
+
 def build_report_graph(deps: Deps | None = None):
     """Build and compile the report workflow."""
-    steps = make_steps(deps or default_deps())
+    deps = deps or default_deps()
+    steps = {**make_steps(deps), **make_research_steps(deps),
+             **make_writing_steps(deps)}
 
     graph = StateGraph(ReportState)
     for name, function in steps.items():
@@ -60,6 +97,15 @@ def build_report_graph(deps: Deps | None = None):
     graph.add_conditional_edges("find_candidates", fan_out_to_verification,
                                 ["verify_competitor", "select_competitors"])
     graph.add_edge("verify_competitor", "select_competitors")
-    graph.add_edge("select_competitors", END)
+    graph.add_conditional_edges("select_competitors", fan_out_to_research,
+                                RESEARCH_NODES)
+    for node in RESEARCH_NODES:
+        graph.add_edge(node, "collect_facts")
+    graph.add_edge("collect_facts", "write_swot")
+    # A conditional edge that can point back at the node it came from: this
+    # is how a graph expresses "try again".
+    graph.add_conditional_edges("write_swot", after_swot,
+                                ["write_swot", "assemble_report"])
+    graph.add_edge("assemble_report", END)
 
     return graph.compile()

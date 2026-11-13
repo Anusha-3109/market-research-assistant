@@ -30,6 +30,17 @@ def average(values: list[float]) -> float:
     return sum(values) / len(values)
 
 
+def is_low_volume(series: TrendSeries) -> bool:
+    """True when a 0-100 index is built on too few searches to be trusted.
+
+    The median is used, not the average: one unusually busy week can lift
+    the average of an otherwise empty chart above the threshold.
+    """
+    if series.low_volume_below is None:
+        return False
+    return median(value for _, value in series.points) < series.low_volume_below
+
+
 def summarise(series: TrendSeries) -> str:
     """Compare the first quarter of the period with the last quarter and
     return a short description with the figures behind it."""
@@ -62,10 +73,7 @@ def summarise(series: TrendSeries) -> str:
         f"Unit: {series.unit}",
         f"Source: {series.url}",
     ]
-    # The median is used, not the average: one unusually busy week can lift
-    # the average of an otherwise empty chart above the threshold.
-    if (series.low_volume_below is not None
-            and median(values) < series.low_volume_below):
+    if is_low_volume(series):
         lines.append(
             "Reliability: low. There are very few searches for this term, so "
             "the direction may be noise. Say this when you report the trend, "

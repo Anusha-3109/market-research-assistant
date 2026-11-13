@@ -20,12 +20,27 @@ class Deps:
     ask: Callable
     # search(query) -> list of results (title, url, content).
     search: Callable[[str], list[dict]]
+    # news(query) -> list of recent news results.
+    news: Callable[[str], list[dict]]
+    # read_page(url) -> the page's text, or None if it cannot be read.
+    read_page: Callable[[str], str | None]
+    # financials(company) -> text with public figures, or None if not found.
+    financials: Callable[[str], str | None]
+    # trend(term, country) -> a TrendSeries, or None if there is no data.
+    trend: Callable
 
 
 def default_deps() -> Deps:
     """The real model and the real search, with their fallbacks."""
     # Imported here because tools.py is large and only needed at run time.
-    from agent.tools import WEB_SEARCH_SOURCES
+    from agent.sources import webpage
+    from agent.tools import (
+        NEWS_SOURCES,
+        PAGE_SOURCES,
+        TREND_SOURCES,
+        WEB_SEARCH_SOURCES,
+        get_company_financials,
+    )
 
     model = make_model(MODEL_NAME)
 
@@ -42,4 +57,23 @@ def default_deps() -> Deps:
     def search(query: str) -> list[dict]:
         return try_sources(WEB_SEARCH_SOURCES, query).value or []
 
-    return Deps(ask=ask, search=search)
+    def news(query: str) -> list[dict]:
+        return try_sources(NEWS_SOURCES, query).value or []
+
+    def read_page(url: str) -> str | None:
+        try:
+            webpage.check_url(url)
+        except webpage.UnsafeUrlError:
+            return None
+        return try_sources(PAGE_SOURCES, url).value
+
+    def financials(company: str) -> str | None:
+        # Reuses the chat agent's tool, including its brand-name retry.
+        text = get_company_financials.invoke({"company": company})
+        return text if text.startswith("Source used") else None
+
+    def trend(term: str, country):
+        return try_sources(TREND_SOURCES, term, country).value
+
+    return Deps(ask=ask, search=search, news=news, read_page=read_page,
+                financials=financials, trend=trend)
