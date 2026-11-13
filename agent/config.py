@@ -49,6 +49,13 @@ NEWS_DAYS = 30
 # Folder where saved reports are written.
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
+# The file that holds the agent's memory: conversations and user profiles.
+MEMORY_DB = Path(__file__).resolve().parent.parent / "data" / "memory.db"
+
+# The only facts the agent may remember about a user between conversations.
+PROFILE_KEYS = ["region", "industry", "business_idea", "report_style"]
+PROFILE_VALUE_MAX_CHARS = 200
+
 # Every report starts with this heading. save_report uses it to find the
 # report in the conversation.
 REPORT_HEADING = "# Market research report"

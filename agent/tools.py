@@ -23,6 +23,7 @@ from agent.config import (
 )
 from agent.countries import find_country
 from agent.fallback import try_sources
+from agent.memory import UserContext
 from agent.sources import (
     SourceError,
     metasearch,
@@ -326,7 +327,7 @@ def save_latest_report(title: str, messages: list, folder: Path) -> str:
 
 
 @tool
-def save_report(title: str, runtime: ToolRuntime) -> str:
+def save_report(title: str, runtime: ToolRuntime[UserContext]) -> str:
     """Save the most recent market research report in this conversation to
     a markdown file.
 
