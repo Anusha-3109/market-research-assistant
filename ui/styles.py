@@ -264,6 +264,21 @@ CSS = f"""
     padding: 1rem 1.25rem;
 }}
 
+/* A report reads as a document: modest headings, compact tables. */
+[class*="st-key-report_panel_"] h1 {{ font-size: 1.45rem; font-weight: 650; padding: 0.4rem 0 0.2rem; }}
+[class*="st-key-report_panel_"] h2 {{ font-size: 1.1rem; font-weight: 650; padding: 0.9rem 0 0.2rem; }}
+[class*="st-key-report_panel_"] table {{ font-size: 0.86rem; }}
+[class*="st-key-report_panel_"] th {{ font-weight: 600; text-align: left; }}
+[class*="st-key-report_panel_"] li, [class*="st-key-report_panel_"] p {{ font-size: 0.93rem; }}
+
+/* The approval forms stand out from ordinary answers with a darker edge. */
+[class*="st-key-approval_"] {{
+    background: {GLASS_STRONG};
+    border: 1.5px solid #1c1c1a;
+    border-radius: 14px;
+    padding: 1rem 1.25rem 0.6rem;
+}}
+
 /* --- the "How it works" guide ------------------------------------------- */
 
 /* While the guide is open the page column is wider, so five step cards

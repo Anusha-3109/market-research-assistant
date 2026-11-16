@@ -12,7 +12,9 @@ import streamlit as st
 
 from agent.config import APP_NAME, MissingKeyError
 from agent.session import list_conversations, load_messages, new_thread_id, to_blocks
-from ui.chat import render_history, run_turn
+from agent.agent import pending_pause
+from ui.approvals import render_pause
+from ui.chat import render_history, run_resume, run_turn
 from ui.guide import render_guide
 from ui.runtime import get_runtime
 from ui.sidebar import render_sidebar
@@ -53,7 +55,14 @@ elif action:
 
 # --- the conversation ------------------------------------------------------------------------
 blocks = to_blocks(load_messages(runtime.agent, thread_id))
-question = st.chat_input("Ask about a market", key="question", submit_mode="disable")
+
+# Is the agent stopped, waiting for an approval? This is read from the
+# saved state, so the form comes back after a refresh or a restart.
+waiting = pending_pause(runtime.agent, thread_id)
+
+question = st.chat_input(
+    "Answer the question above to continue" if waiting else "Ask about a market",
+    key="question", submit_mode="disable", disabled=waiting is not None)
 
 # The "How it works" guide is shown for this conversation only, and only
 # until a real question is asked. It lives in the browser session, not in
@@ -83,14 +92,23 @@ if not blocks:
         front.empty()
         st.session_state.pop("guide", None)
 else:
-    render_history(blocks)
+    # A button inside the conversation (such as "Save to reports folder")
+    # sends a question, just as typing it would.
+    pressed = render_history(blocks)
+    if not waiting:
+        question = question or pressed
 
-if question:
-    pause = run_turn(runtime.agent, thread_id, question)
-    if pause is not None:
-        # The approval forms arrive in the next checkpoint.
-        st.info("The assistant is waiting for your decision. The approval "
-                "form is not built yet.", title="Approval needed")
-    else:
-        # Show the finished turn the same way as any saved conversation.
+if waiting:
+    # Show the approval form. When it is submitted, continue the agent with
+    # the answer, then draw the page again from the saved state: that shows
+    # either the result or the next approval.
+    form = st.empty()
+    with form.container():
+        answer = render_pause(waiting)
+    if answer is not None:
+        form.empty()
+        run_resume(runtime.agent, thread_id, answer)
         st.rerun()
+elif question:
+    run_turn(runtime.agent, thread_id, question)
+    st.rerun()

@@ -38,6 +38,13 @@ class Pause:
     data: dict
 
 
+@dataclass
+class Progress:
+    """One line of progress from a long-running step, for showing live."""
+
+    text: str
+
+
 def read_pause(value) -> Pause | None:
     """Turn the raw value of an interrupt into a Pause, or None if it is
     not one of ours."""
@@ -125,3 +132,35 @@ def parse_save_reply(reply: str) -> dict:
     if word.lower() == "title" and rest.strip():
         return save_answer("edit", rest.strip())
     return save_answer("reject")
+
+
+# --- answers from a form (web app) -------------------------------------------------------------
+
+def review_answer_from_form(kept: dict[str, bool], extra: dict[str, bool],
+                            typed: str = "") -> dict:
+    """Build the answer to a competitor review from a form.
+
+    kept:  each listed competitor -> whether its box is still ticked.
+    extra: each verified-but-left-out company -> whether its box was ticked.
+    typed: companies typed into the "add" field, separated by commas.
+
+    If nothing was changed, the answer is a plain approval.
+    """
+    remove = [name for name, ticked in kept.items() if not ticked]
+    add = [name for name, ticked in extra.items() if ticked]
+    add += [name.strip() for name in typed.split(",") if name.strip()]
+    if remove or add:
+        return review_answer("edit", remove, add)
+    return review_answer("approve")
+
+
+def save_answer_from_form(proposed_title: str, title: str, save: bool) -> dict:
+    """Build the answer to a save approval from a form: reject, approve as
+    proposed, or approve under the title the user typed."""
+    if not save:
+        return save_answer("reject")
+    title = " ".join(title.split())
+    if title and title != proposed_title:
+        return save_answer("edit", title)
+    return save_answer("approve")
+

@@ -42,7 +42,9 @@ def describe_tool_call(name: str, args: dict) -> str:
     if name == REPORT_TOOL_NAME:
         return f"Started a report on {args.get('product', '')} in {args.get('country', '')}"
     if name == "save_report":
-        return f"Saved the report as '{args.get('title', '')}'"
+        # The tool call is only a request: the user approves it before any
+        # file is written, and may change the title or decline.
+        return f"Asked to save the report as '{args.get('title', '')}'"
     if name == "remember_preference":
         return f"Remembered your {str(args.get('key', '')).replace('_', ' ')}"
     if name == "forget_preferences":
@@ -122,6 +124,16 @@ def to_blocks(messages: list) -> list[Block]:
 class Conversation:
     thread_id: str
     title: str
+
+
+def report_title(report: str) -> str:
+    """The title of a report for a file name: its heading without the
+    fixed "Market research report:" part."""
+    for line in report.splitlines():
+        if line.startswith("# "):
+            title = line[2:].strip()
+            return title.removeprefix("Market research report:").strip() or title
+    return "Market research report"
 
 
 def title_from(messages: list) -> str:

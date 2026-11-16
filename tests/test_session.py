@@ -140,6 +140,14 @@ def test_a_conversation_without_a_question_has_no_title():
     assert session.title_from([AIMessage("Hello")]) == ""
 
 
+def test_a_report_title_drops_the_fixed_part_of_the_heading():
+    assert session.report_title(REPORT) == "meal kits in Germany"
+
+
+def test_a_report_title_falls_back_when_there_is_no_heading():
+    assert session.report_title("Some text without a heading") == "Market research report"
+
+
 def test_new_conversation_ids_are_short_and_different():
     first, second = session.new_thread_id(), session.new_thread_id()
 

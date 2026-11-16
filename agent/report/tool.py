@@ -26,11 +26,15 @@ def report_graph(review: bool = False):
 
 
 def run_report(product: str, country: str, idea: str, graph=None,
-               review: bool = False) -> tuple[str, dict]:
+               review: bool = False, on_progress=None) -> tuple[str, dict]:
     """Run the workflow and return (text for the user, details).
 
     The details hold the report check result and the progress log, for the
     user interface to show next to the report.
+
+    Args:
+        on_progress: Called with each progress line as soon as a step
+            finishes, so an interface can show the work live.
     """
     product, country = product.strip(), country.strip()
     if not product:
@@ -39,9 +43,21 @@ def run_report(product: str, country: str, idea: str, graph=None,
         return (f"I could not recognise '{country}' as a country. Which single "
                 f"country should the report cover?"), {}
 
+    request = {"product": product, "country": country, "idea": idea.strip()}
+    final: dict = {}
     try:
-        final = (graph or report_graph(review)).invoke(
-            {"product": product, "country": country, "idea": idea.strip()})
+        # Two views of the same run: "updates" gives each step's result as it
+        # finishes (for progress), "values" gives the whole state after each
+        # step (the last one is the final result).
+        for mode, chunk in (graph or report_graph(review)).stream(
+                request, stream_mode=["updates", "values"]):
+            if mode == "values":
+                final = chunk
+            elif on_progress:
+                for step_output in chunk.values():
+                    if isinstance(step_output, dict):
+                        for line in step_output.get("log", []):
+                            on_progress(line)
     except GraphInterrupt:
         # Not an error: the workflow paused for the user's review. Let it
         # pass up to the chat agent, which saves the state and stops.
@@ -52,6 +68,8 @@ def run_report(product: str, country: str, idea: str, graph=None,
 
     if final.get("cancelled"):
         return CANCELLED_MESSAGE, {"log": final.get("log", [])}
+    if "report" not in final:
+        return "The report could not be produced. Please try again.", {}
     return final["report"], {"problems": final.get("problems", []),
                              "log": final.get("log", [])}
 
@@ -82,4 +100,9 @@ def create_market_report(product: str, country: str, idea: str = "",
     # only when the agent was given a checkpointer (a thread id is set).
     configurable = (runtime.config or {}).get("configurable", {}) if runtime else {}
     review = REVIEW_COMPETITORS and bool(configurable.get("thread_id"))
-    return run_report(product, country, idea, review=review)
+
+    # Progress lines are sent through LangGraph's stream writer, so whoever
+    # is streaming the chat agent receives them while the tool is running.
+    writer = runtime.stream_writer if runtime else None
+    on_progress = (lambda line: writer({"progress": line})) if writer else None
+    return run_report(product, country, idea, review=review, on_progress=on_progress)

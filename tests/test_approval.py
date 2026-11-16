@@ -6,16 +6,19 @@
 
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 
 import main
 from agent import approval
 from agent.agent import assemble_agent, pending_pause, resume_steps, stream_steps
-from agent.approval import Pause, review_answer, save_answer
+from agent.approval import Pause, Progress, review_answer, save_answer
+from agent.memory import UserContext
 from agent.report import review
 from agent.report.deps import Deps
 from agent.report.graph import build_report_graph
+from agent.report.tool import CANCELLED_MESSAGE, run_report
 from agent.report.state import (
     Candidate,
     CandidateList,
@@ -165,6 +168,45 @@ def test_no_more_companies_are_added_once_the_limit_is_reached(monkeypatch):
     assert "limit of 3" in update["log"][0]
 
 
+# --- answers from the web form ---------------------------------------------------------------------
+
+def test_a_form_left_as_it_is_approves_the_list():
+    answer = approval.review_answer_from_form({"Alpha": True, "Beta": True}, {"Delta": False})
+
+    assert answer == {"action": "approve"}
+
+
+def test_unticking_a_company_removes_it():
+    answer = approval.review_answer_from_form({"Alpha": True, "Beta": False}, {})
+
+    assert answer == {"action": "edit", "remove": ["Beta"], "add": []}
+
+
+def test_ticking_a_left_out_company_and_typing_names_adds_them():
+    answer = approval.review_answer_from_form(
+        {"Alpha": True}, {"Delta": True, "Omega": False}, typed=" Marley Spoon , ,EatFitter ")
+
+    assert answer == {"action": "edit", "remove": [],
+                      "add": ["Delta", "Marley Spoon", "EatFitter"]}
+
+
+def test_saving_under_the_proposed_title_is_a_plain_approval():
+    assert approval.save_answer_from_form("Meal kits", "Meal kits", save=True) == \
+        save_answer("approve")
+    assert approval.save_answer_from_form("Meal kits", "   ", save=True) == \
+        save_answer("approve")
+
+
+def test_saving_under_a_changed_title_edits_the_title():
+    assert approval.save_answer_from_form("Meal kits", "  My  own title ", save=True) == \
+        save_answer("edit", "My own title")
+
+
+def test_choosing_not_to_save_rejects_whatever_the_title():
+    assert approval.save_answer_from_form("Meal kits", "New title", save=False) == \
+        save_answer("reject")
+
+
 # --- typed answers in the terminal ------------------------------------------------------------
 
 LISTED = ["Alpha", "Beta", "Gamma"]
@@ -273,10 +315,14 @@ def report_agent(calls: list, saved: list | None = None, replies: list | None = 
     graph = build_report_graph(workflow_deps(calls), review=True)
 
     @tool("create_market_report", return_direct=True)
-    def create_market_report(product: str, country: str) -> str:
+    def create_market_report(product: str, country: str,
+                             runtime: ToolRuntime[UserContext] = None) -> str:
         """Report."""
-        final = graph.invoke({"product": product, "country": country})
-        return "CANCELLED" if final.get("cancelled") else final["report"]
+        # The same function the real tool uses, with the fake research.
+        text, _ = run_report(
+            product, country, "", graph=graph, review=True,
+            on_progress=lambda line: runtime.stream_writer({"progress": line}))
+        return "CANCELLED" if text == CANCELLED_MESSAGE else text
 
     @tool
     def save_report(title: str) -> str:
@@ -355,6 +401,21 @@ def test_resuming_does_not_repeat_the_search_for_competitors():
     list(resume_steps(agent, review_answer("approve"), "t1"))
 
     assert (calls.count("CandidateList"), calls.count("Verdict")) == before
+
+
+def test_progress_lines_arrive_while_the_report_is_being_made():
+    agent = report_agent([])
+
+    before = [item.text for item in stream_steps(agent, "Report on meal kits in Germany", "t1")
+              if isinstance(item, Progress)]
+    after = [item.text for item in resume_steps(agent, review_answer("approve"), "t1")
+             if isinstance(item, Progress)]
+
+    assert "Candidates found: Alpha, Beta" in before
+    assert "Review: the user approved the competitor list" in after
+    assert "Report check: passed" in after
+    # Steps finished before the pause are not announced a second time.
+    assert "Candidates found: Alpha, Beta" not in after
 
 
 def test_a_waiting_conversation_can_be_found_again_later():

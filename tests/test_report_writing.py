@@ -276,11 +276,14 @@ class FakeGraph:
     def __init__(self, result=None, error=None):
         self.result, self.error, self.request = result, error, None
 
-    def invoke(self, request):
+    def stream(self, request, stream_mode=None):
+        """Like the real graph: step updates first, then the final state."""
         self.request = request
         if self.error:
             raise self.error
-        return self.result
+        yield "updates", {"some_step": {"log": ["Step one done"]}}
+        yield "updates", {"__interrupt__": ()}      # not a dict of fields
+        yield "values", self.result
 
 
 def test_the_tool_returns_the_report_and_keeps_the_check_result_aside():
@@ -315,6 +318,22 @@ def test_a_failure_inside_the_workflow_becomes_a_readable_message():
 
     assert text.startswith("The report could not be produced")
     assert "no internet" in text
+    assert details == {}
+
+
+def test_progress_lines_are_passed_on_as_each_step_finishes():
+    graph = FakeGraph({"report": "# Market research report: x", "problems": [], "log": []})
+    seen = []
+
+    run_report("meal kits", "Germany", "", graph=graph, on_progress=seen.append)
+
+    assert seen == ["Step one done"]
+
+
+def test_a_run_that_produces_no_report_gives_a_readable_message():
+    text, details = run_report("meal kits", "Germany", "", graph=FakeGraph({}))
+
+    assert text.startswith("The report could not be produced")
     assert details == {}
 
 

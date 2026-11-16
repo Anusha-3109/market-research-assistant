@@ -20,6 +20,7 @@ from agent.agent import build_agent, pending_pause, resume_steps, stream_steps
 from agent.approval import (
     SAVE_KIND,
     Pause,
+    Progress,
     parse_review_reply,
     parse_save_reply,
 )
@@ -42,9 +43,8 @@ def print_step(message) -> None:
             print(f"  [tool call] {call['name']}({call['args']})")
     elif isinstance(message, ToolMessage) and message.name == REPORT_TOOL_NAME:
         # The report workflow's result is the answer itself.
+        # Its progress lines were already printed live, as they happened.
         details = message.artifact or {}
-        for line in details.get("log", []):
-            print(f"  [workflow] {line}")
         print(f"\nAssistant:\n{message.content}\n")
         if "problems" in details:
             print(format_check(details["problems"]) + "\n")
@@ -93,6 +93,8 @@ def play(steps, ask_user) -> Pause | None:
     for item in steps:
         if isinstance(item, Pause):
             pause = item
+        elif isinstance(item, Progress):
+            print(f"  [workflow] {item.text}")
         else:
             print_step(item)
     return pause

@@ -17,7 +17,7 @@ from langchain.agents.middleware import (
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
 
-from agent.approval import SAVE_APPROVAL_CONFIG, Pause, read_pause
+from agent.approval import SAVE_APPROVAL_CONFIG, Pause, Progress, read_pause
 from agent.config import (
     FALLBACK_MODELS,
     MAX_TOOL_ROUNDS,
@@ -178,8 +178,9 @@ def build_agent(model_name: str = MODEL_NAME,
 
 
 def _run(agent, payload, thread_id: str, user_id: str):
-    """Run the agent and yield what happens: each new message, and a Pause
-    if the agent stops to wait for the user."""
+    """Run the agent and yield what happens: each new message, a Progress
+    line while a long tool is working, and a Pause if the agent stops to
+    wait for the user."""
     config = {
         "configurable": {"thread_id": thread_id},
         # Each tool round is two graph steps (model, then tools), plus one
@@ -187,10 +188,17 @@ def _run(agent, payload, thread_id: str, user_id: str):
         "recursion_limit": MAX_TOOL_ROUNDS * 2 + 1,
     }
 
-    for update in agent.stream(payload, config=config,
-                               context=UserContext(user_id=user_id),
-                               stream_mode="updates"):
-        for node, output in update.items():
+    # Two streams at once: "updates" carries each new message, "custom"
+    # carries the progress lines a tool sends while it is still running.
+    for mode, chunk in agent.stream(payload, config=config,
+                                    context=UserContext(user_id=user_id),
+                                    stream_mode=["updates", "custom"]):
+        if mode == "custom":
+            if isinstance(chunk, dict) and "progress" in chunk:
+                yield Progress(str(chunk["progress"]))
+            continue
+
+        for node, output in chunk.items():
             if node == "__interrupt__":
                 # The agent has stopped and saved its state.
                 for interrupt in output:

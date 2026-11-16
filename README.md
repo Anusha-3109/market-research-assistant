@@ -1,14 +1,14 @@
-# AI Market Research Assistant
+# Groundwork: an AI market research assistant
 
 An AI agent that researches a market for a first-time founder: it finds the
 real competitors in a country, reads their prices from their own websites,
 collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
 
-> **Status.** The agent, the report workflow, memory and the approval steps
-> are complete and tested (300 automated tests). It currently runs as a
-> terminal chat. The Streamlit web app is the next piece of work and is not
-> in this repository yet.
+> **Status.** The agent, the report workflow, memory, the approval steps and
+> the web app are complete and tested (336 automated tests). Three smaller
+> pieces of the app are still to come: a panel showing what is remembered
+> about you, a settings panel, and a help panel.
 
 ## Contents
 
@@ -66,6 +66,7 @@ agent with tools can decide what to look up next.
 
 | Capability | Detail |
 |---|---|
+| Web app | A chat interface with example cards, live progress, forms for your decisions, and saved conversations |
 | Market research report | Six fixed sections: market overview, competitors, pricing, trends, SWOT analysis, references |
 | Verified competitors | Each candidate is checked: does it sell this product, in this country? Others are dropped with the reason |
 | First-hand prices | Read only from the competitor's own website; the source link is set by code |
@@ -101,99 +102,134 @@ pip install -r requirements.txt
 copy .env.example .env              # then open .env and paste your two keys
 ```
 
-Start the chat:
+Start the app:
 
 ```bash
-python main.py
+streamlit run app.py
 ```
+
+It opens in your browser at `http://localhost:8501`. If a key is missing,
+the page shows setup instructions.
 
 A report costs a few cents of OpenRouter credit and about 20 Tavily
 searches.
 
 ## How to use it
 
-### Start or continue a conversation
+### The start screen
 
-```bash
-python main.py                      # new conversation
-python main.py --thread a1b2c3d4    # continue an earlier one
-```
+Nine example cards float around the headline. Click one to send its
+question, or type your own in the box at the bottom.
 
-Each conversation has an id, printed when it starts. Conversations are
-saved in `data/memory.db`, so you can close the program and come back.
+| Card | What it asks |
+|---|---|
+| Write a report | A full report on healthy meal delivery in Germany |
+| Check demand | Whether interest in meal kits is rising in Germany |
+| Compare prices | What Prepmymeal charges |
+| Follow the news | What changed in organic baby food in France |
+| Find competitors | Who sells vegan protein snacks in the UK |
+| Research a company | How big HelloFresh is |
+| Size a market | How big the vegan snack market in the UK is |
+| Test my idea | A report for a vegan bakery in the Netherlands |
+| Set your market | Tells the assistant your country and industry |
+
+The wider card, **"Learn how Groundwork works"**, opens a guide in the chat:
+five numbered step cards, a written explanation, and follow-up chips
+("Where do the prices come from?", "Why check the competitors?"). The guide
+is fixed text, so it appears instantly and costs nothing.
+
+On a narrow window the cards sit in rows of three.
 
 ### Ask for a report
 
+Type, or click "Write a report":
+
 ```
-You: I want to launch a healthy meal delivery business in Germany.
-     Give me a market research report.
+I want to launch a healthy meal delivery business in Germany.
+Give me a market research report.
 ```
 
 The agent needs a product and one country. If you name no country and none
-is saved for you, it asks.
+is saved for you, it asks. While it works, a progress box lists each step
+as it finishes.
 
 ### Review the competitors
 
-Before the detailed research, the agent stops and shows what it found:
+Before the detailed research, the agent stops and shows a form:
 
-```
-[approval needed] Competitors found for healthy meal delivery in Germany:
-  1. HelloFresh  (https://www.hellofresh.com)
-  2. Factor  (https://www.factormeals.de)
-  3. EASY MEAL  (https://www.easymeal.de/so-gehts)
-  4. Prepmymeal  (https://prepmymeal.com)
-  5. Every Foods  (no website found)
-  Verified but left out: EatFitter, Tellerglück
-  Dropped: ChefCoco (different product ...)
-  Type: approve | remove 2,4 | add <company> | remove 4; add <company> | cancel
-Your decision: remove 5; add Marley Spoon
-```
+- a tick box for each competitor it found, with its website;
+- companies it verified but left out, which you can tick to include;
+- an "Add a company" field for any it missed;
+- the companies it dropped, with the reason for each;
+- **Continue** and **Cancel report** buttons.
 
-| You type | Result |
+Untick what does not belong, add what is missing, and continue. Cancelling
+stops the report with no further research.
+
+### Read, download and save the report
+
+The report appears as a formatted document with a "Report check" result
+above it and two buttons below:
+
+| Button | What it does |
 |---|---|
-| `approve` | Research continues with this list |
-| `remove 2,4` or `remove Factor` | Those companies are dropped |
-| `add Marley Spoon` | The company joins the list and is researched like the others |
-| `remove 5; add Marley Spoon` | Both at once |
-| `cancel` | The report stops; no more research is done |
+| Download | Sends the report to your own computer as a Markdown file |
+| Save to reports folder | Asks the agent to save it in the app's `reports/` folder |
+
+Saving shows a second form with an editable title, and **Save** and
+**Don't save** buttons. Nothing is written until you press Save.
 
 ### Ask follow-up questions
 
 ```
-You: Go deeper on pricing for the cheapest competitor you found.
+Go deeper on pricing for the cheapest competitor you found.
 ```
 
-### Save the report
+Under each answer, "How this was researched" opens to show what the agent
+did.
 
-```
-You: Save this report.
-[approval needed] Save this report as reports/2026-11-16-healthy-meal-delivery-germany.md?
-  Type: approve | reject | title <new title>
-Your decision: title Germany meal delivery
-```
+### Conversations
 
-Reports are saved as Markdown files in the `reports/` folder.
+Open the sidebar with the arrow at the top left.
+
+- **New conversation** starts a fresh one.
+- Earlier conversations are listed by their first question. Click one to
+  reopen it.
+
+Conversations are saved in `data/memory.db`. The conversation id is in the
+page address, so refreshing the page, or closing and reopening it, shows
+the same chat. A form that was waiting for your decision is still there.
 
 ### Memory
 
 Say something about yourself once, and later conversations know it:
 
 ```
-You: I am opening a vegan bakery in the Netherlands.
+I am opening a vegan bakery in the Netherlands.
 (a new conversation, later)
-You: Is demand for vegan cakes rising?
+Is demand for vegan cakes rising?
      -> the agent checks the Netherlands without asking
 ```
 
 To clear it: `Please forget my saved preferences.`
 
-### Run only the report workflow
+### Terminal chat (for development)
 
-To see each step of the workflow without the chat:
+The same agent also runs in the terminal, printing every step:
+
+```bash
+python main.py                      # new conversation
+python main.py --thread a1b2c3d4    # continue an earlier one
+```
+
+Approvals are typed: `approve`, `remove 2,4`, `add Marley Spoon`, `cancel`
+for the competitor review; `approve`, `reject`, `title <new title>` for
+saving.
+
+To run only the report workflow, without the chat:
 
 ```bash
 python -m agent.report.demo "healthy meal delivery" Germany
-python -m agent.report.demo "healthy meal delivery" Germany --facts
 ```
 
 ## Example use cases
@@ -204,13 +240,13 @@ python -m agent.report.demo "healthy meal delivery" Germany --facts
 | 2 | "Go deeper on pricing for the top three competitors you found." | Opens the competitors' own pages and lists current prices with links |
 | 3 | "Is there a market for vegan protein snacks?" | No country given, so it asks which country you mean |
 | 4 | "Should I invest my savings in this business?" | Declines to give investment advice and offers market facts instead |
-| 5 | "Save this report." | Asks for your approval, then writes the file |
+| 5 | "Save this report." | Shows the save form, then writes the file if you approve |
 | 6 | "Is demand for meal kits rising in Germany?" | Reads Google Trends and reports the direction, with a reliability warning if searches are few |
 | 7 | "Please forget my saved preferences." | Deletes your saved profile |
 
 ## How it works
 
-There are two parts, and they are deliberately different.
+There are three parts.
 
 ### 1. The chat agent
 
@@ -277,6 +313,25 @@ Examples of those checks:
 Sections 1 to 4 and 6 of the report are built by code from the checked
 facts. Only the SWOT is written by the model, from those sections.
 
+### 3. The web app
+
+A Streamlit app, kept as a thin layer over the agent. It calls three
+functions and contains no agent logic:
+
+| Function | Used when |
+|---|---|
+| `stream_steps` | The user asks a question |
+| `resume_steps` | The user submits an approval form |
+| `pending_pause` | The page loads, to see if a form should be shown |
+
+Streamlit reruns the page script on every click, so nothing important is
+kept in the page. The conversation is read from the agent's saved state on
+each run, and the conversation id lives in the page address. That is why a
+refresh loses nothing.
+
+Progress appears live because the report tool sends each step's line
+through LangGraph's stream writer while it is still running.
+
 ### Data sources and fallbacks
 
 Each job has a list of sources, tried in order. The first that answers
@@ -322,9 +377,11 @@ in two ways:
 |---|---|---|
 | Purpose | Quality: your judgement on the list | Safety: nothing is written without consent |
 | How | An `interrupt()` call placed in the workflow | LangChain's ready-made middleware |
+| In the app | A form with tick boxes | A form with an editable title |
 
-While waiting, the state is saved, so you can close the program and answer
-later.
+While waiting, the state is saved, so you can close the page and answer
+later. The workflow runs as a sub-graph that saves its own progress, so
+continuing does not repeat the searches done before the pause.
 
 ## Technical decisions
 
@@ -358,6 +415,20 @@ United States when no country was given, so a middleware check now blocks
 that tool call; it chose "Mahlzeit" (meal) as a trend word, so each word
 is now checked by a separate yes-or-no question.
 
+**The web app holds no state of its own.** Everything shown is read from
+the agent's checkpointer. This is what lets a refresh, a restart or a
+second browser tab show the same conversation and the same waiting form,
+and it kept the app small: the forms only collect input and hand it over.
+
+**Logic for the app lives outside Streamlit.** Turning saved messages into
+chat bubbles, listing conversations and turning form input into the
+agent's answer are plain functions in `agent/session.py` and
+`agent/approval.py`, tested without a browser.
+
+**Download and save are separate.** A download goes to the user's own
+computer and needs no approval. Saving writes on the machine running the
+app, so it goes through the agent and its approval step.
+
 **Fallbacks for every source.** A research tool that fails when one
 service is down is not usable. Each tool has free backups from different
 companies.
@@ -374,10 +445,11 @@ sources as plain functions, so the tests replace them with fakes.
 
 ## Error handling and safety
 
-- **Missing API key**: a clear setup message, no crash.
+- **Missing API key**: the app shows setup instructions, no crash.
 - **A failed source**: the next source is tried; if all fail, the tool
   returns a readable message and the report says "not found".
-- **A failed step in the workflow**: the user gets a readable message.
+- **A failed step in the workflow or the model**: the app shows a readable
+  error and keeps it on screen.
 - **A runaway loop**: tool rounds are limited to 12 per question.
 - **Opening web pages**: only `http` and `https`; local and private network
   addresses are blocked, also after redirects; downloads are capped at 2 MB.
@@ -396,7 +468,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-300 tests, none of which use the internet or cost anything: outside
+336 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -409,14 +481,29 @@ services and the model are replaced with fakes.
 | `test_report_workflow.py`, `test_report_research.py`, `test_report_writing.py` | The report workflow, step by step |
 | `test_report_check.py` | The report checker |
 | `test_memory.py` | Both kinds of memory and the country check |
-| `test_approval.py` | Every decision at both approval points |
+| `test_approval.py` | Every decision at both approval points, live progress, form answers |
+| `test_session.py` | Chat bubbles from saved messages; listing conversations |
+| `test_guide.py` | The "How it works" guide content |
 | `test_agent.py` | How the agent is assembled; model fallback |
+
+The app's screens were also checked by hand in a browser: the start screen
+at several window sizes, a full report through both forms, a refresh while
+a form was open, and reopening earlier conversations.
 
 ## Project structure
 
 ```
 market-research-assistant/
-├── main.py                  terminal chat
+├── app.py                   the web app
+├── main.py                  terminal chat, for development
+├── ui/                      the Streamlit interface
+│   ├── styles.py            the look: sky background, frosted panels
+│   ├── start.py             start screen and example cards
+│   ├── guide.py             the "How it works" guide
+│   ├── chat.py              chat bubbles, the report view, live progress
+│   ├── approvals.py         the two approval forms
+│   ├── sidebar.py           conversations
+│   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
 │   ├── prompts.py           the system prompt
@@ -424,13 +511,14 @@ market-research-assistant/
 │   ├── memory.py            checkpointer, store, user profile
 │   ├── memory_tools.py      remember and forget tools
 │   ├── approval.py          the two approval points
+│   ├── session.py           conversations and chat bubbles, for any interface
 │   ├── fallback.py          try sources in order
 │   ├── report_check.py      checks a finished report
 │   ├── trends.py            rising, falling or stable
 │   ├── countries.py         country names and codes
 │   ├── names.py             comparing company names
 │   ├── models.py            creates the chat model
-│   ├── config.py            settings
+│   ├── config.py            settings, including the app name
 │   ├── report/              the report workflow (LangGraph)
 │   │   ├── graph.py         nodes and edges
 │   │   ├── state.py         the workflow's data
@@ -443,6 +531,7 @@ market-research-assistant/
 │   │   └── demo.py          runs the workflow from the terminal
 │   └── sources/             one file per outside service
 ├── tests/
+├── .streamlit/config.toml   the app's theme
 ├── reports/                 saved reports (not in Git)
 ├── data/                    memory file (not in Git)
 ├── requirements.txt
@@ -453,9 +542,26 @@ market-research-assistant/
 
 **Not built yet**
 
-- There is no web interface yet. The Streamlit app is the next step.
+- The sidebar has no panel showing what is remembered about you, no
+  settings (model, temperature, review on or off) and no help panel.
 - Token usage and cost are not shown.
 - Tracing with LangSmith is prepared in `.env.example` but not switched on.
+- The app runs on your own machine; it is not deployed.
+
+**The web app**
+
+- A report takes 30 to 60 seconds after the competitor review, and the
+  page cannot be used for another question meanwhile.
+- When a form appears below a long report, the page does not scroll to it.
+- The floating cards need a main area at least about 700 pixels wide and a
+  window at least about 620 pixels tall. Below that they sit in rows.
+- The look depends on Streamlit's internal page structure in a few places
+  (the page background, chat bubbles, the bottom bar), so a Streamlit
+  upgrade may need small styling fixes.
+- Styling and other changes to files in `ui/` only take effect after the
+  app is restarted.
+- At the competitor review, some companies show "no website found yet".
+  Their sites are usually found later, during the price research.
 
 **Report quality**
 
@@ -486,7 +592,8 @@ market-research-assistant/
 - All models are reached through OpenRouter, which is a single point of
   failure: if it is down, or the credit runs out, no model answers.
 - Backup sources give thinner results than the main ones.
-- There is one user. Everything is stored under one profile.
+- There is one user. Everything is stored under one profile, and anyone
+  who opens the app sees the same conversations.
 - Conversations are never shortened, so a very long one costs more per
   turn.
 - The address check for the page reader does not defend against a domain
@@ -496,13 +603,14 @@ market-research-assistant/
 
 ## What I would improve
 
-1. Build the Streamlit app, with the competitor review as checkboxes and
-   the report rendered as a document.
-2. Measure report quality with an evaluation set, so changes can be judged
+1. Finish the sidebar: the memory panel, settings and help.
+2. Show token usage and cost, and switch on tracing.
+3. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.
-3. Read prices from pages that need JavaScript, with a headless browser.
-4. Add a second model provider key to remove the OpenRouter dependency.
-5. Give the single-question path the same competitor verification as the
+4. Read prices from pages that need JavaScript, with a headless browser.
+5. Add a second model provider key to remove the OpenRouter dependency.
+6. Give the single-question path the same competitor verification as the
    workflow.
-6. Summarise long conversations to control cost.
-7. Add user accounts so several people can use one installation.
+7. Add user accounts, so several people can use one installation with
+   separate conversations and profiles.
+8. Summarise long conversations to control cost.
