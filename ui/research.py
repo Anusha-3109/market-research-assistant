@@ -178,22 +178,43 @@ START_AT_TOP = """
 
 # --- the finished view --------------------------------------------------------------------------
 
+def tab_labels(turns: list[Turn], limit: int) -> list[str]:
+    """One label per turn: the report's title if the answer is a report,
+    otherwise the question.
+
+    The labels must all differ. Streamlit tells tabs apart by their text,
+    so two tabs reading the same would open the same answer. A repeated
+    label gets a number: "Meal kits in Germany (2)".
+    """
+    labels: list[str] = []
+    for turn in turns:
+        report = turn.answer.report if turn.answer else ""
+        base = short_title(report_title(report) if report else turn.question, limit)
+        label, copy = base, 2
+        while label in labels:
+            label, copy = f"{base} ({copy})", copy + 1
+        labels.append(label)
+    return labels
+
+
 def render_tabs(turns: list[Turn], thread_id: str, locked: bool) -> int:
     """The questions of this conversation as tabs. Returns the index of the
     one to show. The newest is selected when a new answer arrives."""
     latest = len(turns) - 1
     if locked or len(turns) == 1:
         # One tab, or an approval is waiting on the newest: nothing to choose.
+        labels = tab_labels(turns, 46)
         st.pills("Questions", [latest], default=latest, key=f"tab_{thread_id}_{latest}_fixed",
-                 format_func=lambda i: short_title(turns[i].question, 46),
+                 format_func=labels.__getitem__,
                  label_visibility="collapsed", disabled=locked and len(turns) > 1)
         return latest
 
     # The key changes with the number of turns, so a new answer resets the
     # selection to the newest tab.
+    labels = tab_labels(turns, 34)
     chosen = st.pills("Questions", list(range(len(turns))), default=latest,
                       key=f"tab_{thread_id}_{len(turns)}",
-                      format_func=lambda i: short_title(turns[i].question, 34),
+                      format_func=labels.__getitem__,
                       label_visibility="collapsed")
     return latest if chosen is None else chosen
 
@@ -252,7 +273,8 @@ def render_turn(turn: Turn, index: int, thread_id: str, is_latest: bool,
         sources = block.sources if block else []
         steps_panel("Waiting for you" if waiting is not None else "Done",
                     [step.removeprefix("Workflow: ") for step in steps], elapsed, len(sources))
-        sources_panel(sources)
+        sources_panel(sources, empty="None yet." if waiting is not None
+                      else "No pages were cited.")
 
         if has_answer and waiting is None:
             if block.report or sources:

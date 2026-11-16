@@ -109,9 +109,12 @@ question = st.chat_input(
 guide = st.session_state.get("guide")
 guide = guide if guide and guide["thread"] == thread_id else None
 
-# Everything above the question box is drawn in one placeholder, so the
-# start screen or a finished answer can be swapped for the live view.
+# The start screen or a finished answer is drawn in one placeholder and the
+# live view in a second one below it. To go live, the first is emptied and
+# the second filled. (Filling one placeholder twice in the same run breaks
+# the page in the browser.)
 view = st.empty()
+live = st.empty()
 answer = None           # the answer to an approval form, once submitted
 
 if not turns:
@@ -156,13 +159,15 @@ if question:
 # state: that shows the answer, or the next approval form.
 if answer is not None:
     latest = turns[-1]
-    with view.container():
+    view.empty()
+    with live.container():
         run_live(runtime.agent, thread_id, context, title=latest.question,
                  turn_index=len(turns) - 1, answer=answer,
                  earlier_steps=latest.answer.activity if latest.answer else [])
     st.rerun()
 elif question and not waiting:
-    with view.container():
+    view.empty()
+    with live.container():
         run_live(runtime.agent, thread_id, context, title=question,
                  turn_index=len(turns), question=question)
     st.rerun()

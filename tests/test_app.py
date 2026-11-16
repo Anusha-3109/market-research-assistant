@@ -382,3 +382,40 @@ def test_text_from_the_web_cannot_act_as_markup_in_the_source_list():
     row = source_row(Source(1, '<script>x</script> "T"', "a.example", "https://a.example/?q=\"><b>"))
 
     assert "<script>" not in row and "<b>" not in row
+
+
+# --- tab labels ------------------------------------------------------------------------------------
+
+def test_tabs_with_the_same_wording_get_different_labels():
+    from agent.session import Block, Turn
+    from ui.research import tab_labels
+
+    turns = [Turn("Give me a report", Block("assistant", text="One")),
+             Turn("Give me a report", Block("assistant", text="Two")),
+             Turn("Give me a report", None)]
+
+    assert tab_labels(turns, 40) == ["Give me a report", "Give me a report (2)",
+                                     "Give me a report (3)"]
+
+
+def test_a_report_tab_is_named_after_the_report():
+    from agent.session import Block, Turn
+    from ui.research import tab_labels
+
+    report = "# Market research report: oat milk in Germany"
+    turns = [Turn("Give me a market research report for oat milk in Germany",
+                  Block("assistant", report=report))]
+
+    assert tab_labels(turns, 40) == ["oat milk in Germany"]
+
+
+def test_asking_the_same_question_twice_still_opens_the_right_answer(page):
+    app = page([AIMessage("First answer."), AIMessage("Second answer.")])
+    app.chat_input[0].set_value("Same question").run()
+    app.chat_input[0].set_value("Same question").run()
+
+    tabs = app.button_group[0]
+    tabs.set_value(0).run()
+
+    assert "First answer." in texts(app)
+    assert "Second answer." not in texts(app)

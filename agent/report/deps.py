@@ -9,6 +9,9 @@ without the internet and without cost.
 from dataclasses import dataclass
 from typing import Callable
 
+from langchain_core.exceptions import OutputParserException
+from pydantic import ValidationError
+
 from agent.config import MODEL_NAME, TEMPERATURE
 from agent.fallback import try_sources
 from agent.models import make_model
@@ -28,6 +31,34 @@ class Deps:
     financials: Callable[[str], str | None]
     # trend(term, country) -> a TrendSeries, or None if there is no data.
     trend: Callable
+
+
+ASK_ATTEMPTS = 3
+
+
+def ask_with_retry(structured, instructions: str, material: str):
+    """Ask the model for an answer in a fixed shape, and ask again if the
+    answer does not fit the shape.
+
+    Now and then a model leaves out a required field. One such slip in one
+    of the dozens of questions a report needs must not lose the whole
+    report, so the question is repeated, with the problem pointed out.
+    """
+    messages = [
+        {"role": "system", "content": instructions},
+        {"role": "user", "content": material},
+    ]
+    for attempt in range(ASK_ATTEMPTS):
+        try:
+            return structured.invoke(messages)
+        except (ValidationError, OutputParserException) as error:
+            if attempt == ASK_ATTEMPTS - 1:
+                raise
+            messages = messages[:2] + [{
+                "role": "user",
+                "content": f"Your last answer was rejected: {str(error)[:300]} "
+                           f"Answer again and fill in every required field.",
+            }]
 
 
 def default_deps(model_name: str = MODEL_NAME,
@@ -50,10 +81,7 @@ def default_deps(model_name: str = MODEL_NAME,
         # function" whose arguments are the schema's fields, so the reply
         # always has the right shape.
         structured = model.with_structured_output(schema, method="function_calling")
-        return structured.invoke([
-            {"role": "system", "content": instructions},
-            {"role": "user", "content": material},
-        ])
+        return ask_with_retry(structured, instructions, material)
 
     def search(query: str) -> list[dict]:
         return try_sources(WEB_SEARCH_SOURCES, query).value or []

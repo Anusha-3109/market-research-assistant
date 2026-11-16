@@ -32,7 +32,7 @@ CSS = f"""
    does not show through the box. */
 [data-testid="stBottom"] {{
     background: linear-gradient(to bottom, rgba(244, 212, 204, 0) 0,
-                                rgba(244, 212, 204, 0.97) 22%);
+                                rgb(244, 212, 204) 1.4rem);
 }}
 [data-testid="stBottom"] > div,
 [data-testid="stBottomBlockContainer"] {{ background: transparent; }}
@@ -251,9 +251,10 @@ CSS = f"""
 }}
 .st-key-memory_panel p {{ font-size: 0.86rem; margin-bottom: 0.45rem; }}
 
-/* The question box. */
+/* The question box. It is solid, not glass: text scrolling underneath
+   must not show through it. */
 [data-testid="stChatInput"] > div {{
-    background: {GLASS_STRONG};
+    background: #fdf6f3;
     border: 1px solid {GLASS_EDGE};
     border-radius: 18px;
 }}
@@ -293,6 +294,11 @@ CSS = f"""
 }}
 [class*="st-key-answer_panel_"] [data-testid="stMarkdownContainer"] a[href^="http"]:hover {{
     color: #185FA5; text-decoration: underline;
+}}
+
+/* A website shown in an approval form is ordinary text, not a citation. */
+[class*="st-key-answer_panel_"] [class*="st-key-approval_"] [data-testid="stMarkdownContainer"] a[href^="http"] {{
+    font-size: inherit; vertical-align: baseline; line-height: inherit;
 }}
 
 /* Steps and sources, on the right. */
