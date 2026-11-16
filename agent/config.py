@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# The name shown in the app. Change it here and it changes everywhere.
+APP_NAME = "Groundwork"
+APP_TAGLINE = "Market research before you launch"
+
 # Model: any OpenRouter model id that supports tool calling.
 MODEL_NAME = "openai/gpt-4.1-mini"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"

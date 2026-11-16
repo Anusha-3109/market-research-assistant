@@ -1,0 +1,21 @@
+# Look of the Streamlit app. The sky background and the frosted panels are
+# added with CSS in ui/styles.py, because the theme has no setting for a
+# gradient or for transparency.
+
+[theme]
+base = "light"
+primaryColor = "#1c1c1a"
+backgroundColor = "#eaf1f0"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1c1c1a"
+borderColor = "#d9d6cf"
+baseRadius = "0.75rem"
+
+[theme.sidebar]
+backgroundColor = "#f3f6f5"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1c1c1a"
+borderColor = "#d9d6cf"
+
+[client]
+toolbarMode = "minimal"
