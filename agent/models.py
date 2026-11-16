@@ -11,7 +11,7 @@ from agent.config import (
 )
 
 
-def make_model(name: str) -> ChatOpenAI:
+def make_model(name: str, temperature: float = TEMPERATURE) -> ChatOpenAI:
     """Create a chat model that is reached through OpenRouter.
 
     OpenRouter speaks the same API as OpenAI, so the OpenAI client works
@@ -21,6 +21,6 @@ def make_model(name: str) -> ChatOpenAI:
         model=name,
         base_url=OPENROUTER_BASE_URL,
         api_key=get_key("OPENROUTER_API_KEY"),
-        temperature=TEMPERATURE,
+        temperature=temperature,
         timeout=MODEL_TIMEOUT_SECONDS,
     )

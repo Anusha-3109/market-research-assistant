@@ -6,9 +6,8 @@ collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
 
 > **Status.** The agent, the report workflow, memory, the approval steps and
-> the web app are complete and tested (336 automated tests). Three smaller
-> pieces of the app are still to come: a panel showing what is remembered
-> about you, a settings panel, and a help panel.
+> the web app are complete and tested (403 automated tests). Token cost
+> display and tracing are still to come.
 
 ## Contents
 
@@ -166,18 +165,36 @@ Before the detailed research, the agent stops and shows a form:
 Untick what does not belong, add what is missing, and continue. Cancelling
 stops the report with no further research.
 
-### Read, download and save the report
+### The research view
 
-The report appears as a formatted document with a "Report check" result
-above it and two buttons below:
+Every answer, whether a full report or a single question, opens in the
+same two-column view:
+
+| Where | What it shows |
+|---|---|
+| Left | The answer. Each fact carries a small number such as [1] that links to its source |
+| Right, top | "Researching" with a timer and each step as it happens, then "Done" with the full list |
+| Right, below | "Sources": the numbered pages the answer cites, with their site. A company's own site is marked **Official** |
+| Top | One tab per question in the conversation. The newest opens first |
+
+While the agent is working, the answer panel shows a placeholder and a
+**Stop** button ends the run. What was found up to that point is kept and
+the conversation can continue.
+
+A report also shows its "Report check" result above the text.
+
+### Download and save
 
 | Button | What it does |
 |---|---|
-| Download | Sends the report to your own computer as a Markdown file |
-| Save to reports folder | Asks the agent to save it in the app's `reports/` folder |
+| Markdown | Sends the answer to your own computer as a Markdown file |
+| PDF | The same as a PDF, with working links and tables |
+| Save to reports folder | Asks the agent to save a report in the app's `reports/` folder |
+| Research another market | Opens a new, empty conversation |
 
-Saving shows a second form with an editable title, and **Save** and
-**Don't save** buttons. Nothing is written until you press Save.
+Saving shows a form in the answer panel with an editable title, and
+**Save** and **Don't save** buttons. Nothing is written until you press
+Save. The competitor review form appears in the same place.
 
 ### Ask follow-up questions
 
@@ -185,8 +202,8 @@ Saving shows a second form with an editable title, and **Save** and
 Go deeper on pricing for the cheapest competitor you found.
 ```
 
-Under each answer, "How this was researched" opens to show what the agent
-did.
+Type it in the box at the bottom. It becomes a new tab next to the earlier
+ones, so the report stays one click away.
 
 ### Conversations
 
@@ -202,6 +219,10 @@ the same chat. A form that was waiting for your decision is still there.
 
 ### Memory
 
+The sidebar has a **What I remember** panel showing your saved region,
+industry, business idea and report style. **Forget me** deletes them; your
+conversations are kept.
+
 Say something about yourself once, and later conversations know it:
 
 ```
@@ -211,7 +232,24 @@ Is demand for vegan cakes rising?
      -> the agent checks the Netherlands without asking
 ```
 
-To clear it: `Please forget my saved preferences.`
+To clear it, press **Forget me**, or type `Please forget my saved preferences.`
+
+### Settings and help
+
+Both are in the sidebar, closed by default so they stay out of the way.
+
+| Setting | What it does |
+|---|---|
+| Model | Chooses between three models from different companies, all reached through OpenRouter |
+| Temperature | Lower gives more factual, repeatable answers; higher gives more varied wording |
+| Review competitors before a report | Turn off for a quicker report with no pause |
+
+The settings apply to the chat and to the report workflow. They are locked
+while the assistant is waiting for your decision, because changing them
+would change how a paused report continues.
+
+**Help** summarises what the assistant can and cannot do, and opens the
+"How it works" guide.
 
 ### Terminal chat (for development)
 
@@ -332,6 +370,19 @@ refresh loses nothing.
 Progress appears live because the report tool sends each step's line
 through LangGraph's stream writer while it is still running.
 
+**Numbered citations** are made by code, not by the model. The model
+writes ordinary links; `agent/citations.py` replaces each with a number,
+gives a page cited twice the same number, and builds the source list. Page
+titles come from the search results that found them. A site is marked
+Official when the report workflow confirmed it as a competitor's own, or,
+for a single question, when the question names it.
+
+**Stop** works because Streamlit ends the running script when any button
+is pressed. A run cut off while a tool was working leaves the saved
+conversation ending in a tool request with no result, which a model
+refuses to continue from. `settle_stopped_turn` gives each open request
+the result "stopped" the next time the page loads.
+
 ### Data sources and fallbacks
 
 Each job has a list of sources, tried in order. The first that answers
@@ -421,9 +472,10 @@ second browser tab show the same conversation and the same waiting form,
 and it kept the app small: the forms only collect input and hand it over.
 
 **Logic for the app lives outside Streamlit.** Turning saved messages into
-chat bubbles, listing conversations and turning form input into the
-agent's answer are plain functions in `agent/session.py` and
-`agent/approval.py`, tested without a browser.
+questions and answers, numbering citations, building the PDF, listing
+conversations and turning form input into the agent's answer are plain
+functions in `agent/session.py`, `agent/citations.py`,
+`agent/pdf_export.py` and `agent/approval.py`, tested without a browser.
 
 **Download and save are separate.** A download goes to the user's own
 computer and needs no approval. Saving writes on the machine running the
@@ -433,9 +485,16 @@ app, so it goes through the agent and its approval step.
 service is down is not usable. Each tool has free backups from different
 companies.
 
-**One model, with fallback support built in.** The agent uses
-`openai/gpt-4.1-mini` through OpenRouter. Backup models from other
-companies can be switched on with one line in `agent/config.py`.
+**One default model, a choice of three, and fallback support.** The agent
+uses `openai/gpt-4.1-mini` through OpenRouter by default. The settings
+offer two more, from Anthropic and Google. The choice travels with each
+request in a context object, so the report workflow, which runs inside a
+tool, follows it too. Automatic fallback to a backup model can be switched
+on with one line in `agent/config.py`.
+
+**Developer settings are kept apart from the everyday experience.** Model,
+temperature and the review switch sit in a closed section of the sidebar.
+A first-time user never needs to open it.
 
 **SQLite for memory.** It survives restarts, needs no server, and is one
 file.
@@ -446,6 +505,11 @@ sources as plain functions, so the tests replace them with fakes.
 ## Error handling and safety
 
 - **Missing API key**: the app shows setup instructions, no crash.
+- **Unusable input**: an empty message, or one over 2,000 characters, is
+  turned back before it reaches the model.
+- **Failures explained in plain words**: a rejected key, an empty account,
+  a rate limit, a timeout or a lost connection each get their own message
+  saying what to do.
 - **A failed source**: the next source is tried; if all fail, the tool
   returns a readable message and the report says "not found".
 - **A failed step in the workflow or the model**: the app shows a readable
@@ -468,7 +532,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-336 tests, none of which use the internet or cost anything: outside
+403 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -484,11 +548,17 @@ services and the model are replaced with fakes.
 | `test_approval.py` | Every decision at both approval points, live progress, form answers |
 | `test_session.py` | Chat bubbles from saved messages; listing conversations |
 | `test_guide.py` | The "How it works" guide content |
+| `test_guards.py` | The input guard and the plain-language error messages |
+| `test_citations.py` | Numbered citations, the source list, the Official mark, questions paired with answers |
+| `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
+| `test_app.py` | The page itself, run without a browser: cards, the research view and its tabs, guide, sidebar, approval form, a stopped run, missing key |
 | `test_agent.py` | How the agent is assembled; model fallback |
 
-The app's screens were also checked by hand in a browser: the start screen
-at several window sizes, a full report through both forms, a refresh while
-a form was open, and reopening earlier conversations.
+`test_app.py` uses Streamlit's `AppTest` with a fake agent, so it checks what
+the page shows and what a click does. How the page looks was checked by
+hand in a browser: the start screen at several window sizes, a full report
+through both forms, a refresh while a form was open, reopening earlier
+conversations, and the sidebar panels.
 
 ## Project structure
 
@@ -500,9 +570,9 @@ market-research-assistant/
 │   ├── styles.py            the look: sky background, frosted panels
 │   ├── start.py             start screen and example cards
 │   ├── guide.py             the "How it works" guide
-│   ├── chat.py              chat bubbles, the report view, live progress
+│   ├── research.py          the research view: answer, steps, sources, live progress
 │   ├── approvals.py         the two approval forms
-│   ├── sidebar.py           conversations
+│   ├── sidebar.py           conversations, memory, settings, help
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
@@ -511,7 +581,10 @@ market-research-assistant/
 │   ├── memory.py            checkpointer, store, user profile
 │   ├── memory_tools.py      remember and forget tools
 │   ├── approval.py          the two approval points
-│   ├── session.py           conversations and chat bubbles, for any interface
+│   ├── guards.py            input check and plain-language errors
+│   ├── session.py           conversations, questions and answers, for any interface
+│   ├── citations.py         numbered citations and the source list
+│   ├── pdf_export.py        a report as a PDF file
 │   ├── fallback.py          try sources in order
 │   ├── report_check.py      checks a finished report
 │   ├── trends.py            rising, falling or stable
@@ -542,8 +615,6 @@ market-research-assistant/
 
 **Not built yet**
 
-- The sidebar has no panel showing what is remembered about you, no
-  settings (model, temperature, review on or off) and no help panel.
 - Token usage and cost are not shown.
 - Tracing with LangSmith is prepared in `.env.example` but not switched on.
 - The app runs on your own machine; it is not deployed.
@@ -552,14 +623,18 @@ market-research-assistant/
 
 - A report takes 30 to 60 seconds after the competitor review, and the
   page cannot be used for another question meanwhile.
-- When a form appears below a long report, the page does not scroll to it.
 - The floating cards need a main area at least about 700 pixels wide and a
   window at least about 620 pixels tall. Below that they sit in rows.
 - The look depends on Streamlit's internal page structure in a few places
-  (the page background, chat bubbles, the bottom bar), so a Streamlit
+  (the page background, the bottom bar, leftovers hidden during a live run), so a Streamlit
   upgrade may need small styling fixes.
+- The time a run took is shown only in the browser session that ran it.
+- The PDF uses built-in fonts that cover Western European text. Other
+  scripts are replaced with "?".
 - Styling and other changes to files in `ui/` only take effect after the
   app is restarted.
+- Settings last for the browser session. They return to the defaults when
+  the page is opened again.
 - At the competitor review, some companies show "no website found yet".
   Their sites are usually found later, during the price research.
 
@@ -603,8 +678,8 @@ market-research-assistant/
 
 ## What I would improve
 
-1. Finish the sidebar: the memory panel, settings and help.
-2. Show token usage and cost, and switch on tracing.
+1. Show token usage and cost, and switch on tracing.
+2. Remember settings between visits.
 3. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.
 4. Read prices from pages that need JavaScript, with a headless browser.

@@ -14,7 +14,7 @@ from langchain.agents.middleware import (
     wrap_tool_call,
 )
 
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.types import Command
 
 from agent.approval import SAVE_APPROVAL_CONFIG, Pause, Progress, read_pause
@@ -22,6 +22,7 @@ from agent.config import (
     FALLBACK_MODELS,
     MAX_TOOL_ROUNDS,
     MODEL_NAME,
+    TEMPERATURE,
     check_keys,
 )
 from agent.countries import find_country, is_mentioned
@@ -156,7 +157,8 @@ def assemble_agent(model, fallback_models: list, tools: list,
 
 def build_agent(model_name: str = MODEL_NAME,
                 fallback_names: list[str] | None = None,
-                checkpointer=None, store=None):
+                checkpointer=None, store=None,
+                temperature: float = TEMPERATURE):
     """Create the market research agent with its real models and tools.
 
     Without a checkpointer the agent has no memory between calls; pass the
@@ -167,7 +169,7 @@ def build_agent(model_name: str = MODEL_NAME,
         fallback_names = FALLBACK_MODELS
 
     return assemble_agent(
-        model=make_model(model_name),
+        model=make_model(model_name, temperature),
         fallback_models=[make_model(name) for name in fallback_names],
         tools=ALL_TOOLS,
         checkpointer=checkpointer,
@@ -177,7 +179,7 @@ def build_agent(model_name: str = MODEL_NAME,
     )
 
 
-def _run(agent, payload, thread_id: str, user_id: str):
+def _run(agent, payload, thread_id: str, context: UserContext):
     """Run the agent and yield what happens: each new message, a Progress
     line while a long tool is working, and a Pause if the agent stops to
     wait for the user."""
@@ -191,7 +193,7 @@ def _run(agent, payload, thread_id: str, user_id: str):
     # Two streams at once: "updates" carries each new message, "custom"
     # carries the progress lines a tool sends while it is still running.
     for mode, chunk in agent.stream(payload, config=config,
-                                    context=UserContext(user_id=user_id),
+                                    context=context,
                                     stream_mode=["updates", "custom"]):
         if mode == "custom":
             if isinstance(chunk, dict) and "progress" in chunk:
@@ -210,7 +212,8 @@ def _run(agent, payload, thread_id: str, user_id: str):
                 yield item
 
 
-def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USER):
+def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USER,
+                 context: UserContext | None = None):
     """Send one new message to a conversation and yield each new message as
     it happens: the model's tool requests, the tool results, the answer.
     If the agent stops for the user's approval, a Pause is yielded last.
@@ -223,12 +226,15 @@ def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USE
         message: What the user just typed.
         thread_id: Identifies the conversation.
         user_id: Identifies whose saved profile to use.
+        context: The user and their settings together; replaces user_id
+            when given.
     """
     payload = {"messages": [{"role": "user", "content": message}]}
-    yield from _run(agent, payload, thread_id, user_id)
+    yield from _run(agent, payload, thread_id, context or UserContext(user_id=user_id))
 
 
-def resume_steps(agent, answer: dict, thread_id: str, user_id: str = DEFAULT_USER):
+def resume_steps(agent, answer: dict, thread_id: str, user_id: str = DEFAULT_USER,
+                 context: UserContext | None = None):
     """Continue a paused conversation with the user's answer.
 
     Command(resume=...) tells LangGraph to carry on from the saved state
@@ -237,7 +243,8 @@ def resume_steps(agent, answer: dict, thread_id: str, user_id: str = DEFAULT_USE
     Args:
         answer: Built with review_answer() or save_answer() in approval.py.
     """
-    yield from _run(agent, Command(resume=answer), thread_id, user_id)
+    yield from _run(agent, Command(resume=answer), thread_id,
+                    context or UserContext(user_id=user_id))
 
 
 def pending_pause(agent, thread_id: str) -> Pause | None:
@@ -249,3 +256,24 @@ def pending_pause(agent, thread_id: str) -> Pause | None:
         if pause:
             return pause
     return None
+
+
+def settle_stopped_turn(agent, thread_id: str) -> bool:
+    """Tidy a conversation whose last turn was cut off (the user pressed
+    Stop, or closed the page, while a tool was running).
+
+    The saved conversation then ends with the model's request for a tool
+    and no result. The model refuses to continue from that, so each open
+    request is given the result "stopped". Returns True if anything was
+    tidied. Not to be called while the agent is waiting for an approval:
+    that state is complete and must stay as it is.
+    """
+    config = {"configurable": {"thread_id": thread_id}}
+    messages = agent.get_state(config).values.get("messages", [])
+    if not messages or not isinstance(messages[-1], AIMessage) or not messages[-1].tool_calls:
+        return False
+    stopped = [ToolMessage("Stopped by the user before this finished.",
+                           tool_call_id=call["id"], name=call["name"])
+               for call in messages[-1].tool_calls]
+    agent.update_state(config, {"messages": stopped}, as_node="tools")
+    return True

@@ -34,10 +34,18 @@ DEFAULT_USER = "default-user"
 
 @dataclass
 class UserContext:
-    """Who the agent is talking to. Passed in with every request, so tools
-    and middleware know whose profile to read."""
+    """Who the agent is talking to, and their settings. Passed in with
+    every request, so tools and middleware can read it.
+
+    The settings are optional: None means "use the default from config".
+    """
 
     user_id: str = DEFAULT_USER
+    # Settings chosen in the app. They reach the report workflow through
+    # here, because the workflow runs inside a tool.
+    model_name: str | None = None
+    temperature: float | None = None
+    review_competitors: bool | None = None
 
 
 def checkpoint_serializer() -> JsonPlusSerializer:

@@ -243,33 +243,137 @@ CSS = f"""
 [class*="st-key-open_"] button {{ justify-content: flex-start; text-align: left; }}
 [class*="st-key-open_"] button > div {{ justify-content: flex-start; width: 100%; }}
 
-/* Chat bubbles and the question box. */
-[data-testid="stChatMessage"] {{
-    background: {GLASS};
+.st-key-memory_panel {{
+    background: rgba(255, 255, 255, 0.55);
     border: 1px solid {GLASS_EDGE};
-    border-radius: 14px;
-    backdrop-filter: blur(6px);
+    border-radius: 12px;
+    padding: 0.6rem 0.8rem 0.2rem;
 }}
+.st-key-memory_panel p {{ font-size: 0.86rem; margin-bottom: 0.45rem; }}
+
+/* The question box. */
 [data-testid="stChatInput"] > div {{
     background: {GLASS_STRONG};
     border: 1px solid {GLASS_EDGE};
     border-radius: 18px;
 }}
 
-/* A report sits on a more solid panel so tables stay easy to read. */
-[class*="st-key-report_panel_"] {{
-    background: {GLASS_STRONG};
-    border: 1px solid {GLASS_EDGE};
-    border-radius: 14px;
-    padding: 1rem 1.25rem;
+/* --- the research view ---------------------------------------------------- */
+
+/* While an answer is shown the page column is wide: answer on the left,
+   steps and sources on the right. */
+[data-testid="stMainBlockContainer"]:has([class*="st-key-answer_panel_"]) {{
+    max-width: 78rem;
+    padding-top: 3.2rem;
 }}
 
-/* A report reads as a document: modest headings, compact tables. */
-[class*="st-key-report_panel_"] h1 {{ font-size: 1.45rem; font-weight: 650; padding: 0.4rem 0 0.2rem; }}
-[class*="st-key-report_panel_"] h2 {{ font-size: 1.1rem; font-weight: 650; padding: 0.9rem 0 0.2rem; }}
-[class*="st-key-report_panel_"] table {{ font-size: 0.86rem; }}
-[class*="st-key-report_panel_"] th {{ font-weight: 600; text-align: left; }}
-[class*="st-key-report_panel_"] li, [class*="st-key-report_panel_"] p {{ font-size: 0.93rem; }}
+/* The answer sits on a solid panel so text and tables stay easy to read. */
+[class*="st-key-answer_panel_"] {{
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid {GLASS_EDGE};
+    border-radius: 18px;
+    padding: 1.4rem 1.7rem 1.2rem;
+    box-shadow: 0 8px 30px rgba(80, 60, 50, 0.07);
+}}
+[class*="st-key-answer_panel_"] h3 {{
+    font-size: 1.55rem; font-weight: 650; letter-spacing: -0.02em; padding: 0 0 0.1rem;
+}}
+/* A report reads as a document: modest headings, compact tables. Its own
+   title is hidden because the panel heading already shows it. */
+[class*="st-key-answer_panel_"] h1 {{ display: none; }}
+[class*="st-key-answer_panel_"] h2 {{ font-size: 1.08rem; font-weight: 650; padding: 0.9rem 0 0.2rem; }}
+[class*="st-key-answer_panel_"] table {{ font-size: 0.86rem; }}
+[class*="st-key-answer_panel_"] th {{ font-weight: 600; text-align: left; }}
+[class*="st-key-answer_panel_"] li, [class*="st-key-answer_panel_"] p {{ font-size: 0.94rem; }}
+[class*="st-key-answer_panel_"] hr {{ margin: 0.5rem 0 0.9rem; }}
+/* Citation numbers: small, quiet, raised. */
+[class*="st-key-answer_panel_"] [data-testid="stMarkdownContainer"] a[href^="http"] {{
+    font-size: 0.72em; vertical-align: super; line-height: 0;
+    color: #6b6a64; text-decoration: none; padding: 0 0.05rem;
+}}
+[class*="st-key-answer_panel_"] [data-testid="stMarkdownContainer"] a[href^="http"]:hover {{
+    color: #185FA5; text-decoration: underline;
+}}
+
+/* Steps and sources, on the right. */
+[class*="st-key-steps_panel_"], [class*="st-key-sources_panel_"] {{
+    background: rgba(255, 255, 255, 0.66);
+    border: 1px solid {GLASS_EDGE};
+    border-radius: 16px;
+    padding: 0.9rem 1rem 0.7rem;
+    backdrop-filter: blur(6px);
+    gap: 0.6rem !important;
+}}
+[class*="st-key-sources_panel_"] p {{ font-size: 0.84rem; line-height: 1.35; margin-bottom: 0.1rem; }}
+/* Streamlit pulls each text block up by the 1rem its last paragraph
+   normally leaves below it. The paragraphs here leave only 0.1rem. */
+[class*="st-key-sources_panel_"] [data-testid="stMarkdownContainer"] {{ margin-bottom: -0.1rem; }}
+[class*="st-key-sources_panel_"] a {{ color: #1c1c1a; text-decoration: none; font-weight: 500; }}
+[class*="st-key-sources_panel_"] a:hover {{ text-decoration: underline; }}
+/* Without this the rows are squeezed into each other instead of scrolling. */
+[class*="st-key-sources_panel_"] > * {{ flex-shrink: 0; }}
+
+/* The source list: number, site icon, title, site name, "Official" pill. */
+.gw-sources-head {{
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-weight: 650; font-size: 1.02rem; padding: 0 0.2rem 0.5rem;
+}}
+.gw-sources-count {{ font-weight: 400; font-size: 0.8rem; color: #6b6a64; }}
+.gw-sources-empty {{ color: #6b6a64; font-size: 0.84rem; padding: 0 0.2rem 0.3rem; }}
+.gw-sources-list {{ max-height: 27rem; overflow-y: auto; margin: 0 -0.4rem; }}
+a.gw-source {{
+    display: flex; align-items: flex-start; gap: 0.55rem;
+    padding: 0.55rem 0.5rem; border-radius: 10px;
+    color: #1c1c1a !important; text-decoration: none !important;
+}}
+a.gw-source:hover {{ background: rgba(255, 255, 255, 0.85); }}
+a.gw-source:hover .gw-source-title {{ text-decoration: underline; }}
+.gw-source-number {{
+    width: 1.1rem; flex-shrink: 0; text-align: right;
+    font-size: 0.76rem; color: #6b6a64; padding-top: 0.2rem;
+}}
+/* The letter shows only where the site's icon could not be loaded. */
+.gw-source-icon {{
+    position: relative; flex-shrink: 0;
+    width: 1.15rem; height: 1.15rem; margin-top: 0.12rem; border-radius: 50%;
+    background: #e4e7ee; color: #55544f;
+    font-size: 0.62rem; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+}}
+.gw-source-favicon {{
+    position: absolute; inset: 0;
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+}}
+.gw-source-text {{ display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }}
+.gw-source-title {{
+    font-weight: 600; font-size: 0.9rem; line-height: 1.3; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}}
+.gw-source-site {{ display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }}
+.gw-source-site code {{
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.74rem; color: #6b6a64; background: none; padding: 0;
+}}
+.gw-official {{
+    font-size: 0.7rem; font-weight: 500; color: #1f7a45;
+    background: #e3f4e8; border: 1px solid #b5dfc3;
+    border-radius: 999px; padding: 0.02rem 0.45rem;
+}}
+
+/* While a new answer is being researched, Streamlit keeps the previous
+   answer's leftovers on screen, greyed out, until the run ends. Hide them. */
+[data-testid="stMainBlockContainer"]:has(.gw-skeleton) [data-stale="true"] {{
+    display: none !important;
+}}
+
+/* Grey bars standing in for the answer while it is being written. */
+@keyframes gw-pulse {{ 0%, 100% {{ opacity: 0.45; }} 50% {{ opacity: 1; }} }}
+.gw-skeleton div {{
+    height: 0.8rem; border-radius: 6px; margin: 0.7rem 0;
+    background: rgba(28, 28, 26, 0.09);
+    animation: gw-pulse 1.6s ease-in-out infinite;
+}}
+@media (prefers-reduced-motion: reduce) {{ .gw-skeleton div {{ animation: none; }} }}
 
 /* The approval forms stand out from ordinary answers with a darker edge. */
 [class*="st-key-approval_"] {{

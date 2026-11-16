@@ -293,8 +293,21 @@ def test_the_tool_returns_the_report_and_keeps_the_check_result_aside():
     text, details = run_report("meal kits", "Germany", "vegan bowls", graph=graph)
 
     assert text == "# Market research report: x"
-    assert details == {"problems": [], "log": ["Report check: passed"]}
+    assert details == {"problems": [], "log": ["Report check: passed"],
+                       "titles": {}, "official": []}
     assert graph.request == {"product": "meal kits", "country": "Germany", "idea": "vegan bowls"}
+
+
+def test_the_tool_passes_on_page_titles_and_the_competitors_own_sites():
+    state = full_state()
+    state.update(report="# Market research report: x", problems=[], log=[],
+                 titles={"https://prepmymeal.com/boxes": "Prepmymeal: prices"})
+
+    _, details = run_report("meal kits", "Germany", "", graph=FakeGraph(state))
+
+    assert details["titles"] == {"https://prepmymeal.com/boxes": "Prepmymeal: prices"}
+    # The shop addresses and the page the prices were read from.
+    assert details["official"] == ["hellofresh.de", "prepmymeal.com"]
 
 
 def test_the_tool_asks_for_a_real_country_without_running_the_workflow():

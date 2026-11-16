@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+from agent.citations import Source, number_citations, titles_in_results, without_references
 from agent.config import REPORT_HEADING
 from agent.report.tool import REPORT_TOOL_NAME
 
@@ -56,13 +57,17 @@ def describe_tool_call(name: str, args: dict) -> str:
 
 @dataclass
 class Block:
-    """One bubble in the chat.
+    """One message in the conversation, prepared for display.
 
     role:     "user" or "assistant".
-    text:     the words to show (empty when the block is only a report).
-    report:   a full report in markdown, if this block carries one.
+    text:     the words as stored (empty when the block is only a report).
+    report:   a full report in markdown, as stored, if there is one.
     problems: the report check's findings; None if no check was run.
     activity: what the agent did to produce this block, one line each.
+
+    For the research view, the same content with numbered citations:
+    cited:    the text or report with each link turned into [1], [2] ...
+    sources:  the pages those numbers refer to.
     """
 
     role: str
@@ -70,6 +75,8 @@ class Block:
     report: str = ""
     problems: list[str] | None = None
     activity: list[str] = field(default_factory=list)
+    cited: str = ""
+    sources: list[Source] = field(default_factory=list)
 
 
 def to_blocks(messages: list) -> list[Block]:
@@ -81,6 +88,10 @@ def to_blocks(messages: list) -> list[Block]:
     """
     blocks: list[Block] = []
     current: Block | None = None
+    # Collected while reading one answer, used to name and mark its sources.
+    question = ""
+    titles: dict[str, str] = {}
+    official: set[str] = set()
 
     def assistant() -> Block:
         nonlocal current
@@ -89,12 +100,23 @@ def to_blocks(messages: list) -> list[Block]:
             blocks.append(current)
         return current
 
+    def finish() -> None:
+        """Number the citations of the answer that has just ended."""
+        if current is None:
+            return
+        shown = without_references(current.report) if current.report else current.text
+        # A report knows which sites are the companies' own. For a plain
+        # answer, a site named in the question is taken to be official.
+        current.cited, current.sources = number_citations(
+            shown, titles, official, subject="" if current.report else question)
+
     for message in messages:
         content = message.content if isinstance(message.content, str) else ""
 
         if isinstance(message, HumanMessage):
+            finish()
             blocks.append(Block(role="user", text=content))
-            current = None
+            current, question, titles, official = None, content, {}, set()
 
         elif isinstance(message, AIMessage):
             block = assistant()
@@ -114,8 +136,41 @@ def to_blocks(messages: list) -> list[Block]:
             else:
                 block.text = (block.text + "\n\n" + content).strip()
             block.activity += [f"Workflow: {line}" for line in details.get("log", [])]
+            titles.update(details.get("titles", {}))
+            official.update(details.get("official", []))
 
+        elif isinstance(message, ToolMessage):
+            # Search results carry the titles of the pages they found.
+            titles.update(titles_in_results(content))
+
+    finish()
     return blocks
+
+
+@dataclass
+class Turn:
+    """One question with its answer. The research view shows one turn at a
+    time."""
+
+    question: str
+    answer: Block | None      # None while the answer has not been written
+
+
+def to_turns(blocks: list[Block]) -> list[Turn]:
+    """Pair each user message with the assistant block that follows it."""
+    turns: list[Turn] = []
+    for block in blocks:
+        if block.role == "user":
+            turns.append(Turn(question=block.text, answer=None))
+        elif turns and turns[-1].answer is None:
+            turns[-1].answer = block
+    return turns
+
+
+def short_title(text: str, limit: int = TITLE_MAX_CHARS) -> str:
+    """One line, cut to a limit, for a tab or a heading."""
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[:limit].rstrip() + "…"
 
 
 # --- the list of conversations ------------------------------------------------------------------

@@ -28,3 +28,4 @@ python-dotenv>=1.2
 
 # Tests
 pytest>=9.2
+reportlab>=5.1

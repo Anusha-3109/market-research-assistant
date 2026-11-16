@@ -25,6 +25,7 @@ from agent.approval import (
     parse_save_reply,
 )
 from agent.config import MODEL_NAME, REPORT_HEADING, MissingKeyError
+from agent.guards import check_question, friendly_error
 from agent.memory import open_memory
 from agent.report.tool import REPORT_TOOL_NAME
 from agent.report_check import check_report, format_check
@@ -119,7 +120,7 @@ def run_turn(agent, thread_id: str, question: str, ask_user) -> None:
         print("\nThe agent reached its step limit before finishing. "
               "Try a narrower question.\n")
     except Exception as error:  # model or network failure
-        print(f"\nSomething went wrong while answering: {error}\n")
+        print(f"\n{friendly_error(error)}\n")
 
 
 def read_arguments(arguments: list[str]) -> tuple[str, list[str]]:
@@ -190,8 +191,11 @@ def main() -> None:
         question = input("You: ").strip()
         if question.lower() in {"quit", "exit"}:
             break
-        if question:
-            run_turn(agent, thread_id, question, ask_user)
+        problem = check_question(question)
+        if problem:
+            print(problem + "\n")
+            continue
+        run_turn(agent, thread_id, question, ask_user)
 
 
 if __name__ == "__main__":

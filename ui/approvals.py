@@ -20,10 +20,9 @@ from agent.tools import safe_filename
 def render_pause(pause: Pause) -> dict | None:
     """Show the form for a pause. Returns the user's answer once they have
     submitted it, otherwise None."""
-    with st.chat_message("assistant"):
-        if pause.kind == SAVE_KIND:
-            return _save_form(pause.data)
-        return _review_form(pause.data)
+    if pause.kind == SAVE_KIND:
+        return _save_form(pause.data)
+    return _review_form(pause.data)
 
 
 def _review_form(data: dict) -> dict | None:

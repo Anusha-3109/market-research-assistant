@@ -28,6 +28,18 @@ FALLBACK_MODELS: list[str] = []
 # Give up on one model call after this many seconds and try the next model.
 MODEL_TIMEOUT_SECONDS = 90
 
+# Models offered in the app's settings. Each supports tool calling and comes
+# from a different company. The key is the OpenRouter id; the value is the
+# name shown to the user.
+MODEL_CHOICES = {
+    "openai/gpt-4.1-mini": "GPT-4.1 mini (OpenAI)",
+    "anthropic/claude-haiku-5.5": "Claude Haiku 5.5 (Anthropic)",
+    "google/gemini-3.1-flash-lite": "Gemini 3.1 Flash Lite (Google)",
+}
+
+# The longest question the app accepts, in characters.
+MAX_QUESTION_CHARS = 2000
+
 # Low temperature: research answers should be factual and repeatable.
 TEMPERATURE = 0.2
 

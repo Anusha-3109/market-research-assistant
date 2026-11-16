@@ -27,7 +27,13 @@ from agent.report.state import (
     TermCheck,
     TrendResult,
 )
-from agent.report.steps import clean_url, is_own_site, known_url, merge_results
+from agent.report.steps import (
+    clean_url,
+    is_own_site,
+    known_url,
+    merge_results,
+    titles_of,
+)
 from agent.tools import format_results
 from agent.trends import is_low_volume, summarise
 
@@ -157,8 +163,17 @@ def make_research_steps(deps: Deps) -> dict:
             price_note=price_note,
         )
         found = f"{len(prices)} prices from {price_source}" if prices else f"no prices ({price_note})"
+        # Names for this competitor's pages in the app's source list.
+        titles = {}
+        if profile.shop_url:
+            titles[clean_url(profile.shop_url)] = f"{competitor.name}: website"
+        if price_source:
+            titles[clean_url(price_source)] = f"{competitor.name}: prices"
+        if profile.figures_source:
+            titles[clean_url(profile.figures_source)] = f"{competitor.name}: company figures"
         return {
             "profiles": [profile],
+            "titles": titles,
             "log": [f"{competitor.name}: figures {'found' if figures else 'not found'}, {found}"],
         }
 
@@ -199,6 +214,7 @@ def make_research_steps(deps: Deps) -> dict:
         country_count = sum(figure.scope == "country" for figure in kept)
         return {
             "market_figures": kept,
+            "titles": titles_of(results),
             "log": [f"Market: {len(kept)} figures, {country_count} for {country} itself"],
         }
 
@@ -223,7 +239,8 @@ def make_research_steps(deps: Deps) -> dict:
         )
         items = [item for item in answer.items
                  if known_url(item.source_url, results)][:MAX_NEWS]
-        return {"news": items, "log": [f"News: {len(items)} relevant items"]}
+        return {"news": items, "titles": titles_of(results),
+                "log": [f"News: {len(items)} relevant items"]}
 
     def research_trend(state: ReportState) -> dict:
         """Step 7b: the demand trend. Several search words are tried and
@@ -235,6 +252,7 @@ def make_research_steps(deps: Deps) -> dict:
 
         fallback = None
         skipped = []
+        trend_titles: dict[str, str] = {}
         for term in state["brief"].trend_terms[:MAX_TREND_TERMS]:
             # Very short words ("Bio", "Diät") are almost always too broad
             # to say anything about one product category.
@@ -261,15 +279,16 @@ def make_research_steps(deps: Deps) -> dict:
             series = deps.trend(term, country)
             if series is None:
                 continue
+            trend_titles[clean_url(series.url)] = f"Search interest for '{term}'"
             result = TrendResult(term=term, summary=summarise(series),
                                  reliable=not is_low_volume(series))
             if result.reliable:
-                return {"trend": result,
+                return {"trend": result, "titles": trend_titles,
                         "log": [f"Demand trend: measured with '{term}'"]}
             fallback = fallback or result
 
         if fallback:
-            return {"trend": fallback,
+            return {"trend": fallback, "titles": trend_titles,
                     "log": [f"Demand trend: only low-volume data, for '{fallback.term}'"]}
         note = f" (too broad: {', '.join(skipped)})" if skipped else ""
         return {"trend": None,

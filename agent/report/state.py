@@ -199,6 +199,12 @@ class Swot(BaseModel):
     threats: list[str]
 
 
+def merge_titles(first: dict | None, second: dict | None) -> dict:
+    """Join two address -> title dictionaries. Used when parallel branches
+    each return the titles of the pages they found."""
+    return {**(first or {}), **(second or {})}
+
+
 # --- the workflow's shared memory ------------------------------------------------------
 
 class ReportState(TypedDict, total=False):
@@ -235,6 +241,10 @@ class ReportState(TypedDict, total=False):
     swot_attempts: int
     report: str            # the finished report text
     problems: list[str]    # what the report check found, empty if it passed
+
+    # The titles of pages found along the way (address -> title), so the
+    # app can name each source. It plays no part in the research itself.
+    titles: Annotated[dict[str, str], merge_titles]
 
     # One line per step, for showing progress.
     log: Annotated[list[str], operator.add]

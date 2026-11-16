@@ -9,7 +9,7 @@ without the internet and without cost.
 from dataclasses import dataclass
 from typing import Callable
 
-from agent.config import MODEL_NAME
+from agent.config import MODEL_NAME, TEMPERATURE
 from agent.fallback import try_sources
 from agent.models import make_model
 
@@ -30,7 +30,8 @@ class Deps:
     trend: Callable
 
 
-def default_deps() -> Deps:
+def default_deps(model_name: str = MODEL_NAME,
+                 temperature: float = TEMPERATURE) -> Deps:
     """The real model and the real search, with their fallbacks."""
     # Imported here because tools.py is large and only needed at run time.
     from agent.sources import webpage
@@ -42,7 +43,7 @@ def default_deps() -> Deps:
         get_company_financials,
     )
 
-    model = make_model(MODEL_NAME)
+    model = make_model(model_name, temperature)
 
     def ask(schema, instructions: str, material: str):
         # with_structured_output makes the model answer by "calling a

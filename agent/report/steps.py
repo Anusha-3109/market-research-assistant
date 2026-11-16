@@ -62,6 +62,12 @@ def count_mentions(name: str, results: list[dict]) -> int:
     )
 
 
+def titles_of(results: list[dict]) -> dict[str, str]:
+    """The titles of search results, by address."""
+    return {clean_url(r["url"]): r["title"] for r in results
+            if r.get("url") and r.get("title")}
+
+
 def merge_results(result_lists: list[list[dict]]) -> list[dict]:
     """Join several result lists, dropping pages that appear twice."""
     seen, merged = set(), []
@@ -135,6 +141,7 @@ def make_steps(deps: Deps) -> dict:
 
         return {
             "candidates": candidates,
+            "titles": titles_of(results),
             "log": [f"Candidates found: {', '.join(c.name for c in candidates) or 'none'}"],
         }
 
@@ -180,7 +187,8 @@ def make_steps(deps: Deps) -> dict:
         return {"verified": [Competitor(name=name, shop_url=clean_url(shop_url),
                                         evidence_url=clean_url(evidence_url),
                                         reason=verdict.reason,
-                                        offer=verdict.offer)]}
+                                        offer=verdict.offer)],
+                "titles": titles_of(results)}
 
     def select_competitors(state: ReportState) -> dict:
         """Put the verified companies back in the order they were found

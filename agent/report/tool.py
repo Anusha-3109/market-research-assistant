@@ -9,9 +9,11 @@ from functools import lru_cache
 from langchain.tools import ToolRuntime, tool
 from langgraph.errors import GraphInterrupt
 
-from agent.config import REVIEW_COMPETITORS
+from agent.citations import domain_of
+from agent.config import MODEL_NAME, REVIEW_COMPETITORS, TEMPERATURE
 from agent.countries import find_country
 from agent.memory import UserContext
+from agent.report.deps import default_deps
 from agent.report.graph import build_report_graph
 
 REPORT_TOOL_NAME = "create_market_report"
@@ -19,14 +21,25 @@ CANCELLED_MESSAGE = ("The report was cancelled at the competitor review. No "
                      "further research was done.")
 
 
-@lru_cache(maxsize=2)
-def report_graph(review: bool = False):
-    """Build each version of the workflow once and reuse it."""
-    return build_report_graph(review=review)
+@lru_cache(maxsize=8)
+def report_graph(review: bool = False, model_name: str = MODEL_NAME,
+                 temperature: float = TEMPERATURE):
+    """Build each version of the workflow once and reuse it. There is one
+    version per combination of settings."""
+    return build_report_graph(default_deps(model_name, temperature), review=review)
+
+
+def own_sites(final: dict) -> list[str]:
+    """The sites that belong to the competitors in a finished report."""
+    urls = [c.shop_url for c in final.get("competitors", [])]
+    urls += [p.price_source for p in final.get("profiles", [])]
+    return sorted({domain_of(url) for url in urls if url})
 
 
 def run_report(product: str, country: str, idea: str, graph=None,
-               review: bool = False, on_progress=None) -> tuple[str, dict]:
+               review: bool = False, on_progress=None,
+               model_name: str = MODEL_NAME,
+               temperature: float = TEMPERATURE) -> tuple[str, dict]:
     """Run the workflow and return (text for the user, details).
 
     The details hold the report check result and the progress log, for the
@@ -49,7 +62,8 @@ def run_report(product: str, country: str, idea: str, graph=None,
         # Two views of the same run: "updates" gives each step's result as it
         # finishes (for progress), "values" gives the whole state after each
         # step (the last one is the final result).
-        for mode, chunk in (graph or report_graph(review)).stream(
+        workflow = graph or report_graph(review, model_name, temperature)
+        for mode, chunk in workflow.stream(
                 request, stream_mode=["updates", "values"]):
             if mode == "values":
                 final = chunk
@@ -70,8 +84,14 @@ def run_report(product: str, country: str, idea: str, graph=None,
         return CANCELLED_MESSAGE, {"log": final.get("log", [])}
     if "report" not in final:
         return "The report could not be produced. Please try again.", {}
-    return final["report"], {"problems": final.get("problems", []),
-                             "log": final.get("log", [])}
+    return final["report"], {
+        "problems": final.get("problems", []),
+        "log": final.get("log", []),
+        # For the app's source list: what each page is called, and which
+        # sites are a competitor's own.
+        "titles": final.get("titles", {}),
+        "official": own_sites(final),
+    }
 
 
 # return_direct=True: the report goes to the user exactly as the workflow
@@ -96,13 +116,21 @@ def create_market_report(product: str, country: str, idea: str = "",
         idea: The user's own business idea in their words, if they described
             one. Leave empty otherwise.
     """
+    context = runtime.context if runtime else None
+    chosen_review = getattr(context, "review_competitors", None)
+    wants_review = REVIEW_COMPETITORS if chosen_review is None else chosen_review
+
     # The review pause needs a saved conversation to return to, which exists
     # only when the agent was given a checkpointer (a thread id is set).
     configurable = (runtime.config or {}).get("configurable", {}) if runtime else {}
-    review = REVIEW_COMPETITORS and bool(configurable.get("thread_id"))
+    review = wants_review and bool(configurable.get("thread_id"))
 
     # Progress lines are sent through LangGraph's stream writer, so whoever
     # is streaming the chat agent receives them while the tool is running.
     writer = runtime.stream_writer if runtime else None
     on_progress = (lambda line: writer({"progress": line})) if writer else None
-    return run_report(product, country, idea, review=review, on_progress=on_progress)
+    return run_report(
+        product, country, idea, review=review, on_progress=on_progress,
+        model_name=getattr(context, "model_name", None) or MODEL_NAME,
+        temperature=TEMPERATURE if getattr(context, "temperature", None) is None
+        else context.temperature)
