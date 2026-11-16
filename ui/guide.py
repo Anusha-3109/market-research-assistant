@@ -13,6 +13,7 @@ from html import escape
 import streamlit as st
 
 from agent.config import APP_NAME
+from ui.assets import Html, fill, join, script_tag
 
 EXAMPLE_REPORT = "Give me a market research report for healthy meal delivery in Germany."
 
@@ -115,68 +116,28 @@ a search engine does.
 FOLLOW_UPS = ["prices", "competitors"]
 
 
-def steps_html() -> str:
-    """The row of numbered step cards, as HTML. It is static, so plain HTML
-    is used; the classes are styled in ui/styles.py."""
+def steps_html() -> Html:
+    """The row of numbered step cards, as HTML. The markup of one card is
+    in ui/static/guide_step.html; the classes are styled in styles.css."""
     cards = []
     for number, (title, line, tags, dots) in enumerate(STEPS, start=1):
-        extras = "".join(f'<span class="gw-tag">{escape(tag)}</span>' for tag in tags)
-        extras += "".join(f'<span class="gw-dot">{dot}</span>' for dot in range(1, dots + 1))
-        cards.append(
-            f'<div class="gw-step"><div class="gw-num">{number}</div>'
-            f'<div class="gw-step-title">{escape(title)}</div>'
-            f'<div class="gw-step-line">{escape(line)}</div>'
-            f'<div>{extras}</div></div>'
-        )
-    return f'<div class="gw-steps">{"".join(cards)}</div>'
+        extras = [Html(f'<span class="gw-tag">{escape(tag)}</span>') for tag in tags]
+        extras += [Html(f'<span class="gw-dot">{dot}</span>') for dot in range(1, dots + 1)]
+        cards.append(fill("guide_step.html", number=number, title=title, line=line,
+                          extras=join(extras)))
+    return Html(f'<div class="gw-steps">{join(cards)}</div>')
 
 
 def render_topic(name: str) -> None:
     """One question bubble and its answer panel."""
     topic = TOPICS[name]
-    st.html(f'<div class="gw-question"><span>{escape(topic["question"])}</span></div>')
+    st.html(fill("guide_question.html", question=topic["question"]))
     with st.container(key=f"guide_panel_{name}"):
         if topic["steps"]:
             st.html(steps_html())
         st.markdown(topic["answer"])
         st.caption("GOOD TO KNOW")
         st.caption(topic["note"])
-
-
-# Streamlit keeps a chat page scrolled to the bottom, and does so again
-# whenever the page changes size. The guide should be read from its top, so
-# after a new answer is added this script holds the page at that answer's
-# question bubble until the reader scrolls or clicks for themselves.
-SCROLL_TO_NEWEST = """
-<script>
-(() => {
-    const area = document.querySelector('[data-testid="stAppScrollToBottomContainer"]');
-    if (!area) return;
-
-    // The reader taking over ends the hold.
-    let readerActed = false;
-    for (const event of ['wheel', 'touchstart', 'keydown', 'mousedown']) {
-        window.addEventListener(event, () => { readerActed = true; },
-                                {once: true, passive: true});
-    }
-
-    const hold = () => {
-        if (readerActed) return;
-        const bubbles = document.querySelectorAll('.gw-question');
-        if (!bubbles.length) return;
-        const newest = bubbles[bubbles.length - 1];
-        const offset = newest.getBoundingClientRect().top - area.getBoundingClientRect().top;
-        const wanted = Math.max(0, area.scrollTop + offset - 70);
-        if (Math.abs(area.scrollTop - wanted) > 4) area.scrollTop = wanted;
-    };
-
-    // Put it right whenever Streamlit moves the page. Once the reader has
-    // acted, hold() does nothing, so the listener is harmless afterwards.
-    area.addEventListener('scroll', hold);
-    [100, 400, 900].forEach(delay => setTimeout(hold, delay));
-})();
-</script>
-"""
 
 
 def render_guide(guide: dict) -> str | None:
@@ -210,5 +171,6 @@ def render_guide(guide: dict) -> str | None:
             result = "back"
 
     if guide.pop("scroll", False):
-        st.html(SCROLL_TO_NEWEST, unsafe_allow_javascript=True)
+        # Hold the page at the newest answer (see the script for why).
+        st.html(script_tag("scroll_to_newest.js"), unsafe_allow_javascript=True)
     return result

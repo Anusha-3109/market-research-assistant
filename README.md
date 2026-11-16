@@ -6,7 +6,7 @@ collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
 
 > **Status.** The agent, the report workflow, memory, the approval steps and
-> the web app are complete and tested (411 automated tests). Token cost
+> the web app are complete and tested (417 automated tests). Token cost
 > display and tracing are still to come.
 
 ## Contents
@@ -477,6 +477,14 @@ conversations and turning form input into the agent's answer are plain
 functions in `agent/session.py`, `agent/citations.py`,
 `agent/pdf_export.py` and `agent/approval.py`, tested without a browser.
 
+**HTML, CSS and JavaScript are real files.** Streamlit draws most of the
+page from Python, but the look (`styles.css`), the source list, the guide's
+step cards and two small scripts are written in their own languages and
+kept in `ui/static/`. Python loads them and fills in the blanks. Every
+value put into a template is escaped by `fill()` in `ui/assets.py`, so a
+page title from the web is always shown as text and can never act as
+markup.
+
 **Download and save are separate.** A download goes to the user's own
 computer and needs no approval. Saving writes on the machine running the
 app, so it goes through the agent and its approval step.
@@ -532,7 +540,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-411 tests, none of which use the internet or cost anything: outside
+417 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -551,6 +559,7 @@ services and the model are replaced with fakes.
 | `test_guards.py` | The input guard and the plain-language error messages |
 | `test_citations.py` | Numbered citations, the source list, the Official mark, questions paired with answers |
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
+| `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
 | `test_app.py` | The page itself, run without a browser: cards, the research view and its tabs, guide, sidebar, approval form, a stopped run, missing key |
 | `test_agent.py` | How the agent is assembled; model fallback |
 
@@ -567,7 +576,12 @@ market-research-assistant/
 ├── app.py                   the web app
 ├── main.py                  terminal chat, for development
 ├── ui/                      the Streamlit interface
-│   ├── styles.py            the look: sky background, frosted panels
+│   ├── styles.py            adds the stylesheet to the page
+│   ├── assets.py            loads the HTML, CSS and JavaScript files
+│   ├── static/              the interface's own HTML, CSS and JavaScript
+│   │   ├── styles.css       the look: sky background, frosted panels
+│   │   ├── *.html           templates: source list, guide steps, placeholder
+│   │   └── *.js             two small scripts that hold the scroll position
 │   ├── start.py             start screen and example cards
 │   ├── guide.py             the "How it works" guide
 │   ├── research.py          the research view: answer, steps, sources, live progress
@@ -631,7 +645,7 @@ market-research-assistant/
 - The time a run took is shown only in the browser session that ran it.
 - The PDF uses built-in fonts that cover Western European text. Other
   scripts are replaced with "?".
-- Styling and other changes to files in `ui/` only take effect after the
+- Styling and other changes to files in `ui/` and `ui/static/` only take effect after the
   app is restarted.
 - Settings last for the browser session. They return to the defaults when
   the page is opened again.

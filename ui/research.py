@@ -15,7 +15,6 @@ import itertools
 import re
 import time
 from dataclasses import dataclass
-from html import escape
 
 import streamlit as st
 from langchain_core.messages import AIMessage, ToolMessage
@@ -30,6 +29,7 @@ from agent.report_check import format_check
 from agent.session import Turn, describe_tool_call, report_title, short_title
 from agent.tools import safe_filename
 from ui.approvals import render_pause
+from ui.assets import Html, fill, join, load, script_tag
 
 SAVE_QUESTION = "Save this report."
 STEPS_SHOWN = 6
@@ -43,13 +43,6 @@ _serial = itertools.count()
 
 def panel(name: str):
     return st.container(key=f"{name}_{next(_serial)}")
-
-
-# Grey bars standing in for the answer while it is being written.
-SKELETON = (
-    '<div class="gw-skeleton"><div style="width:100%"></div><div style="width:93%"></div>'
-    '<div style="width:86%"></div><div style="width:62%"></div></div>'
-)
 
 
 @dataclass
@@ -102,41 +95,32 @@ def steps_panel(title: str, steps: list[str], elapsed: float | None, source_coun
 SAFE_DOMAIN = re.compile(r"[a-z0-9.-]+")
 
 
-def source_row(source: Source) -> str:
+def source_row(source: Source) -> Html:
     """One source as HTML: number, site icon, title, site name, badge.
 
-    Titles and addresses come from the web, so both are escaped. The icon
-    is the site's own favicon; where a site has none, the letter tile
-    underneath it stays visible.
+    The markup is in ui/static/source_row.html. Titles and addresses come
+    from the web; fill() escapes them. The icon is the site's own favicon,
+    drawn as a background so that a site without one shows the letter tile
+    underneath (an <img> would show a broken-picture mark).
     """
-    url = escape(source.url, quote=True)
-    domain = escape(source.domain, quote=True)
-    letter = escape(source.domain[:1].upper())
-    badge = '<span class="gw-official">Official</span>' if source.official else ""
-    # Drawn as a background, so a site without an icon shows nothing here
-    # (an <img> would show a broken-picture mark) and the letter remains.
-    icon = (f'<span class="gw-source-favicon" '
-            f'style="background-image:url(https://{domain}/favicon.ico)"></span>'
-            if SAFE_DOMAIN.fullmatch(source.domain) else "")
-    return (
-        f'<a class="gw-source" href="{url}" target="_blank" rel="noopener noreferrer" '
-        f'title="{escape(source.title, quote=True)}">'
-        f'<span class="gw-source-number">{source.number}</span>'
-        f'<span class="gw-source-icon">{letter}'
-        f'{icon}</span>'
-        f'<span class="gw-source-text">'
-        f'<span class="gw-source-title">{escape(source.title)}</span>'
-        f'<span class="gw-source-site"><code>{domain}</code>{badge}</span>'
-        f'</span></a>'
+    has_icon = bool(SAFE_DOMAIN.fullmatch(source.domain))
+    return fill(
+        "source_row.html",
+        url=source.url, title=source.title, number=source.number,
+        domain=source.domain, letter=source.domain[:1].upper(),
+        icon=fill("source_icon.html", domain=source.domain) if has_icon else Html(""),
+        badge=fill("source_badge.html") if source.official else Html(""),
     )
 
 
-def sources_html(sources: list[Source], empty: str) -> str:
-    rows = "".join(source_row(source) for source in sources)
-    count = f'<span class="gw-sources-count">{len(sources)}</span>' if sources else ""
-    body = (f'<div class="gw-sources-list">{rows}</div>' if sources
-            else f'<div class="gw-sources-empty">{escape(empty)}</div>')
-    return f'<div class="gw-sources-head"><span>Sources</span>{count}</div>{body}'
+def sources_html(sources: list[Source], empty: str) -> Html:
+    if not sources:
+        return fill("sources_empty.html", message=empty)
+    return fill(
+        "sources_panel.html",
+        count=Html(f'<span class="gw-sources-count">{len(sources)}</span>'),
+        rows=join(source_row(source) for source in sources),
+    )
 
 
 def sources_panel(sources: list[Source], empty: str = "No pages were cited.") -> None:
@@ -153,27 +137,6 @@ def panel_heading(title: str, kind: str) -> None:
     st.subheader(title, anchor=False)
     st.caption(kind)
     st.divider()
-
-
-# Streamlit keeps a page with a question box scrolled to the bottom. An
-# answer should be read from its top, so this script holds the page there
-# until the reader scrolls or clicks for themselves.
-START_AT_TOP = """
-<script>
-(() => {
-    const area = document.querySelector('[data-testid="stAppScrollToBottomContainer"]');
-    if (!area) return;
-    let readerActed = false;
-    for (const event of ['wheel', 'touchstart', 'keydown', 'mousedown']) {
-        window.addEventListener(event, () => { readerActed = true; },
-                                {once: true, passive: true});
-    }
-    const hold = () => { if (!readerActed && area.scrollTop > 4) area.scrollTop = 0; };
-    area.addEventListener('scroll', hold);
-    [0, 100, 400, 900].forEach(delay => setTimeout(hold, delay));
-})();
-</script>
-"""
 
 
 # --- the finished view --------------------------------------------------------------------------
@@ -285,7 +248,8 @@ def render_turn(turn: Turn, index: int, thread_id: str, is_latest: bool,
                 outcome.question = SAVE_QUESTION
         if st.button("Research another market", key=f"another_{index}", width="stretch"):
             outcome.new = True
-    st.html(START_AT_TOP, unsafe_allow_javascript=True)
+    # Hold the page at the top of the answer (see the script for why).
+    st.html(script_tag("start_at_top.js"), unsafe_allow_javascript=True)
     return outcome
 
 
@@ -318,7 +282,7 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
         with panel("answer_panel"):
             panel_heading(short_title(title, 80), "QUESTION")
             st.markdown(":shimmer[Writing the answer.] It appears here when it is ready.")
-            st.html(SKELETON)
+            st.html(load("skeleton.html"))
     with right:
         steps_slot = st.empty()
         sources_slot = st.empty()
