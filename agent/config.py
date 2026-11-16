@@ -65,6 +65,12 @@ REPORT_HEADING = "# Market research report"
 REPORT_MAX_CANDIDATES = 8
 REPORT_MAX_COMPETITORS = 5
 
+# Human-in-the-loop: pause the report workflow so the user can approve or
+# edit the competitor list before the detailed research starts.
+REVIEW_COMPETITORS = True
+# The most competitors a report can have after the user has added some.
+REPORT_MAX_AFTER_REVIEW = 8
+
 # Upper limit on tool rounds for one question. One round is "the model asks
 # for tools, the tools run". It stops a runaway loop from burning credit.
 MAX_TOOL_ROUNDS = 12

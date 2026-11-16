@@ -121,6 +121,15 @@ def test_figures_for_a_different_company_with_a_similar_name_are_not_used():
     assert render.trusted_figures(wrong) == []
 
 
+def test_figures_for_a_company_that_merely_contains_the_brand_name_are_not_used():
+    wrong = profile("Factor", figures="Source used: Yahoo Finance\n"
+                                      "Company: The Cheesecake Factory Incorporated (ticker CAKE)\n"
+                                      "Revenue (last 12 months): 4.0 billion USD",
+                    figures_source="https://finance.yahoo.com/quote/CAKE")
+
+    assert render.trusted_figures(wrong) == []
+
+
 def test_a_figure_for_a_wider_area_says_so():
     section = render.market_section(full_state())
 

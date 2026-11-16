@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.store.base import BaseStore
 from langgraph.store.sqlite import SqliteStore
@@ -39,6 +40,21 @@ class UserContext:
     user_id: str = DEFAULT_USER
 
 
+def checkpoint_serializer() -> JsonPlusSerializer:
+    """The serializer that writes conversation state to disk.
+
+    A paused report workflow has its own objects in the state (competitors,
+    prices and so on). The serializer only loads classes it has been told
+    are safe, so they are listed here.
+    """
+    # Imported here: agent.report imports this module.
+    from agent.report.state import STATE_MODELS
+
+    allowed = [(model.__module__, model.__name__) for model in STATE_MODELS]
+    allowed.append((UserContext.__module__, UserContext.__name__))
+    return JsonPlusSerializer(allowed_msgpack_modules=allowed)
+
+
 def open_memory(path: Path = MEMORY_DB) -> tuple[SqliteSaver, SqliteStore]:
     """Open (or create) the memory file and return the checkpointer and the
     store that use it."""
@@ -46,7 +62,8 @@ def open_memory(path: Path = MEMORY_DB) -> tuple[SqliteSaver, SqliteStore]:
 
     # check_same_thread=False: Streamlit and LangGraph use worker threads,
     # and SQLite otherwise refuses a connection made on another thread.
-    checkpointer = SqliteSaver(sqlite3.connect(path, check_same_thread=False))
+    checkpointer = SqliteSaver(sqlite3.connect(path, check_same_thread=False),
+                               serde=checkpoint_serializer())
     store = SqliteStore(sqlite3.connect(path, check_same_thread=False,
                                         isolation_level=None))
     store.setup()   # creates the tables on first use

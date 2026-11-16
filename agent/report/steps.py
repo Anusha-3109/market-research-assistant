@@ -12,11 +12,11 @@ The pattern in every step is the same:
 """
 
 import re
-import unicodedata
 from urllib.parse import urlsplit
 
 from agent.config import REPORT_MAX_CANDIDATES, REPORT_MAX_COMPETITORS
 from agent.countries import find_country
+from agent.names import name_key
 from agent.report.deps import Deps
 from agent.report.state import (
     Candidate,
@@ -40,13 +40,6 @@ def known_url(url: str, results: list[dict]) -> bool:
     """True if the URL really is one of the search results. The model is
     told to copy URLs exactly; this catches an invented or altered one."""
     return bool(url) and clean_url(url) in {clean_url(r.get("url", "")) for r in results}
-
-
-def name_key(name: str) -> str:
-    """Reduce a name to plain lower-case letters and digits, so that
-    'Löwenanteil', 'Lowenanteil' and 'LÖWENANTEIL' compare equal."""
-    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z0-9]", "", plain.lower())
 
 
 def is_own_site(name: str, url: str) -> bool:

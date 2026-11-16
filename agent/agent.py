@@ -6,6 +6,7 @@ model decides -> tool runs -> model reads the result -> repeat or answer.
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
+    HumanInTheLoopMiddleware,
     ModelFallbackMiddleware,
     ModelRequest,
     before_agent,
@@ -14,7 +15,9 @@ from langchain.agents.middleware import (
 )
 
 from langchain_core.messages import ToolMessage
+from langgraph.types import Command
 
+from agent.approval import SAVE_APPROVAL_CONFIG, Pause, read_pause
 from agent.config import (
     FALLBACK_MODELS,
     MAX_TOOL_ROUNDS,
@@ -126,6 +129,8 @@ def assemble_agent(model, fallback_models: list, tools: list,
     - require_country_from_user blocks a market tool call for a country the
       user never named;
     - ModelFallbackMiddleware repeats a failed call with a backup model.
+    - HumanInTheLoopMiddleware pauses for the user's approval before a
+      report is saved to a file.
     """
     middleware = []
     if extract_facts is not None:
@@ -134,6 +139,10 @@ def assemble_agent(model, fallback_models: list, tools: list,
     middleware.append(require_country_from_user)
     if fallback_models:
         middleware.append(ModelFallbackMiddleware(*fallback_models))
+    if checkpointer is not None:
+        # A pause needs a saved conversation to come back to, so approval
+        # is only switched on when the agent has a checkpointer.
+        middleware.append(HumanInTheLoopMiddleware(interrupt_on=SAVE_APPROVAL_CONFIG))
 
     return create_agent(
         model=model,
@@ -168,9 +177,35 @@ def build_agent(model_name: str = MODEL_NAME,
     )
 
 
+def _run(agent, payload, thread_id: str, user_id: str):
+    """Run the agent and yield what happens: each new message, and a Pause
+    if the agent stops to wait for the user."""
+    config = {
+        "configurable": {"thread_id": thread_id},
+        # Each tool round is two graph steps (model, then tools), plus one
+        # final model step for the answer.
+        "recursion_limit": MAX_TOOL_ROUNDS * 2 + 1,
+    }
+
+    for update in agent.stream(payload, config=config,
+                               context=UserContext(user_id=user_id),
+                               stream_mode="updates"):
+        for node, output in update.items():
+            if node == "__interrupt__":
+                # The agent has stopped and saved its state.
+                for interrupt in output:
+                    pause = read_pause(interrupt.value)
+                    if pause:
+                        yield pause
+                continue
+            for item in (output or {}).get("messages", []):
+                yield item
+
+
 def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USER):
     """Send one new message to a conversation and yield each new message as
     it happens: the model's tool requests, the tool results, the answer.
+    If the agent stops for the user's approval, a Pause is yielded last.
 
     Only the new message is sent. The checkpointer loads the rest of the
     conversation from the thread id.
@@ -181,21 +216,28 @@ def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USE
         thread_id: Identifies the conversation.
         user_id: Identifies whose saved profile to use.
     """
-    config = {
-        "configurable": {"thread_id": thread_id},
-        # Each tool round is two graph steps (model, then tools), plus one
-        # final model step for the answer.
-        "recursion_limit": MAX_TOOL_ROUNDS * 2 + 1,
-    }
+    payload = {"messages": [{"role": "user", "content": message}]}
+    yield from _run(agent, payload, thread_id, user_id)
 
-    for update in agent.stream(
-        {"messages": [{"role": "user", "content": message}]},
-        config=config,
-        context=UserContext(user_id=user_id),
-        stream_mode="updates",
-    ):
-        for node_output in update.values():
-            if not node_output:
-                continue
-            for item in node_output.get("messages", []):
-                yield item
+
+def resume_steps(agent, answer: dict, thread_id: str, user_id: str = DEFAULT_USER):
+    """Continue a paused conversation with the user's answer.
+
+    Command(resume=...) tells LangGraph to carry on from the saved state
+    and hand the answer to the step that was waiting.
+
+    Args:
+        answer: Built with review_answer() or save_answer() in approval.py.
+    """
+    yield from _run(agent, Command(resume=answer), thread_id, user_id)
+
+
+def pending_pause(agent, thread_id: str) -> Pause | None:
+    """Return the Pause a conversation is waiting on, if any. Used when a
+    conversation is opened again after the program was closed."""
+    state = agent.get_state({"configurable": {"thread_id": thread_id}})
+    for interrupt in state.interrupts:
+        pause = read_pause(interrupt.value)
+        if pause:
+            return pause
+    return None

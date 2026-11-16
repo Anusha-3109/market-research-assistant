@@ -5,7 +5,9 @@
     python main.py "question" ...       ask the questions and exit
 
 It prints every step of the agent loop so you can see what the agent does.
-The Streamlit app replaces this later.
+When the agent stops for an approval, you type your answer. In the
+"questions and exit" form, the next item on the command line is used as the
+answer. The Streamlit app replaces this later.
 """
 
 import sys
@@ -14,7 +16,13 @@ import uuid
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
-from agent.agent import build_agent, stream_steps
+from agent.agent import build_agent, pending_pause, resume_steps, stream_steps
+from agent.approval import (
+    SAVE_KIND,
+    Pause,
+    parse_review_reply,
+    parse_save_reply,
+)
 from agent.config import MODEL_NAME, REPORT_HEADING, MissingKeyError
 from agent.memory import open_memory
 from agent.report.tool import REPORT_TOOL_NAME
@@ -50,15 +58,61 @@ def print_step(message) -> None:
             print(format_check(check_report(message.content)) + "\n")
 
 
-def run_turn(agent, thread_id: str, question: str) -> None:
-    """Send one question to the conversation and print what happens.
+def describe_pause(pause: Pause) -> str:
+    """The text shown to the user when the agent is waiting for them."""
+    if pause.kind == SAVE_KIND:
+        return (f"\n[approval needed] Save this report as {pause.data['filename']}?\n"
+                f"  Type: approve | reject | title <new title>")
+
+    data = pause.data
+    lines = [f"\n[approval needed] Competitors found for {data['product']} "
+             f"in {data['country']}:"]
+    for number, competitor in enumerate(data["competitors"], start=1):
+        lines.append(f"  {number}. {competitor['name']}  "
+                     f"({competitor['website'] or 'no website found'})")
+    if data["left_out"]:
+        lines.append(f"  Verified but left out: {', '.join(data['left_out'])}")
+    for dropped in data["dropped"]:
+        lines.append(f"  Dropped: {dropped['name']} ({dropped['reason'][:70]})")
+    lines.append("  Type: approve | remove 2,4 | add <company> | "
+                 "remove 4; add <company> | cancel")
+    return "\n".join(lines)
+
+
+def answer_for(pause: Pause, reply: str) -> dict:
+    """Turn the typed reply into the answer that resumes the agent."""
+    if pause.kind == SAVE_KIND:
+        return parse_save_reply(reply)
+    names = [competitor["name"] for competitor in pause.data["competitors"]]
+    return parse_review_reply(reply, names)
+
+
+def play(steps, ask_user) -> Pause | None:
+    """Print each step. Return the Pause if the agent stopped for the user."""
+    pause = None
+    for item in steps:
+        if isinstance(item, Pause):
+            pause = item
+        else:
+            print_step(item)
+    return pause
+
+
+def run_turn(agent, thread_id: str, question: str, ask_user) -> None:
+    """Send one question to the conversation and print what happens. While
+    the agent keeps stopping for approval, ask the user and continue.
 
     No history is kept here: the checkpointer stores the conversation under
     the thread id and loads it again for the next question.
+
+    Args:
+        ask_user: A function that shows a prompt and returns the reply.
     """
     try:
-        for message in stream_steps(agent, question, thread_id):
-            print_step(message)
+        pause = play(stream_steps(agent, question, thread_id), ask_user)
+        while pause is not None:
+            reply = ask_user(describe_pause(pause))
+            pause = play(resume_steps(agent, answer_for(pause, reply), thread_id), ask_user)
     except GraphRecursionError:
         print("\nThe agent reached its step limit before finishing. "
               "Try a narrower question.\n")
@@ -95,11 +149,38 @@ def main() -> None:
     print(f"Conversation id: {thread_id}  "
           f"(continue later with: python main.py --thread {thread_id})\n")
 
-    # Questions passed on the command line are asked in order (for testing).
-    for question in questions:
-        print(f"You: {question}")
-        run_turn(agent, thread_id, question)
-    if questions:
+    scripted = bool(questions)
+    queue = list(questions)
+
+    def ask_user(prompt: str) -> str:
+        """Show an approval prompt and get the reply: typed by the user, or
+        taken from the command line when the run is scripted."""
+        print(prompt)
+        if not scripted:
+            return input("Your decision: ").strip()
+        if not queue:
+            print("  (no answer given on the command line; leaving it waiting)")
+            raise SystemExit(0)
+        reply = queue.pop(0)
+        print(f"Your decision: {reply}")
+        return reply
+
+    # A conversation that was closed while waiting for an approval.
+    waiting = pending_pause(agent, thread_id)
+    if waiting is not None:
+        print("This conversation is waiting for your decision.")
+        reply = ask_user(describe_pause(waiting))
+        pause = play(resume_steps(agent, answer_for(waiting, reply), thread_id), ask_user)
+        while pause is not None:
+            reply = ask_user(describe_pause(pause))
+            pause = play(resume_steps(agent, answer_for(pause, reply), thread_id), ask_user)
+
+    if scripted:
+        # Questions passed on the command line are asked in order (for testing).
+        while queue:
+            question = queue.pop(0)
+            print(f"You: {question}")
+            run_turn(agent, thread_id, question, ask_user)
         return
 
     print("Market research assistant. Type 'quit' to stop.\n")
@@ -108,7 +189,7 @@ def main() -> None:
         if question.lower() in {"quit", "exit"}:
             break
         if question:
-            run_turn(agent, thread_id, question)
+            run_turn(agent, thread_id, question, ask_user)
 
 
 if __name__ == "__main__":

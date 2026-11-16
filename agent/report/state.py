@@ -219,6 +219,9 @@ class ReportState(TypedDict, total=False):
     rejected: Annotated[list[Rejection], operator.add]
     competitors: list[Competitor]
 
+    # Set when the user cancels at the competitor review.
+    cancelled: bool
+
     # Steps 4 and 5, one parallel branch per competitor.
     profiles: Annotated[list[CompetitorProfile], operator.add]
 
@@ -235,3 +238,11 @@ class ReportState(TypedDict, total=False):
 
     # One line per step, for showing progress.
     log: Annotated[list[str], operator.add]
+
+
+# Every model class that can appear in the workflow state. The checkpointer
+# is told about them so it can save and load a paused workflow.
+STATE_MODELS = [
+    ResearchBrief, Candidate, Verdict, Competitor, Rejection, PricePoint,
+    CompetitorProfile, MarketFigure, NewsItem, TrendResult, Swot,
+]

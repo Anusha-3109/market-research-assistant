@@ -6,21 +6,27 @@ calls this one tool, and the fixed workflow does the research.
 
 from functools import lru_cache
 
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
+from langgraph.errors import GraphInterrupt
 
+from agent.config import REVIEW_COMPETITORS
 from agent.countries import find_country
+from agent.memory import UserContext
 from agent.report.graph import build_report_graph
 
 REPORT_TOOL_NAME = "create_market_report"
+CANCELLED_MESSAGE = ("The report was cancelled at the competitor review. No "
+                     "further research was done.")
 
 
-@lru_cache(maxsize=1)
-def report_graph():
-    """Build the workflow once and reuse it."""
-    return build_report_graph()
+@lru_cache(maxsize=2)
+def report_graph(review: bool = False):
+    """Build each version of the workflow once and reuse it."""
+    return build_report_graph(review=review)
 
 
-def run_report(product: str, country: str, idea: str, graph=None) -> tuple[str, dict]:
+def run_report(product: str, country: str, idea: str, graph=None,
+               review: bool = False) -> tuple[str, dict]:
     """Run the workflow and return (text for the user, details).
 
     The details hold the report check result and the progress log, for the
@@ -34,12 +40,18 @@ def run_report(product: str, country: str, idea: str, graph=None) -> tuple[str, 
                 f"country should the report cover?"), {}
 
     try:
-        final = (graph or report_graph()).invoke(
+        final = (graph or report_graph(review)).invoke(
             {"product": product, "country": country, "idea": idea.strip()})
+    except GraphInterrupt:
+        # Not an error: the workflow paused for the user's review. Let it
+        # pass up to the chat agent, which saves the state and stops.
+        raise
     except Exception as error:  # a failed model call or network problem
         return (f"The report could not be produced because a step failed: "
                 f"{error}. Please try again."), {}
 
+    if final.get("cancelled"):
+        return CANCELLED_MESSAGE, {"log": final.get("log", [])}
     return final["report"], {"problems": final.get("problems", []),
                              "log": final.get("log", [])}
 
@@ -50,7 +62,8 @@ def run_report(product: str, country: str, idea: str, graph=None) -> tuple[str, 
 # response_format="content_and_artifact": the tool returns the text plus a
 # second value (the details) that the model never sees.
 @tool(REPORT_TOOL_NAME, return_direct=True, response_format="content_and_artifact")
-def create_market_report(product: str, country: str, idea: str = "") -> tuple[str, dict]:
+def create_market_report(product: str, country: str, idea: str = "",
+                         runtime: ToolRuntime[UserContext] = None) -> tuple[str, dict]:
     """Research a market and write the full six-section market research
     report: market overview, competitors, pricing, trends, SWOT analysis and
     references.
@@ -65,4 +78,8 @@ def create_market_report(product: str, country: str, idea: str = "") -> tuple[st
         idea: The user's own business idea in their words, if they described
             one. Leave empty otherwise.
     """
-    return run_report(product, country, idea)
+    # The review pause needs a saved conversation to return to, which exists
+    # only when the agent was given a checkpointer (a thread id is set).
+    configurable = (runtime.config or {}).get("configurable", {}) if runtime else {}
+    review = REVIEW_COMPETITORS and bool(configurable.get("thread_id"))
+    return run_report(product, country, idea, review=review)

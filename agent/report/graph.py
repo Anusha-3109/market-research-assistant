@@ -10,6 +10,9 @@
       |
   select_competitors
       |
+  review_competitors  (pause: the user approves or edits the list)
+      |                 \\
+      |                  cancelled --> END
       +-- research_competitor  (one per competitor)          steps 4, 5
       +-- research_market                                    step 6
       +-- research_news                                      step 7
@@ -32,6 +35,7 @@ from langgraph.types import Send
 
 from agent.report.deps import Deps, default_deps
 from agent.report.research import make_research_steps
+from agent.report.review import after_review, make_review_step
 from agent.report.state import ReportState
 from agent.report.steps import make_steps
 from agent.report.writing import after_swot, make_writing_steps
@@ -60,8 +64,9 @@ def fan_out_to_verification(state: ReportState):
 
 
 def fan_out_to_research(state: ReportState):
-    """After the competitors are chosen, start all the fact-finding at once:
-    one branch per competitor, plus the market, the news and the trend."""
+    """After the competitors are settled, start all the fact-finding at
+    once: one branch per competitor, plus the market, the news and the
+    trend."""
     branches = [
         Send("research_competitor", {
             "competitor": competitor,
@@ -78,12 +83,28 @@ def fan_out_to_research(state: ReportState):
     return branches
 
 
+def research_or_stop(state: ReportState):
+    """After the review: end the workflow if the user cancelled, otherwise
+    start the research."""
+    if after_review(state) == "cancelled":
+        return END
+    return fan_out_to_research(state)
+
+
 RESEARCH_NODES = ["research_competitor", "research_market", "research_news",
                   "research_trend"]
 
 
-def build_report_graph(deps: Deps | None = None):
-    """Build and compile the report workflow."""
+def build_report_graph(deps: Deps | None = None, review: bool = False):
+    """Build and compile the report workflow.
+
+    Args:
+        deps: The model and data sources to use; the real ones by default.
+        review: If True, the workflow pauses for the user to review the
+            competitor list. A pause needs somewhere to save the state, so
+            this only works when the workflow runs inside the chat agent,
+            which has a checkpointer.
+    """
     deps = deps or default_deps()
     steps = {**make_steps(deps), **make_research_steps(deps),
              **make_writing_steps(deps)}
@@ -97,8 +118,16 @@ def build_report_graph(deps: Deps | None = None):
     graph.add_conditional_edges("find_candidates", fan_out_to_verification,
                                 ["verify_competitor", "select_competitors"])
     graph.add_edge("verify_competitor", "select_competitors")
-    graph.add_conditional_edges("select_competitors", fan_out_to_research,
-                                RESEARCH_NODES)
+
+    if review:
+        graph.add_node("review_competitors", make_review_step(deps))
+        graph.add_edge("select_competitors", "review_competitors")
+        graph.add_conditional_edges("review_competitors", research_or_stop,
+                                    RESEARCH_NODES + [END])
+    else:
+        graph.add_conditional_edges("select_competitors", fan_out_to_research,
+                                    RESEARCH_NODES)
+
     for node in RESEARCH_NODES:
         graph.add_edge(node, "collect_facts")
     graph.add_edge("collect_facts", "write_swot")
@@ -108,4 +137,8 @@ def build_report_graph(deps: Deps | None = None):
                                 ["write_swot", "assemble_report"])
     graph.add_edge("assemble_report", END)
 
-    return graph.compile()
+    # checkpointer=True: when this graph runs inside the chat agent, it
+    # saves its own progress in the agent's checkpointer. After a pause the
+    # workflow continues from the review step and does not repeat the
+    # searches before it.
+    return graph.compile(checkpointer=True if review else None)

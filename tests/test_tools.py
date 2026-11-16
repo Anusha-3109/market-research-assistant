@@ -206,6 +206,40 @@ def test_listed_company_returns_figures_and_a_source(monkeypatch):
     assert "https://finance.yahoo.com/quote/HFG.DE" in result
 
 
+def test_a_listed_company_with_a_similar_name_is_not_returned(monkeypatch):
+    # Searching "Factor" on Yahoo finds The Cheesecake Factory.
+    class WrongCompany:
+        def __init__(self, name, max_results=5):
+            self.quotes = [{"symbol": "CAKE", "quoteType": "EQUITY",
+                            "shortname": "Cheesecake Factory Incorporated"}]
+
+    monkeypatch.setattr(yahoo.yf, "Search", WrongCompany)
+
+    assert yahoo.company_financials("Factor") is None
+
+
+def test_the_right_company_is_found_behind_a_wrong_first_result(monkeypatch):
+    class TwoShares:
+        def __init__(self, name, max_results=5):
+            self.quotes = [
+                {"symbol": "MS1.DU", "quoteType": "EQUITY", "shortname": "468 SPAC II SE"},
+                {"symbol": "MS1.DE", "quoteType": "EQUITY", "shortname": "Marley Spoon Group SE"},
+            ]
+
+    class FakeTicker:
+        def __init__(self, symbol):
+            self.info = {"longName": "Marley Spoon Group SE", "currency": "EUR",
+                         "totalRevenue": 205_000_000}
+
+    monkeypatch.setattr(yahoo.yf, "Search", TwoShares)
+    monkeypatch.setattr(yahoo.yf, "Ticker", FakeTicker)
+
+    result = yahoo.company_financials("Marley Spoon")
+
+    assert "Marley Spoon Group SE (ticker MS1.DE)" in result
+    assert "205.0 million EUR" in result
+
+
 def test_financial_lookup_failure_returns_a_message(monkeypatch):
     def broken(name, max_results=5):
         raise TimeoutError("yahoo is slow")

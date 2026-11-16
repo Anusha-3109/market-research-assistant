@@ -10,7 +10,7 @@ import re
 from datetime import date
 
 from agent.report.state import CompetitorProfile, ReportState, Swot
-from agent.report.steps import name_key
+from agent.names import same_company
 
 MAX_PRICE_ROWS_PER_COMPANY = 3
 FIGURE_LINES = ("Revenue", "Employees", "Founded", "Market value")
@@ -41,13 +41,15 @@ def trusted_figures(profile: CompetitorProfile) -> list[str]:
     """Return the figure lines for a competitor, or nothing if the lookup
     found a different company.
 
-    A brand name that is also a common word (for example "Bulk") can match
-    an unrelated listed company. The figures are used only when the company
-    name in them contains the brand name.
+    A brand name that is also a common word (for example "Bulk" or
+    "Factor") can match an unrelated listed company. The figures are used
+    only when the company name in them starts with the brand name.
     """
     lines = profile.figures.splitlines()
     company_line = next((line for line in lines if line.startswith("Company:")), "")
-    if name_key(profile.name) not in name_key(company_line):
+    # "Company: HelloFresh SE (ticker HFG.DE)" -> "HelloFresh SE"
+    company_name = company_line.removeprefix("Company:").split("(")[0]
+    if not same_company(profile.name, company_name):
         return []
     return [line for line in lines
             if line.startswith(FIGURE_LINES) and not line.endswith(MISSING)]
