@@ -30,7 +30,7 @@ from agent.session import (
 from ui.assets import LOGO
 from ui.guide import render_guide
 from ui.password import password_ok
-from ui.research import render_tabs, render_turn, run_live
+from ui.research import question_box_text, render_tabs, render_turn, run_live
 from ui.runtime import get_runtime
 from ui.sidebar import FORGET, GUIDE, NEW, current_settings, render_sidebar
 from ui.picker import BACK, open_picker, render_picker
@@ -119,13 +119,20 @@ picker = picker if picker and picker["thread"] == thread_id and not turns else N
 
 # The picker has its own box in the middle of the page, so the question box
 # at the bottom is left out while one is open.
+# An approval form that was just submitted. The answer is kept for one run
+# and the page drawn again, so that the question box below can already say
+# that work is under way: a box is drawn before the form, and without this
+# step it would still read "Answer the question above" while the report
+# continues.
+resuming = st.session_state.pop("resume", None)
+resuming = resuming if resuming and resuming["thread"] == thread_id and waiting else None
+
 question = None
 if not picker:
     question = st.chat_input(
-        "Answer the question above to continue" if waiting
-        else "Ask a follow-up" if turns else "Ask about a market",
-        key="question", submit_mode="disable", disabled=waiting is not None,
-        max_chars=MAX_QUESTION_CHARS)
+        question_box_text(bool(resuming), waiting is not None, bool(turns)),
+        key="question", submit_mode="disable",
+        disabled=waiting is not None, max_chars=MAX_QUESTION_CHARS)
 
 # The "How it works" guide is shown for this conversation only, and only
 # until a real question is asked. It lives in the browser session, not in
@@ -168,6 +175,9 @@ if not turns:
     if question:
         st.session_state.pop("guide", None)
         st.session_state.pop("picker", None)
+elif resuming:
+    # The form was submitted in the previous run; continue the agent now.
+    answer = resuming["answer"]
 elif not question:
     with view.container():
         shown = render_tabs(turns, thread_id, locked=waiting is not None)
@@ -177,9 +187,13 @@ elif not question:
     if outcome.new:
         st.query_params["c"] = new_thread_id()
         st.rerun()
+    if outcome.answer is not None:
+        # Draw the page again first, so the question box has the right words.
+        st.session_state["resume"] = {"thread": thread_id, "answer": outcome.answer}
+        st.rerun()
     # A button in the view (such as "Save to reports folder") sends a
     # question, just as typing it would.
-    question, answer = outcome.question, outcome.answer
+    question = outcome.question
 
 # A message that is empty or far too long is turned back here, before it
 # costs anything.

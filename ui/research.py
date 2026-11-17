@@ -61,6 +61,21 @@ class Outcome:
 
 # --- pieces shared by the finished and the live view ------------------------------------------
 
+def question_box_text(resuming: bool, waiting: bool, has_turns: bool) -> str:
+    """What the empty question box at the bottom of the page says.
+
+    resuming:  an approval form was just submitted and the agent is
+               carrying on.
+    waiting:   the agent is stopped until an approval form is answered.
+    has_turns: the conversation already has a question in it.
+    """
+    if resuming:
+        return "Working on it. You can ask a follow-up when it is done."
+    if waiting:
+        return "Answer the question above to continue"
+    return "Ask a follow-up" if has_turns else "Ask about a market"
+
+
 def format_seconds(seconds: float | None) -> str:
     if seconds is None:
         return ""

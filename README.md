@@ -591,7 +591,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-499 tests, none of which use the internet or cost anything: outside
+501 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |

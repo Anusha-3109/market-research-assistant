@@ -332,6 +332,40 @@ def test_pressing_save_writes_under_the_title_in_the_form(page):
     assert not app.chat_input[0].disabled
 
 
+def test_the_question_box_says_what_is_going_on():
+    from ui.research import question_box_text
+
+    assert question_box_text(False, False, False) == "Ask about a market"
+    assert question_box_text(False, False, True) == "Ask a follow-up"
+    assert question_box_text(False, True, True) == "Answer the question above to continue"
+    # Once the form is submitted the agent is working again: the box must
+    # stop asking for an answer that has already been given.
+    assert question_box_text(True, True, True) ==         "Working on it. You can ask a follow-up when it is done."
+
+
+def test_a_submitted_form_is_handed_to_the_agent_exactly_once(page):
+    calls = []
+    app = page([SAVE_CALL, AIMessage("Saved.")])
+    app.chat_input[0].set_value("Save this report.").run()
+
+    import ui.research
+    real = ui.research.resume_steps
+
+    def counting(*args, **kwargs):
+        calls.append(args[1])
+        yield from real(*args, **kwargs)
+
+    with patch("ui.research.resume_steps", counting):
+        button(app, "FormSubmitter:save_form-Save").click().run()
+
+    assert not app.exception
+    assert len(calls) == 1
+    assert SAVED == ["Meal kits Germany"]
+    assert "resume" not in app.session_state          # nothing left to repeat
+    assert app.chat_input[0].placeholder == "Ask a follow-up"
+    assert not app.chat_input[0].disabled
+
+
 def test_pressing_dont_save_writes_nothing(page):
     app = page([SAVE_CALL, AIMessage("All right, not saved.")])
     app.chat_input[0].set_value("Save this report.").run()
