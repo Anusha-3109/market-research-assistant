@@ -90,11 +90,17 @@ def plural(count: int, word: str) -> str:
 
 def steps_panel(title: str, steps: list[str], elapsed: float | None, source_count: int,
                 used: Usage | None = None, used_is_partial: bool = False) -> None:
-    """The panel listing what the agent did, and what it cost.
+    """The panel listing what the agent did. Above it, in a pill, what
+    the answer cost.
 
     used: the tokens and cost of the model calls made for this answer. Left
           out while the agent is still working, when they are not known yet.
     """
+    cost = usage.cost_text(used) if used else ""
+    tokens = usage.tokens_text(used) if used else ""
+    if cost:
+        # Pointing at the pill shows the figures behind it.
+        st.html(fill("cost_pill.html", cost=cost, details=usage.details(used)))
     with panel("steps_panel"):
         took = format_seconds(elapsed)
         st.markdown(f"**{title}**" + (f" :gray[· {took}]" if took else ""))
@@ -102,10 +108,13 @@ def steps_panel(title: str, steps: list[str], elapsed: float | None, source_coun
         if title == "Done":
             st.caption(":material/check_circle: " + (
                 f"{plural(len(steps), 'step')} · {plural(source_count, 'source')}" if steps
-                else "Answered from this conversation, without a new search"))
-        spent = usage.summary(used, partial=used_is_partial) if used else ""
-        if spent:
-            st.caption(f":material/toll: {spent}", help=usage.details(used))
+                else "Answered from this conversation, without a new search")
+                + (f" · {tokens}" if tokens else ""))
+        elif tokens:
+            st.caption(f":material/toll: {tokens}")
+        missing = usage.cost_note(used, partial=used_is_partial) if used else ""
+        if missing:
+            st.caption(f":material/info: {missing}")
         for step in steps[-STEPS_SHOWN:] if title != "Done" else steps[:STEPS_SHOWN]:
             st.caption(f":material/search: {step}")
         hidden = len(steps) - STEPS_SHOWN

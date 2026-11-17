@@ -27,7 +27,6 @@ from agent.session import (
     to_blocks,
     to_turns,
 )
-from agent.usage import Usage
 from ui.assets import LOGO
 from ui.guide import render_guide
 from ui.password import password_ok
@@ -87,15 +86,9 @@ def open_guide(for_thread: str) -> None:
     st.session_state["guide"] = {"thread": for_thread, "topics": ["how"], "scroll": True}
 
 
-# The conversation is read here, before the sidebar is drawn, because the
-# sidebar shows what the conversation has cost so far.
-blocks = to_blocks(load_messages(runtime.agent, thread_id))
-
 action = render_sidebar(
     list_conversations(runtime.agent, runtime.checkpointer), thread_id,
-    profile=load_profile(runtime.store, DEFAULT_USER), waiting=waiting is not None,
-    spent=sum((block.usage for block in blocks), Usage()),
-    spent_is_partial=any(block.usage_is_partial for block in blocks))
+    profile=load_profile(runtime.store, DEFAULT_USER), waiting=waiting is not None)
 if action == NEW:
     st.query_params["c"] = new_thread_id()
     st.rerun()
@@ -117,7 +110,7 @@ elif action:
 # --- the conversation ------------------------------------------------------------------------
 # Each question with its answer is one "turn". The research view shows one
 # turn at a time; the others are tabs.
-turns = to_turns(blocks)
+turns = to_turns(to_blocks(load_messages(runtime.agent, thread_id)))
 
 # A picker screen, opened by clicking a start card, belongs to one empty
 # conversation and lives in the browser session, like the guide below.

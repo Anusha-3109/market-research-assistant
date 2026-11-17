@@ -15,9 +15,7 @@ from agent.config import (
     STYLE_CHOICES,
     TEMPERATURE,
 )
-from agent import usage
 from agent.session import Conversation
-from agent.usage import Usage
 from ui.assets import brand
 
 # How many conversations are listed before the rest fold away.
@@ -45,16 +43,12 @@ def current_settings() -> dict:
 
 
 def render_sidebar(conversations: list[Conversation], current: str,
-                   profile: dict[str, str], waiting: bool,
-                   spent: Usage | None = None, spent_is_partial: bool = False) -> str | None:
+                   profile: dict[str, str], waiting: bool) -> str | None:
     """Show the sidebar. Returns NEW, FORGET or GUIDE if the user asked for
     that, the thread id of a conversation they picked, or None.
 
     Args:
         profile: What is remembered about the user.
-        spent: The tokens and cost of the open conversation so far.
-        spent_is_partial: True if the conversation holds a report written
-            before costs were recorded, so the total is too low.
         waiting: True while the agent is stopped for an approval. Settings
             that would change how a paused report continues are locked.
     """
@@ -81,7 +75,6 @@ def render_sidebar(conversations: list[Conversation], current: str,
                     action = _conversation_button(conversation, current) or action
 
         action = _memory_panel(profile) or action
-        _spent_panel(spent, spent_is_partial)
         _settings_panel(waiting)
         action = _help_panel() or action
     return action
@@ -114,16 +107,6 @@ def _memory_panel(profile: dict[str, str]) -> str | None:
                       "Your conversations are kept."):
         return FORGET
     return None
-
-
-def _spent_panel(spent: Usage | None, partial: bool = False) -> None:
-    """What the open conversation has used so far. Nothing is shown before
-    the first answer."""
-    line = usage.summary(spent, partial=partial) if spent else ""
-    if not line:
-        return
-    st.caption("This conversation")
-    st.caption(f":material/toll: {line}", help=usage.details(spent))
 
 
 def _settings_panel(waiting: bool) -> None:

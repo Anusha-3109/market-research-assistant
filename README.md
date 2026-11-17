@@ -116,7 +116,7 @@ the page shows setup instructions.
 
 A report costs about three cents of OpenRouter credit (measured: $0.03 for
 23 model calls) and about 20 Tavily searches. A single question costs a
-fraction of a cent. The app shows the exact figure under every answer.
+fraction of a cent. The app shows the exact figure next to every answer.
 
 ## How to use it
 
@@ -201,7 +201,7 @@ same two-column view:
 | Where | What it shows |
 |---|---|
 | Left | The answer. Each fact carries a small number such as [1] that links to its source |
-| Right, top | "Researching" with a timer and each step as it happens, then "Done" with the full list and what the answer cost, for example "4,367 tokens · $0.00076" |
+| Right, top | "Researching" with a timer and each step as it happens, then "Done" with the full list and the tokens used. Above the panel, a pill shows what the answer cost, for example "LLM cost $0.00076" |
 | Right, below | "Sources": the numbered pages the answer cites, with their site. A company's own site is marked **Official** |
 | Top | One tab per question in the conversation. The newest opens first |
 
@@ -573,7 +573,7 @@ thirty. So it is also checked by code, see the next decision.
 returns with every call the tokens it read and wrote and what the call cost
 in US dollars. The app adds those up and shows them; it does not multiply
 tokens by a price list, which would be wrong as soon as a price changed. If
-the service gives no cost for a call, the app says "cost not reported" and
+the service gives no cost for a call, the app says "LLM cost not reported" and
 never invents one.
 
 The app calls a model in three places, and each needed its own way of
@@ -706,7 +706,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-585 tests, none of which use the internet or cost anything: outside
+587 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |

@@ -77,27 +77,37 @@ def format_cost(cost: float) -> str:
     return f"${whole}.{decimals}"
 
 
-def summary(usage: Usage, partial: bool = False) -> str:
-    """One line for the page: "1,240 tokens · $0.0005". Empty if no model
-    was called.
+def tokens_text(usage: Usage) -> str:
+    """The tokens for the page: "1,240 tokens". Empty if no model was
+    called."""
+    return f"{usage.total_tokens:,} tokens" if usage.calls else ""
 
-    A price is never made up. If the service gave no cost for some calls,
-    the line says so. partial=True is for a report written before costs
-    were recorded: only the chat model's part of it is known.
+
+def cost_text(usage: Usage) -> str:
+    """The cost for the page: "$0.0005". Empty if no model was called.
+
+    A price is never made up: if the service gave no cost for any call,
+    this says "not reported".
     """
     if usage.calls == 0:
         return ""
-    line = f"{usage.total_tokens:,} tokens · "
-    if usage.priced_calls == 0:
-        line += "cost not reported"
-    else:
-        line += format_cost(usage.cost)
-        unpriced = usage.calls - usage.priced_calls
-        if unpriced:
-            line += f" ({unpriced} of {usage.calls} calls had no reported cost)"
+    return format_cost(usage.cost) if usage.priced_calls else "not reported"
+
+
+def cost_note(usage: Usage, partial: bool = False) -> str:
+    """What is missing from the cost, if anything. Empty for a complete
+    cost.
+
+    partial=True is for a report written before costs were recorded: only
+    the chat model's part of it is known.
+    """
+    notes = []
+    unpriced = usage.calls - usage.priced_calls
+    if usage.priced_calls and unpriced:
+        notes.append(f"{unpriced} of {usage.calls} calls had no reported cost.")
     if partial:
-        line += " (the report's own calls were not recorded)"
-    return line
+        notes.append("The report's own calls were not recorded.")
+    return " ".join(notes)
 
 
 def details(usage: Usage) -> str:

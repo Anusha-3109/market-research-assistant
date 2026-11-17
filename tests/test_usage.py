@@ -320,8 +320,11 @@ def used(calls=1, read=0, written=0, cost=0.0, priced=None):
     return Usage(calls, read, written, cost, calls if priced is None else priced)
 
 
-def test_the_line_shows_tokens_and_the_cost_in_dollars():
-    assert usage_module.summary(used(read=1200, written=40, cost=0.0005)) == "1,240 tokens · $0.0005"
+def test_the_tokens_and_the_cost_in_dollars_are_worded_separately():
+    spent = used(read=1200, written=40, cost=0.0005)
+
+    assert usage_module.tokens_text(spent) == "1,240 tokens"
+    assert usage_module.cost_text(spent) == "$0.0005"
 
 
 def test_a_small_cost_keeps_enough_digits_to_mean_something():
@@ -332,22 +335,30 @@ def test_a_small_cost_keeps_enough_digits_to_mean_something():
 
 
 def test_a_free_call_is_shown_as_zero_dollars():
-    assert usage_module.summary(used(read=800, written=20, cost=0.0)) == "820 tokens · $0"
+    assert usage_module.cost_text(used(read=800, written=20, cost=0.0)) == "$0"
 
 
 def test_no_price_is_shown_when_the_service_reported_none():
-    assert usage_module.summary(used(read=800, written=20, priced=0)) == \
-        "820 tokens · cost not reported"
+    spent = used(read=800, written=20, priced=0)
+
+    assert usage_module.cost_text(spent) == "not reported"
+    assert usage_module.cost_note(spent) == ""
 
 
 def test_a_cost_that_misses_some_calls_says_so():
-    line = usage_module.summary(used(calls=2, read=2300, written=65, cost=0.0006, priced=1))
+    spent = used(calls=2, read=2300, written=65, cost=0.0006, priced=1)
 
-    assert line == "2,365 tokens · $0.0006 (1 of 2 calls had no reported cost)"
+    assert usage_module.cost_text(spent) == "$0.0006"
+    assert usage_module.cost_note(spent) == "1 of 2 calls had no reported cost."
+
+
+def test_a_complete_cost_needs_no_note():
+    assert usage_module.cost_note(used(read=1200, written=40, cost=0.0005)) == ""
 
 
 def test_nothing_is_shown_when_no_model_was_called():
-    assert usage_module.summary(used(calls=0)) == ""
+    assert usage_module.tokens_text(used(calls=0)) == ""
+    assert usage_module.cost_text(used(calls=0)) == ""
 
 
 def test_the_details_break_the_figures_down_and_say_what_is_left_out():
@@ -375,8 +386,9 @@ def test_an_older_report_shows_only_its_chat_part_and_says_so():
 
     assert blocks[-1].usage.calls == 1                    # only the chat model's own call
     assert blocks[-1].usage_is_partial
-    assert usage_module.summary(blocks[-1].usage, partial=True) == \
-        "2,030 tokens · $0.001 (the report's own calls were not recorded)"
+    assert usage_module.cost_text(blocks[-1].usage) == "$0.001"
+    assert usage_module.cost_note(blocks[-1].usage, partial=True) == \
+        "The report's own calls were not recorded."
 
 
 def test_a_new_report_is_not_marked_as_partial():
@@ -400,31 +412,49 @@ def notes(part) -> list[str]:
     return [note.value for note in part.caption]
 
 
-def test_the_cost_of_an_answer_is_shown_with_it(page, tmp_path):
+def pills(part) -> list[str]:
+    """The cost pills in a part of the page, as HTML."""
+    return [element.proto.body for element in part.get("html")
+            if 'class="gw-cost-pill"' in element.proto.body]
+
+
+def test_the_cost_of_an_answer_is_shown_in_a_pill_above_the_steps(page, tmp_path):
     app = open_app(page, tmp_path, [reply("An answer.", read=1200, written=40, cost=0.0005)])
 
     app.chat_input[0].set_value("How big is the oat milk market?").run()
 
     assert not app.exception
-    assert any("1,240 tokens · $0.0005" in note for note in notes(app))
+    [pill] = pills(app)
+    assert "LLM cost" in pill and "$0.0005" in pill
+    # The tokens are on the line under "Done".
+    assert any("1,240 tokens" in note for note in notes(app))
 
 
-def test_the_sidebar_shows_the_total_for_the_conversation(page, tmp_path):
+def test_the_pill_shows_the_cost_of_the_answer_on_screen_not_of_the_conversation(page, tmp_path):
     app = open_app(page, tmp_path, [reply("First answer.", read=500, written=10, cost=0.0002),
                                     reply("Second answer.", read=900, written=30, cost=0.0004)])
     app.chat_input[0].set_value("First question").run()
 
     app.chat_input[0].set_value("Second question").run()
 
-    # 510 + 930 tokens, $0.0002 + $0.0004
-    assert any("1,440 tokens · $0.0006" in note for note in notes(app.sidebar))
-    # The answer on screen shows its own cost, not the total.
-    assert any("930 tokens · $0.0004" in note for note in notes(app))
+    [pill] = pills(app)
+    assert "$0.0004" in pill
+    assert any("930 tokens" in note for note in notes(app))
+
+
+def test_the_sidebar_shows_no_cost(page, tmp_path):
+    app = open_app(page, tmp_path, [reply("An answer.", read=1200, written=40, cost=0.0005)])
+
+    app.chat_input[0].set_value("How big is the oat milk market?").run()
+
+    assert not pills(app.sidebar)
+    assert not any("tokens" in note or "$" in note for note in notes(app.sidebar))
 
 
 def test_an_empty_conversation_shows_no_cost_anywhere(page, tmp_path):
     app = open_app(page, tmp_path, [])
 
+    assert not pills(app)
     assert not any("tokens" in note for note in notes(app) + notes(app.sidebar))
 
 
@@ -464,7 +494,7 @@ def test_the_same_holds_when_the_stopped_question_is_the_last_one():
     assert blocks[0].usage.cost == pytest.approx(0.00008)
 
 
-def test_the_sidebar_total_says_so_when_it_includes_an_older_report(page, tmp_path):
+def test_the_page_says_so_when_an_older_report_misses_its_own_calls(page, tmp_path):
     from langchain_core.messages import ToolMessage
     from streamlit.testing.v1 import AppTest
 
@@ -484,5 +514,6 @@ def test_the_sidebar_total_says_so_when_it_includes_an_older_report(page, tmp_pa
     app.run()
 
     assert not app.exception
-    total_line = next(note for note in notes(app.sidebar) if "tokens" in note)
-    assert "2,030 tokens · $0.001 (the report's own calls were not recorded)" in total_line
+    [pill] = pills(app)
+    assert "$0.001" in pill
+    assert any("The report's own calls were not recorded." in note for note in notes(app))

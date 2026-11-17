@@ -309,6 +309,20 @@
     backdrop-filter: blur(6px);
     gap: 0.6rem !important;
 }
+/* What an answer cost, in a pill above the steps panel. */
+.gw-cost-pill-row { text-align: right; }
+.gw-cost-pill {
+    display: inline-block;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.82rem;
+    color: #56656a;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(20, 40, 40, 0.14);
+    cursor: default;
+}
+.gw-cost-pill b { color: #1f2a2e; font-weight: 700; margin-left: 0.2rem; }
 [class*="st-key-sources_panel_"] p { font-size: 0.84rem; line-height: 1.35; margin-bottom: 0.1rem; }
 /* Streamlit pulls each text block up by the 1rem its last paragraph
    normally leaves below it. The paragraphs here leave only 0.1rem. */
