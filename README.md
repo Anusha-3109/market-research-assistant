@@ -6,8 +6,9 @@ collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
 
 > **Status.** The agent, the report workflow, memory, the approval steps and
-> the web app are complete and tested (433 automated tests). Token cost
-> display and tracing are still to come.
+> the web app are complete and tested (433 automated tests), and the app
+> is [deployed](#deployment). Token cost display and tracing are still to
+> come.
 
 ## Contents
 
@@ -20,6 +21,7 @@ report in which every fact links to its source.
 - [Technical decisions](#technical-decisions)
 - [Error handling and safety](#error-handling-and-safety)
 - [Tests](#tests)
+- [Deployment](#deployment)
 - [Project structure](#project-structure)
 - [Known limitations](#known-limitations)
 - [What I would improve](#what-i-would-improve)
@@ -560,6 +562,7 @@ services and the model are replaced with fakes.
 | `test_citations.py` | Numbered citations, the source list, the Official mark, questions paired with answers |
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
 | `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
+| `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore, the password screen |
 | `test_app.py` | The page itself, run without a browser: cards, the research view and its tabs, guide, sidebar, approval form, a stopped run, missing key |
 | `test_agent.py` | How the agent is assembled; model fallback |
 
@@ -568,6 +571,104 @@ the page shows and what a click does. How the page looks was checked by
 hand in a browser: the start screen at several window sizes, a full report
 through both forms, a refresh while a form was open, reopening earlier
 conversations, and the sidebar panels.
+
+## Deployment
+
+Markavi runs on **Google Cloud Run**:
+<https://markavi-1037824678664.europe-west1.run.app>. It asks for a
+password before anything else is shown, so that a stranger with the link
+cannot spend the API credit. Ask the author for the password.
+
+Everyone who signs in shares one memory and one list of conversations: the
+app has a single user (see [Known limitations](#known-limitations)).
+
+### How it is set up
+
+| Part | Setting |
+|---|---|
+| Project | Its own Google Cloud project, `markavi-research`, with nothing shared with other apps |
+| Service | Cloud Run `markavi` in `europe-west1`: 1 CPU, 1 GiB, at most 1 running copy, shuts down when unused, session affinity for Streamlit's connection |
+| Image | Built from the `Dockerfile` and kept in Artifact Registry. It holds only the app: no keys, no local data, no tests. It runs as a non-root user |
+| Keys | `OPENROUTER_API_KEY`, `TAVILY_API_KEY` and `APP_PASSWORD` are in Secret Manager and passed in as environment variables. They are never in the image or the repository |
+| Saved data | A private Cloud Storage bucket mounted at `/mnt/data` (`DATA_DIR`) |
+| Identity | The app runs as its own service account, which can read only those three secrets and use only that bucket |
+
+### The two settings a deployed copy uses
+
+Both are empty on your own computer, where nothing changes.
+
+| Setting | What it does |
+|---|---|
+| `APP_PASSWORD` | Puts the password screen in front of the app |
+| `DATA_DIR` | The folder that survives restarts. Saved reports are written straight into it. The memory file is handled differently, see below |
+
+### Why the memory file is copied instead of stored in the bucket
+
+Cloud Run wipes the machine's own disk whenever the service restarts, so
+data has to live in the bucket. But the memory file is a database that is
+written after every step of the agent and needs file locking, which a
+mounted bucket does not offer. A mounted bucket also uploads the whole file
+again on every save.
+
+So the database works on the machine's own disk, and
+`backup_memory()` in `agent/memory.py` writes a complete, consistent copy to
+the bucket after every answer, approval, stopped run and "Forget me". On
+start, `restore_memory()` brings the copy back. This was checked on the live
+service: a conversation was still there after a restart.
+
+It relies on at most one running copy, which is why the service is limited
+to one. If the service stops in the middle of an answer, that one answer is
+lost; everything before it is kept.
+
+### Automatic deploys
+
+Two GitHub workflows in `.github/workflows/`:
+
+| Workflow | When | What |
+|---|---|---|
+| Tests | Every push to `main`, and pull requests | Runs the test suite. It needs no keys |
+| Deploy | After Tests pass on `main` | Builds the image, pushes it, and updates the service with it |
+
+A deploy changes only the image. The secrets, the bucket and the limits
+stay as they are. If the tests fail, nothing is deployed.
+
+GitHub signs in to Google Cloud with Workload Identity Federation: no key
+file is stored anywhere, and Google Cloud accepts only this repository's
+`main` branch. A separate deployer account can upload images, update this
+one service and nothing else. Copies of the repository, such as the course
+submission, run the tests but skip the deploy.
+
+Each deploy restarts the service, so visitors enter the password again.
+Their conversations come back from the bucket.
+
+### Run the image yourself
+
+```bash
+docker build -t markavi .
+```
+
+```bash
+docker run -p 8080:8080 -e OPENROUTER_API_KEY=... -e TAVILY_API_KEY=... -e APP_PASSWORD=choose-one markavi
+```
+
+Then open <http://localhost:8080>.
+
+### Deploy by hand
+
+Normally a push to `main` does this. To do it yourself, from PowerShell
+(Git Bash rewrites paths such as `/mnt/data`):
+
+```bash
+docker build -t europe-west1-docker.pkg.dev/markavi-research/markavi/app:manual .
+```
+
+```bash
+docker push europe-west1-docker.pkg.dev/markavi-research/markavi/app:manual
+```
+
+```bash
+gcloud run deploy markavi --image europe-west1-docker.pkg.dev/markavi-research/markavi/app:manual --region europe-west1 --project markavi-research
+```
 
 ## Project structure
 
@@ -588,6 +689,7 @@ market-research-assistant/
 │   ├── research.py          the research view: answer, steps, sources, live progress
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
+│   ├── password.py          the password screen of a deployed copy
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
@@ -619,6 +721,9 @@ market-research-assistant/
 │   │   └── demo.py          runs the workflow from the terminal
 │   └── sources/             one file per outside service
 ├── tests/
+├── Dockerfile               the image for Google Cloud Run
+├── .dockerignore            what stays out of the image
+├── .github/workflows/       tests on every push; deploy when they pass
 ├── .streamlit/config.toml   the app's theme
 ├── reports/                 saved reports (not in Git)
 ├── data/                    memory file (not in Git)
@@ -632,7 +737,15 @@ market-research-assistant/
 
 - Token usage and cost are not shown.
 - Tracing with LangSmith is prepared in `.env.example` but not switched on.
-- The app runs on your own machine; it is not deployed.
+
+**The deployed copy**
+
+- There is one user. Everyone who knows the password shares the same
+  conversations and the same remembered profile.
+- The first visit after a quiet period takes several seconds, while the
+  service starts.
+- A deploy, or the service shutting down while idle, signs everyone out.
+- If the service stops in the middle of an answer, that answer is lost.
 
 **The web app**
 
