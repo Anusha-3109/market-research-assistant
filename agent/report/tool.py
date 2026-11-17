@@ -15,6 +15,7 @@ from agent.countries import find_country
 from agent.memory import UserContext
 from agent.report.deps import default_deps
 from agent.report.graph import build_report_graph
+from agent.styles import known_style
 
 REPORT_TOOL_NAME = "create_market_report"
 CANCELLED_MESSAGE = ("The report was cancelled at the competitor review. No "
@@ -39,7 +40,8 @@ def own_sites(final: dict) -> list[str]:
 def run_report(product: str, country: str, idea: str, graph=None,
                review: bool = False, on_progress=None,
                model_name: str = MODEL_NAME,
-               temperature: float = TEMPERATURE) -> tuple[str, dict]:
+               temperature: float = TEMPERATURE,
+               style: str | None = None) -> tuple[str, dict]:
     """Run the workflow and return (text for the user, details).
 
     The details hold the report check result and the progress log, for the
@@ -56,7 +58,8 @@ def run_report(product: str, country: str, idea: str, graph=None,
         return (f"I could not recognise '{country}' as a country. Which single "
                 f"country should the report cover?"), {}
 
-    request = {"product": product, "country": country, "idea": idea.strip()}
+    request = {"product": product, "country": country, "idea": idea.strip(),
+               "style": known_style(style)}
     final: dict = {}
     try:
         # Two views of the same run: "updates" gives each step's result as it
@@ -133,4 +136,5 @@ def create_market_report(product: str, country: str, idea: str = "",
         product, country, idea, review=review, on_progress=on_progress,
         model_name=getattr(context, "model_name", None) or MODEL_NAME,
         temperature=TEMPERATURE if getattr(context, "temperature", None) is None
-        else context.temperature)
+        else context.temperature,
+        style=getattr(context, "answer_style", None))

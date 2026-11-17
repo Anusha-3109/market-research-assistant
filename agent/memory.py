@@ -50,6 +50,8 @@ class UserContext:
     model_name: str | None = None
     temperature: float | None = None
     review_competitors: bool | None = None
+    # How answers are worded (agent/styles.py). None means the default.
+    answer_style: str | None = None
 
 
 def checkpoint_serializer() -> JsonPlusSerializer:

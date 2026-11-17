@@ -269,7 +269,22 @@ Both are in the sidebar, closed by default so they stay out of the way.
 |---|---|
 | Model | Chooses between three models from different companies, all reached through OpenRouter |
 | Temperature | Lower gives more factual, repeatable answers; higher gives more varied wording |
+| Answer style | How answers are worded: Balanced, Formal, Friendly or Concise |
 | Review competitors before a report | Turn off for a quicker report with no pause |
+
+**Answer style** changes the wording only, never what is true:
+
+| Style | How the assistant writes |
+|---|---|
+| Balanced | Its normal way; the default |
+| Formal | Complete sentences and professional wording, for a document you hand to a bank or a partner |
+| Friendly | Warm and plain, with business terms explained in everyday words |
+| Concise | The shortest useful answer, without introductions or closing remarks |
+
+It applies to answers to single questions and to the SWOT section of a
+report. A report's six sections, its tables, numbers, prices and source
+links are the same in every style. If you once told the assistant how you
+like answers written, the style chosen here wins where the two disagree.
 
 The settings apply to the chat and to the report workflow. They are locked
 while the assistant is waiting for your decision, because changing them
@@ -513,6 +528,46 @@ value put into a template is escaped by `fill()` in `ui/assets.py`, so a
 page title from the web is always shown as text and can never act as
 markup.
 
+**A style is one instruction, added last.** Each answer style is a short
+instruction in `agent/styles.py`, appended to the system prompt after all
+the rules. "Balanced" adds nothing, so the default behaviour is exactly
+what it was. The list of styles and the default are settings in
+`agent/config.py`, with the other settings.
+
+Because it comes last, the added section says what it overrides and what it
+leaves alone, so the model does not have to guess:
+
+- it replaces the standing line that asks for concise bullet points, which
+  would otherwise contradict the Formal style;
+- it wins over a style the assistant remembers from an earlier message,
+  which still applies wherever it does not contradict;
+- a table stays a table, and a refusal is still a refusal;
+- the facts, numbers and source links stay the same.
+
+The report workflow passes the style only to its SWOT step, the one part
+the model words freely.
+
+The last point is an instruction, and an instruction can be forgotten: in
+test runs the Friendly style left out the source link in about one answer in
+thirty. So it is also checked by code, see the next decision.
+
+**The source check: code puts a missing link back.** `agent/source_check.py`
+wraps every model call. When the model has finished an answer, it looks at
+the tools used for that question. If they reported where their information
+came from and the answer links to nothing, the links are added on a last
+line, "Sources: ...", at most five. An answer that already has a link, or
+that used no tool, is left exactly as written. The corrected answer is the
+only one saved, so the conversation never holds two versions.
+
+This is the same idea as the report workflow: the model writes, code checks.
+
+The check only trusts addresses this app wrote itself. A tool result mixes
+the app's own lines ("URL:", "Source:") with text copied from the web, and a
+web page could contain a line that looks like one of them. So each tool has
+its own reader that knows where the app's lines are in that tool's result,
+and a tool without a reader adds nothing. Search titles are kept on one line
+for the same reason. Two tests failed on exactly this before the fix.
+
 **The pickers are data.** What each start card offers (its headline, its
 chip rows and the question they build) is one entry in `PICKERS` in
 `ui/picker.py`, and the chip lists are plain lists above it. Adding a
@@ -575,6 +630,9 @@ sources as plain functions, so the tests replace them with fakes.
   addresses are blocked, also after redirects; downloads are capped at 2 MB.
 - **Prompt injection**: text from tools is treated as information, never
   instructions; values saved to memory are cut to one short line.
+- **An answer without its source**: if the tools reported a source and the
+  answer links to nothing, code adds the link. Only addresses the app wrote
+  itself are used, so text on a web page cannot add a link of its own.
 - **Saving files**: only into `reports/`; a title can never contain a path;
   nothing is written without approval.
 - **Privacy**: only four fixed kinds of fact can be remembered; names,
@@ -591,7 +649,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-501 tests, none of which use the internet or cost anything: outside
+537 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -613,6 +671,8 @@ services and the model are replaced with fakes.
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
 | `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
 | `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore, the password screen |
+| `test_source_check.py` | The source check: a missing link is put back, an answer that has one is left alone, and addresses inside web text are never used |
+| `test_styles.py` | The answer styles, checked by what the model is told: in a chat turn, while a report is written, and from the setting on the page; and that every style keeps the facts and their sources |
 | `test_picker.py` | The pickers: which question the chips build, and clicking through one on the page |
 | `test_app.py` | The page itself, run without a browser: cards, the research view and its tabs, guide, sidebar, approval form, a stopped run, missing key |
 | `test_agent.py` | How the agent is assembled; model fallback |
@@ -751,6 +811,8 @@ market-research-assistant/
 │   ├── memory_tools.py      remember and forget tools
 │   ├── approval.py          the two approval points
 │   ├── guards.py            input check and plain-language errors
+│   ├── styles.py            the answer styles: formal, friendly, concise
+│   ├── source_check.py      puts back the link to a source if an answer left it out
 │   ├── session.py           conversations, questions and answers, for any interface
 │   ├── citations.py         numbered citations and the source list
 │   ├── pdf_export.py        a report as a PDF file
@@ -789,6 +851,21 @@ market-research-assistant/
 
 - Token usage and cost are not shown.
 - Tracing with LangSmith is prepared in `.env.example` but not switched on.
+
+**Answer styles**
+
+- A style's wording is followed by the model, not enforced by code. Only
+  one part is enforced: a missing source link is put back by the source
+  check.
+- The source check adds the pages the tools reported, not the exact page
+  behind each sentence. After a search that is up to five pages, and the
+  answer may rest on only one of them.
+- It checks whether an answer has any link at all. An answer with one link
+  and one unsourced figure passes.
+- Whether an answer "sounds formal" is not tested automatically; it was
+  judged by reading real answers.
+- The styles were tried with the default model. The other two models in the
+  settings may follow them more or less closely.
 
 **The deployed copy**
 

@@ -212,6 +212,8 @@ class ReportState(TypedDict, total=False):
     product: str
     country: str
     idea: str
+    # The answer style chosen in the app; it shapes the SWOT's wording only.
+    style: str
 
     # Step 1.
     brief: ResearchBrief

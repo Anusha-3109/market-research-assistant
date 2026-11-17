@@ -3,12 +3,14 @@
 import streamlit as st
 
 from agent.config import (
+    ANSWER_STYLE,
     APP_NAME,
     APP_TAGLINE,
     MODEL_CHOICES,
     MODEL_NAME,
     PROFILE_KEYS,
     REVIEW_COMPETITORS,
+    STYLE_CHOICES,
     TEMPERATURE,
 )
 from agent.session import Conversation
@@ -32,6 +34,7 @@ def current_settings() -> dict:
         "model_name": state.get("set_model", MODEL_NAME),
         "temperature": state.get("set_temperature", TEMPERATURE),
         "review_competitors": state.get("set_review", REVIEW_COMPETITORS),
+        "answer_style": state.get("set_style", ANSWER_STYLE),
     }
 
 
@@ -117,6 +120,12 @@ def _settings_panel(waiting: bool) -> None:
             disabled=waiting,
             help="Lower gives more factual, repeatable answers. Higher gives "
                  "more varied wording. Research works best low.")
+        styles = list(STYLE_CHOICES)
+        st.selectbox(
+            "Answer style", styles, index=styles.index(ANSWER_STYLE), key="set_style",
+            format_func=lambda name: f"{name}: {STYLE_CHOICES[name]}", disabled=waiting,
+            help="How answers are worded. It never changes the facts, "
+                 "numbers or sources.")
         st.toggle(
             "Review competitors before a report", value=REVIEW_COMPETITORS,
             key="set_review", disabled=waiting,

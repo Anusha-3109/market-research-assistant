@@ -10,6 +10,7 @@ from agent.report.deps import Deps
 from agent.report.render import fact_sections, render_report
 from agent.report.state import ReportState, Swot
 from agent.report_check import check_report
+from agent.styles import style_instruction
 
 MAX_SWOT_ATTEMPTS = 2
 MIN_POINTS = 2
@@ -39,6 +40,10 @@ def make_writing_steps(deps: Deps) -> dict:
         facts = "\n\n".join(f"## {heading}\n{body}"
                             for heading, body in fact_sections(state).items())
         idea = state.get("idea") or "not described; write for a new entrant in this market"
+        # The SWOT is the only part of a report whose wording follows the
+        # user's answer style. Everything else is assembled by code.
+        instruction = style_instruction(state.get("style"))
+        style_note = f" Wording: {instruction}" if instruction else ""
 
         try:
             swot = deps.ask(
@@ -49,7 +54,8 @@ def make_writing_steps(deps: Deps) -> dict:
                 f"company names that are not in them. Give {MIN_POINTS} to 4 "
                 f"short points in each of the four lists. Strengths and "
                 f"weaknesses are about the newcomer; opportunities and threats "
-                f"are about the market. Do not give investment advice.",
+                f"are about the market. Do not give investment advice."
+                + style_note,
                 f"The user's business idea: {idea}\n\nFacts:\n\n{facts}",
             )
         except Exception:  # a failed model call counts as an incomplete answer

@@ -49,7 +49,10 @@ def format_results(results: list[dict]) -> str:
 
     blocks = []
     for number, item in enumerate(results, start=1):
-        title = item.get("title") or "Untitled"
+        # A title is text from the web. Kept on one line, it cannot push a
+        # line of its own in between "[1] Title" and the "URL:" line below,
+        # which the source check relies on (agent/source_check.py).
+        title = " ".join((item.get("title") or "").split()) or "Untitled"
         url = item.get("url") or "no url"
         # Collapse whitespace and cap the length: some pages return long
         # menus or lists that waste the model's attention.

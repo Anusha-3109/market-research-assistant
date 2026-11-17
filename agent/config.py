@@ -38,6 +38,17 @@ MODEL_CHOICES = {
     "google/gemini-3.1-flash-lite": "Gemini 3.1 Flash Lite (Google)",
 }
 
+# Answer styles offered in the app's settings: how the assistant words what
+# it says. The key is the style's name; the value is the hint shown next to
+# it. What each style tells the model is in agent/styles.py.
+ANSWER_STYLE = "Balanced"
+STYLE_CHOICES = {
+    "Balanced": "The assistant's normal way of writing",
+    "Formal": "Professional wording, for a document you hand to others",
+    "Friendly": "Warm and plain, with business terms explained",
+    "Concise": "The shortest useful answer, without introductions or closing remarks",
+}
+
 # The longest question the app accepts, in characters.
 MAX_QUESTION_CHARS = 2000
 

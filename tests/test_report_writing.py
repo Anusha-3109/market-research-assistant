@@ -295,7 +295,8 @@ def test_the_tool_returns_the_report_and_keeps_the_check_result_aside():
     assert text == "# Market research report: x"
     assert details == {"problems": [], "log": ["Report check: passed"],
                        "titles": {}, "official": []}
-    assert graph.request == {"product": "meal kits", "country": "Germany", "idea": "vegan bowls"}
+    assert graph.request == {"product": "meal kits", "country": "Germany",
+                             "idea": "vegan bowls", "style": "Balanced"}
 
 
 def test_the_tool_passes_on_page_titles_and_the_competitors_own_sites():

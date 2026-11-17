@@ -9,8 +9,10 @@ from langchain.agents.middleware import (
     HumanInTheLoopMiddleware,
     ModelFallbackMiddleware,
     ModelRequest,
+    ModelResponse,
     before_agent,
     dynamic_prompt,
+    wrap_model_call,
     wrap_tool_call,
 )
 
@@ -38,6 +40,8 @@ from agent.memory_tools import MEMORY_TOOLS
 from agent.models import make_model
 from agent.prompts import build_system_prompt
 from agent.report.tool import create_market_report
+from agent.source_check import check_answer
+from agent.styles import style_for_prompt
 from agent.tools import TOOLS
 
 # The chat agent's tools: the report workflow, the single-question tools
@@ -53,11 +57,29 @@ def prompt_with_profile(request: ModelRequest) -> str:
     time, so a preference saved a moment ago is already visible.
     """
     prompt = build_system_prompt()
+    # The answer style comes last, so the model reads it after the saved
+    # profile and knows it overrides a remembered style.
+    how_to_write = style_for_prompt(getattr(request.runtime.context, "answer_style", None))
     store = request.runtime.store
     if store is None:
-        return prompt
+        return prompt + how_to_write
     user_id = getattr(request.runtime.context, "user_id", None) or DEFAULT_USER
-    return prompt + profile_for_prompt(load_profile(store, user_id))
+    return prompt + profile_for_prompt(load_profile(store, user_id)) + how_to_write
+
+
+@wrap_model_call
+def keep_sources(request: ModelRequest, handler):
+    """Middleware that checks each answer the model writes: if the tools
+    reported where their information came from and the answer links to
+    nothing, the links are added (agent/source_check.py).
+
+    It wraps the model call and corrects the answer before it is saved, so
+    the conversation only ever holds the checked version.
+    """
+    response = handler(request)
+    checked = [check_answer(message, request.messages) if isinstance(message, AIMessage)
+               else message for message in response.result]
+    return ModelResponse(result=checked, structured_response=response.structured_response)
 
 
 # Tools whose "country" argument must come from the user, not from the model.
@@ -127,6 +149,7 @@ def assemble_agent(model, fallback_models: list, tools: list,
     - capture_profile saves lasting facts from the user's new message;
     - prompt_with_profile writes the system prompt, including the user's
       saved profile;
+    - keep_sources puts back the link to a source if the answer left it out;
     - require_country_from_user blocks a market tool call for a country the
       user never named;
     - ModelFallbackMiddleware repeats a failed call with a backup model.
@@ -137,6 +160,7 @@ def assemble_agent(model, fallback_models: list, tools: list,
     if extract_facts is not None:
         middleware.append(make_profile_capture(extract_facts))
     middleware.append(prompt_with_profile)
+    middleware.append(keep_sources)
     middleware.append(require_country_from_user)
     if fallback_models:
         middleware.append(ModelFallbackMiddleware(*fallback_models))
