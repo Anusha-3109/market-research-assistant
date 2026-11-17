@@ -33,7 +33,8 @@ from ui.password import password_ok
 from ui.research import render_tabs, render_turn, run_live
 from ui.runtime import get_runtime
 from ui.sidebar import FORGET, GUIDE, NEW, current_settings, render_sidebar
-from ui.start import OPEN_GUIDE, render_start_screen
+from ui.picker import BACK, open_picker, render_picker
+from ui.start import OPEN_GUIDE, OPEN_PICKER, render_start_screen
 from ui.styles import apply_styles
 
 st.set_page_config(page_title=APP_NAME, page_icon=str(LOGO),
@@ -111,11 +112,20 @@ elif action:
 # turn at a time; the others are tabs.
 turns = to_turns(to_blocks(load_messages(runtime.agent, thread_id)))
 
-question = st.chat_input(
-    "Answer the question above to continue" if waiting
-    else "Ask a follow-up" if turns else "Ask about a market",
-    key="question", submit_mode="disable", disabled=waiting is not None,
-    max_chars=MAX_QUESTION_CHARS)
+# A picker screen, opened by clicking a start card, belongs to one empty
+# conversation and lives in the browser session, like the guide below.
+picker = st.session_state.get("picker")
+picker = picker if picker and picker["thread"] == thread_id and not turns else None
+
+# The picker has its own box in the middle of the page, so the question box
+# at the bottom is left out while one is open.
+question = None
+if not picker:
+    question = st.chat_input(
+        "Answer the question above to continue" if waiting
+        else "Ask a follow-up" if turns else "Ask about a market",
+        key="question", submit_mode="disable", disabled=waiting is not None,
+        max_chars=MAX_QUESTION_CHARS)
 
 # The "How it works" guide is shown for this conversation only, and only
 # until a real question is asked. It lives in the browser session, not in
@@ -132,7 +142,8 @@ live = st.empty()
 answer = None           # the answer to an approval form, once submitted
 
 if not turns:
-    # An empty conversation shows the start screen or the guide.
+    # An empty conversation shows the start screen, the guide, or the picker
+    # of the start card that was clicked.
     with view.container():
         if guide and not question:
             chosen = render_guide(guide)
@@ -140,14 +151,23 @@ if not turns:
                 st.session_state.pop("guide", None)
                 st.rerun()
             question = chosen
+        elif picker and not question:
+            chosen = render_picker(picker)
+            if chosen == BACK:
+                st.session_state.pop("picker", None)
+                st.rerun()
+            question = chosen
         else:
             chosen = render_start_screen()
             if chosen == OPEN_GUIDE:
                 open_guide(thread_id)
                 st.rerun()
-            question = chosen or question
+            if chosen and chosen.startswith(OPEN_PICKER):
+                open_picker(thread_id, chosen.removeprefix(OPEN_PICKER))
+                st.rerun()
     if question:
         st.session_state.pop("guide", None)
+        st.session_state.pop("picker", None)
 elif not question:
     with view.container():
         shown = render_tabs(turns, thread_id, locked=waiting is not None)

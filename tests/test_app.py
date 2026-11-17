@@ -102,10 +102,14 @@ def test_an_empty_conversation_shows_the_headline_and_nine_example_cards(page):
     assert button(app, "learn").label == "Learn how **Markavi** works."
 
 
-def test_clicking_an_example_card_asks_its_question_and_shows_the_answer(page):
+def test_a_card_leads_through_its_picker_to_the_answer(page):
     app = page([AIMessage("HelloFresh has 11,447 employees.")])
 
+    # The card opens its picker; a company chip fills the box; the button
+    # sends it. (The pickers have their own tests in test_picker.py.)
     button(app, "card_5").click().run()
+    button(app, "pick_company_0").click().run()
+    button(app, "picker_go").click().run()
 
     assert not app.exception
     shown = texts(app)

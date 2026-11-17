@@ -10,7 +10,9 @@ import streamlit as st
 
 from agent.config import APP_NAME
 
-# (icon, title, example shown on the card, question sent to the agent)
+# (icon, title, example shown on the card, the same example as a full question)
+# Clicking a card opens its picker; the full question documents what the
+# example on the card stands for.
 EXAMPLES = [
     (":material/description:", "Write a report", "Healthy meal delivery in Germany",
      "Give me a market research report for healthy meal delivery in Germany."),
@@ -35,11 +37,15 @@ CARDS_PER_ROW = 3
 
 # Returned by render_start_screen when the wide card was clicked.
 OPEN_GUIDE = "__open_guide__"
+# Returned when an example card was clicked: this prefix, then the card's
+# title. The card opens its picker screen (ui/picker.py).
+OPEN_PICKER = "__open_picker__:"
 
 
 def render_start_screen() -> str | None:
-    """Show the headline and the cards. Returns the question of the example
-    card that was clicked, OPEN_GUIDE if the wide card was clicked, or None."""
+    """Show the headline and the cards. Returns OPEN_PICKER plus the title
+    of the example card that was clicked, OPEN_GUIDE if the wide card was
+    clicked, or None."""
     chosen = None
 
     with st.container(key="hero"):
@@ -67,5 +73,5 @@ def _card(column, index: int) -> str | None:
         # Two paragraphs in the label: a bold title, then the example.
         if st.button(f"**{title}**\n\n{example}", key=f"card_{index}", icon=icon,
                      width="stretch", wrap=True):
-            return question
+            return OPEN_PICKER + title
     return None

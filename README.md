@@ -121,20 +121,39 @@ searches.
 
 ### The start screen
 
-Nine example cards float around the headline. Click one to send its
-question, or type your own in the box at the bottom.
+Nine example cards float around the headline. Click one to open its picker,
+or type your own question in the box at the bottom.
 
-| Card | What it asks |
-|---|---|
-| Write a report | A full report on healthy meal delivery in Germany |
-| Check demand | Whether interest in meal kits is rising in Germany |
-| Compare prices | What Prepmymeal charges |
-| Follow the news | What changed in organic baby food in France |
-| Find competitors | Who sells vegan protein snacks in the UK |
-| Research a company | How big HelloFresh is |
-| Size a market | How big the vegan snack market in the UK is |
-| Test my idea | A report for a vegan bakery in the Netherlands |
-| Set your market | Tells the assistant your country and industry |
+### The pickers
+
+Each card opens a picker screen: a box in the middle of the page and rows of
+chips underneath. Clicking chips fills the box with a complete question, and
+you can change it or type your own before pressing **Research**. Nothing is
+sent to the assistant until you press the button, so opening a picker and
+trying chips costs nothing.
+
+| Card | Chips | What the box reads, for example |
+|---|---|---|
+| Write a report | Product, country | Give me a market research report for oat milk in Germany. |
+| Check demand | Product, country | Is interest in oat milk rising in Germany? |
+| Follow the news | Product, country | What has changed recently in the organic baby food market in France? |
+| Find competitors | Product, country | Who are the main companies selling vegan snacks in the United Kingdom? |
+| Size a market | Product, country | How big is the pet food market in the Netherlands? |
+| Research a company | Company | How big is HelloFresh? Give me its revenue and number of employees. |
+| Compare prices | Company | What does Prepmymeal charge? |
+| Test my idea | Business idea, country | I want to open a vegan bakery in the Netherlands. Give me a market research report. |
+| Set your market | Country, industry | I am based in Germany and I work in meal delivery. (the button reads **Save**) |
+
+Products, companies and business ideas are grouped by industry. The first
+row of a picker chooses the industry (food and drink, beauty and skincare,
+pet care, health and fitness, baby and kids, fashion, home and living), and
+the rows below show that industry's chips: ten products, eight to ten
+companies and four business ideas each. The twelve countries are the same
+for every industry.
+
+One chip can be chosen per row; clicking it again takes it back. A company
+chip shows the company's own icon, or its first letter where the site has
+none. **Back to start** returns to the cards.
 
 The wider card, **"Learn how Markavi works"**, opens a guide in the chat:
 five numbered step cards, a written explanation, and follow-up chips
@@ -494,6 +513,13 @@ value put into a template is escaped by `fill()` in `ui/assets.py`, so a
 page title from the web is always shown as text and can never act as
 markup.
 
+**The pickers are data.** What each start card offers (its headline, its
+chip rows and the question they build) is one entry in `PICKERS` in
+`ui/picker.py`, and the chip lists are plain lists above it. Adding a
+product, a country or a whole new card is a change to that data, with no
+new drawing code. The question is built by plain functions that are tested
+without a browser.
+
 **One logo file.** The logo is a single SVG, `ui/static/logo.svg`. The
 app, the browser tab and this README all use that one file. Streamlit does
 not serve files from `ui/static/`, so inside the app the picture is passed
@@ -565,7 +591,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-433 tests, none of which use the internet or cost anything: outside
+499 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -587,6 +613,7 @@ services and the model are replaced with fakes.
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
 | `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
 | `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore, the password screen |
+| `test_picker.py` | The pickers: which question the chips build, and clicking through one on the page |
 | `test_app.py` | The page itself, run without a browser: cards, the research view and its tabs, guide, sidebar, approval form, a stopped run, missing key |
 | `test_agent.py` | How the agent is assembled; model fallback |
 
@@ -709,6 +736,7 @@ market-research-assistant/
 │   │   ├── *.js             two small scripts that hold the scroll position
 │   │   └── logo.svg         the Markavi logo
 │   ├── start.py             start screen and example cards
+│   ├── picker.py            the picker screen behind each card: box and chips
 │   ├── guide.py             the "How it works" guide
 │   ├── research.py          the research view: answer, steps, sources, live progress
 │   ├── approvals.py         the two approval forms

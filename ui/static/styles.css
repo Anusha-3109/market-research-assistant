@@ -493,3 +493,107 @@ a.gw-source:hover .gw-source-title { text-decoration: underline; }
 .gw-brand-name { font-size: 1.25rem; font-weight: 650; letter-spacing: -0.02em; color: #1c1c1a; }
 .gw-brand.large .gw-logo { width: 2.6rem; height: 2.6rem; }
 .gw-brand.large .gw-brand-name { font-size: 1.9rem; }
+
+/* --- the picker screens behind the start cards ---------------------------- */
+
+/* A wider column, so a row holds four chips. */
+[data-testid="stMainBlockContainer"]:has(.st-key-picker_head) { max-width: 56rem; }
+
+.st-key-picker_back button {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--glass-edge);
+    border-radius: 14px;
+    color: #55544f;
+}
+.st-key-picker_back button:hover { background: var(--glass-strong); border-color: #ffffff; }
+
+/* The headline, like the start screen's. */
+.st-key-picker_head { text-align: center; padding: 6vh 0 0.6rem; }
+.st-key-picker_head h1 {
+    font-size: clamp(2.2rem, 5.4cqw, 4rem);
+    font-weight: 400; letter-spacing: -0.03em; line-height: 1.05; padding: 0;
+}
+.st-key-picker_head h1 strong { font-weight: 650; }
+.st-key-picker_head p { color: #55544f; font-size: 1.05rem; }
+.st-key-picker_head h1, .st-key-picker_head p,
+.st-key-picker_head [data-testid="stMarkdownContainer"] { text-align: center !important; width: 100%; }
+.st-key-picker_head [data-testid="stHeadingWithActionElements"] { justify-content: center; }
+
+/* The box: one frosted pill holding the text field and the button. */
+.st-key-picker_box {
+    max-width: 46rem; margin: 0.4rem auto 0;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-edge);
+    border-radius: 34px;
+    padding: 0.5rem 0.55rem 0.5rem 1.1rem;
+    box-shadow: 0 10px 34px rgba(80, 60, 50, 0.08);
+    flex-wrap: nowrap !important;
+}
+.st-key-picker_box [data-testid="stTextInput"] { flex: 1 1 auto; min-width: 0; }
+.st-key-picker_box [data-testid="stTextInputRootElement"],
+.st-key-picker_box [data-testid="stTextInputRootElement"] > div,
+.st-key-picker_box input {
+    background: transparent !important; border: none !important; box-shadow: none !important;
+}
+.st-key-picker_box input { font-size: 1.15rem; color: #1c1c1a; }
+.st-key-picker_box [data-testid="InputInstructions"] { display: none; }
+.st-key-picker_go { flex: 0 0 auto; width: auto !important; }
+.st-key-picker_go button {
+    border-radius: 26px; padding: 0.7rem 1.35rem;
+    font-size: 1.05rem; font-weight: 600; white-space: nowrap;
+}
+
+/* The chip panel. */
+.st-key-picker_panel {
+    max-width: 48rem; margin: 1.1rem auto 0;
+    background: var(--glass);
+    border: 1px solid var(--glass-edge);
+    border-radius: 22px;
+    padding: 1.1rem 1.3rem 1.2rem;
+    backdrop-filter: blur(6px);
+}
+.st-key-picker_panel [data-testid="stCaptionContainer"] {
+    text-align: center; width: 100%;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.72rem; letter-spacing: 0.12em; color: #6b6a64;
+}
+.st-key-picker_panel [data-testid="stCaptionContainer"] p { text-align: center; }
+
+/* The chips. A chosen chip is a "primary" button, which the theme makes dark. */
+[class*="st-key-pick_"] { width: auto !important; }
+[class*="st-key-pick_"] button {
+    border-radius: 22px;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--glass-edge);
+    transition: background 120ms ease, transform 120ms ease;
+}
+[class*="st-key-pick_"] button[kind="secondary"] { background: rgba(255, 255, 255, 0.72); color: #3a3935; }
+[class*="st-key-pick_"] button[kind="secondary"]:hover {
+    background: #ffffff; border-color: #ffffff; transform: translateY(-1px);
+}
+[class*="st-key-pick_"] button p { font-size: 0.98rem; }
+/* The two-letter country code, in the place where other chips have an icon. */
+[class*="st-key-pick_country_"] button code {
+    background: none; padding: 0; color: inherit;
+    font-size: 0.8rem; font-weight: 600;
+}
+/* A company chip starts with a round tile showing the company's own icon
+   (the picture is set per company from Python). */
+[class*="st-key-pick_company_"] button::before {
+    content: ""; flex-shrink: 0;
+    width: 1.2rem; height: 1.2rem; margin-right: 0.45rem; border-radius: 50%;
+    background-color: #e4e7ee; background-size: contain;
+    background-position: center; background-repeat: no-repeat;
+}
+
+/* The industry row at the top of a picker: the same chips, a little
+   stronger, because they decide what the rows below show. */
+[class*="st-key-field_"] { width: auto !important; }
+[class*="st-key-field_"] button {
+    border-radius: 22px; padding: 0.4rem 0.9rem;
+    border: 1px solid var(--glass-edge);
+}
+[class*="st-key-field_"] button[kind="secondary"] { background: rgba(255, 255, 255, 0.45); color: #3a3935; }
+[class*="st-key-field_"] button[kind="secondary"]:hover { background: #ffffff; border-color: #ffffff; }
+[class*="st-key-field_"] button p { font-size: 0.98rem; font-weight: 500; }
+.st-key-picker_row_field { padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.9); margin-bottom: 0.4rem; }
