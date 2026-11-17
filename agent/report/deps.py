@@ -12,6 +12,7 @@ from typing import Callable
 from langchain_core.exceptions import OutputParserException
 from pydantic import ValidationError
 
+from agent import usage
 from agent.config import MODEL_NAME, TEMPERATURE
 from agent.fallback import try_sources
 from agent.models import make_model
@@ -20,6 +21,8 @@ from agent.models import make_model
 @dataclass
 class Deps:
     # ask(schema, instructions, material) -> an instance of schema.
+    # An ask that calls a model reports each call with usage.record(), so
+    # the report can show what it cost.
     ask: Callable
     # search(query) -> list of results (title, url, content).
     search: Callable[[str], list[dict]]
@@ -50,7 +53,7 @@ def ask_with_retry(structured, instructions: str, material: str):
     ]
     for attempt in range(ASK_ATTEMPTS):
         try:
-            return structured.invoke(messages)
+            return usage.answer_of(structured.invoke(messages))
         except (ValidationError, OutputParserException) as error:
             if attempt == ASK_ATTEMPTS - 1:
                 raise
@@ -80,7 +83,10 @@ def default_deps(model_name: str = MODEL_NAME,
         # with_structured_output makes the model answer by "calling a
         # function" whose arguments are the schema's fields, so the reply
         # always has the right shape.
-        structured = model.with_structured_output(schema, method="function_calling")
+        # include_raw=True also returns the raw message, which holds the
+        # tokens and the cost of the call (see usage.answer_of).
+        structured = model.with_structured_output(schema, method="function_calling",
+                                                  include_raw=True)
         return ask_with_retry(structured, instructions, material)
 
     def search(query: str) -> list[dict]:

@@ -15,6 +15,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from agent.citations import Source, number_citations, titles_in_results, without_references
 from agent.config import REPORT_HEADING
 from agent.report.tool import REPORT_TOOL_NAME
+from agent.usage import BACKGROUND_KEY, Usage, total, usage_of
 
 TITLE_MAX_CHARS = 42
 MAX_CONVERSATIONS = 20
@@ -77,6 +78,11 @@ class Block:
     activity: list[str] = field(default_factory=list)
     cited: str = ""
     sources: list[Source] = field(default_factory=list)
+    # The tokens and cost of every model call made to produce this block.
+    usage: Usage = field(default_factory=Usage)
+    # True for a report written before costs were recorded: the workflow's
+    # own calls are missing from the figures.
+    usage_is_partial: bool = False
 
 
 def to_blocks(messages: list) -> list[Block]:
@@ -92,11 +98,15 @@ def to_blocks(messages: list) -> list[Block]:
     question = ""
     titles: dict[str, str] = {}
     official: set[str] = set()
+    # What the background call that read the user's message used. It is
+    # shown with the answer to that message.
+    background = Usage()
 
     def assistant() -> Block:
-        nonlocal current
+        nonlocal current, background
         if current is None:
-            current = Block(role="assistant")
+            current = Block(role="assistant", usage=background)
+            background = Usage()
             blocks.append(current)
         return current
 
@@ -115,11 +125,19 @@ def to_blocks(messages: list) -> list[Block]:
 
         if isinstance(message, HumanMessage):
             finish()
+            if background.calls and blocks:
+                # The question before this one never got an answer (it was
+                # stopped). What its background call used was still paid
+                # for, so it stays with that question and in the total.
+                blocks[-1].usage += background
             blocks.append(Block(role="user", text=content))
             current, question, titles, official = None, content, {}, set()
+            noted = message.response_metadata.get(BACKGROUND_KEY)
+            background = total([noted] if noted else [])
 
         elif isinstance(message, AIMessage):
             block = assistant()
+            block.usage += usage_of(message)
             for call in message.tool_calls:
                 block.activity.append(describe_tool_call(call["name"], call["args"]))
             if content.strip():
@@ -136,6 +154,10 @@ def to_blocks(messages: list) -> list[Block]:
             else:
                 block.text = (block.text + "\n\n" + content).strip()
             block.activity += [f"Workflow: {line}" for line in details.get("log", [])]
+            if "usage" in details:
+                block.usage += total([details["usage"]])
+            elif block.report:
+                block.usage_is_partial = True
             titles.update(details.get("titles", {}))
             official.update(details.get("official", []))
 
@@ -144,6 +166,8 @@ def to_blocks(messages: list) -> list[Block]:
             titles.update(titles_in_results(content))
 
     finish()
+    if background.calls and blocks:
+        blocks[-1].usage += background      # the last question was stopped unanswered
     return blocks
 
 

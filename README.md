@@ -114,8 +114,9 @@ streamlit run app.py
 It opens in your browser at `http://localhost:8501`. If a key is missing,
 the page shows setup instructions.
 
-A report costs a few cents of OpenRouter credit and about 20 Tavily
-searches.
+A report costs about three cents of OpenRouter credit (measured: $0.03 for
+23 model calls) and about 20 Tavily searches. A single question costs a
+fraction of a cent. The app shows the exact figure under every answer.
 
 ## How to use it
 
@@ -200,7 +201,7 @@ same two-column view:
 | Where | What it shows |
 |---|---|
 | Left | The answer. Each fact carries a small number such as [1] that links to its source |
-| Right, top | "Researching" with a timer and each step as it happens, then "Done" with the full list |
+| Right, top | "Researching" with a timer and each step as it happens, then "Done" with the full list and what the answer cost, for example "4,367 tokens · $0.00076" |
 | Right, below | "Sources": the numbered pages the answer cites, with their site. A company's own site is marked **Official** |
 | Top | One tab per question in the conversation. The newest opens first |
 
@@ -568,6 +569,30 @@ The last point is an instruction, and an instruction can be forgotten: in
 test runs the Friendly style left out the source link in about one answer in
 thirty. So it is also checked by code, see the next decision.
 
+**The cost shown is the cost charged.** The model service, OpenRouter,
+returns with every call the tokens it read and wrote and what the call cost
+in US dollars. The app adds those up and shows them; it does not multiply
+tokens by a price list, which would be wrong as soon as a price changed. If
+the service gives no cost for a call, the app says "cost not reported" and
+never invents one.
+
+The app calls a model in three places, and each needed its own way of
+counting:
+
+| Where | How it is counted |
+|---|---|
+| The chat agent | Each reply is a message in the saved conversation and carries its own figures, so they are simply read back |
+| The report workflow, about 20 calls per report | Its replies are not messages. Each step runs inside a collector, and what was collected is stored in the report's own state. It therefore survives the pause for the competitor review, adds up across the steps that run in parallel, and includes a call that had to be repeated |
+| A background call that reads each message for facts to remember | Its figures are kept with the user's message and shown with the answer to it |
+
+A report that was cancelled at the review, or that failed, still shows what
+it cost up to that point. All the arithmetic and wording is in
+`agent/usage.py`.
+
+It was checked against the service itself: for one question and one report
+the app counted 26 calls and $0.030615, and the account at OpenRouter showed
+$0.030615 spent in the same period.
+
 **A length limit that cannot break the research.** The limit is set on each
 model call of the chat agent by one piece of middleware,
 `limit_answer_length`. The model service says why it stopped writing, and
@@ -681,7 +706,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-554 tests, none of which use the internet or cost anything: outside
+585 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -703,6 +728,7 @@ services and the model are replaced with fakes.
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
 | `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
 | `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore, the password screen |
+| `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
 | `test_source_check.py` | The source check: a missing link is put back, an answer that has one is left alone, and addresses inside web text are never used |
 | `test_styles.py` | The answer styles, checked by what the model is told: in a chat turn, while a report is written, and from the setting on the page; and that every style keeps the facts and their sources |
@@ -847,6 +873,7 @@ market-research-assistant/
 │   ├── styles.py            the answer styles: formal, friendly, concise
 │   ├── source_check.py      puts back the link to a source if an answer left it out
 │   ├── answer_length.py     the limit on the length of a chat answer
+│   ├── usage.py             token usage and cost of the model calls
 │   ├── session.py           conversations, questions and answers, for any interface
 │   ├── citations.py         numbered citations and the source list
 │   ├── pdf_export.py        a report as a PDF file
@@ -883,8 +910,17 @@ market-research-assistant/
 
 **Not built yet**
 
-- Token usage and cost are not shown.
 - Tracing with LangSmith is prepared in `.env.example` but not switched on.
+
+**Token usage and cost**
+
+- Only model calls are counted. Web searches and page reading are billed by
+  Tavily in its own credits; a report uses about 20 searches.
+- A report written before this feature shows the chat part only, and says
+  so. The workflow's calls were not recorded then.
+- A run that was stopped shows what had been saved up to the stop. A model
+  call that was in progress at that moment may be missing.
+- The elapsed time of an answer is not saved, but its cost is.
 
 **Maximum answer length**
 
@@ -979,7 +1015,7 @@ market-research-assistant/
 
 ## What I would improve
 
-1. Show token usage and cost, and switch on tracing.
+1. Switch on tracing with LangSmith.
 2. Remember settings between visits.
 3. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.

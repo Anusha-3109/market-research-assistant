@@ -250,6 +250,10 @@ class ReportState(TypedDict, total=False):
 
     # One line per step, for showing progress.
     log: Annotated[list[str], operator.add]
+    # What the model calls of each step used: one record per step that
+    # called the model (agent/usage.py). Kept in the state, so it is saved
+    # with the report's progress and survives the pause for the review.
+    usage: Annotated[list[dict], operator.add]
 
 
 # Every model class that can appear in the workflow state. The checkpointer

@@ -25,6 +25,7 @@ from agent.answer_length import (
     was_cut_off,
     with_cut_off_note,
 )
+from agent import usage
 from agent.approval import SAVE_APPROVAL_CONFIG, Pause, Progress, read_pause
 from agent.config import (
     FALLBACK_MODELS,
@@ -159,17 +160,29 @@ def make_profile_capture(extract):
 
     A before_agent hook runs once per user message, ahead of the first
     model call, so the profile in the system prompt is already up to date.
+
+    Reading the message is a model call of its own. What it used is kept
+    with the user's message, so the app can count it with that question.
+    The message is replaced by a copy that carries the figures; its words
+    are untouched and the figures are never sent to a model.
     """
     @before_agent
-    def capture_profile(state, runtime) -> None:
+    def capture_profile(state, runtime) -> dict | None:
         if runtime.store is None or not state["messages"]:
             return None
         last = state["messages"][-1]
         if getattr(last, "type", "") != "human" or not isinstance(last.content, str):
             return None
         user_id = getattr(runtime.context, "user_id", None) or DEFAULT_USER
-        remember_from_message(runtime.store, user_id, last.content, extract)
-        return None
+        with usage.collecting() as calls:
+            remember_from_message(runtime.store, user_id, last.content, extract)
+        if not calls:
+            return None
+        used = usage.to_record(usage.total(calls))
+        noted = last.model_copy(update={"response_metadata": {
+            **last.response_metadata, usage.BACKGROUND_KEY: used}})
+        # Same id, so this replaces the message instead of adding one.
+        return {"messages": [noted]}
 
     return capture_profile
 

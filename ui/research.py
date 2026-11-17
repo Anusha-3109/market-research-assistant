@@ -28,6 +28,8 @@ from agent.pdf_export import report_to_pdf
 from agent.report_check import format_check
 from agent.session import Turn, describe_tool_call, report_title, short_title
 from agent.tools import safe_filename
+from agent import usage
+from agent.usage import Usage
 from ui.approvals import render_pause
 from ui.assets import Html, fill, join, load, script_tag
 
@@ -86,8 +88,13 @@ def plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
-def steps_panel(title: str, steps: list[str], elapsed: float | None, source_count: int) -> None:
-    """The panel listing what the agent did."""
+def steps_panel(title: str, steps: list[str], elapsed: float | None, source_count: int,
+                used: Usage | None = None, used_is_partial: bool = False) -> None:
+    """The panel listing what the agent did, and what it cost.
+
+    used: the tokens and cost of the model calls made for this answer. Left
+          out while the agent is still working, when they are not known yet.
+    """
     with panel("steps_panel"):
         took = format_seconds(elapsed)
         st.markdown(f"**{title}**" + (f" :gray[· {took}]" if took else ""))
@@ -96,6 +103,9 @@ def steps_panel(title: str, steps: list[str], elapsed: float | None, source_coun
             st.caption(":material/check_circle: " + (
                 f"{plural(len(steps), 'step')} · {plural(source_count, 'source')}" if steps
                 else "Answered from this conversation, without a new search"))
+        spent = usage.summary(used, partial=used_is_partial) if used else ""
+        if spent:
+            st.caption(f":material/toll: {spent}", help=usage.details(used))
         for step in steps[-STEPS_SHOWN:] if title != "Done" else steps[:STEPS_SHOWN]:
             st.caption(f":material/search: {step}")
         hidden = len(steps) - STEPS_SHOWN
@@ -250,7 +260,9 @@ def render_turn(turn: Turn, index: int, thread_id: str, is_latest: bool,
         steps = block.activity if block else []
         sources = block.sources if block else []
         steps_panel("Waiting for you" if waiting is not None else "Done",
-                    [step.removeprefix("Workflow: ") for step in steps], elapsed, len(sources))
+                    [step.removeprefix("Workflow: ") for step in steps], elapsed, len(sources),
+                    used=block.usage if block else None,
+                    used_is_partial=bool(block and block.usage_is_partial))
         sources_panel(sources, empty="None yet." if waiting is not None
                       else "No pages were cited.")
 

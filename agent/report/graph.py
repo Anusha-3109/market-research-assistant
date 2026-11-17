@@ -30,9 +30,12 @@ A graph has nodes (the steps) and edges (which step follows which). The
 state is passed from node to node, and each node returns the fields it adds.
 """
 
+from functools import wraps
+
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from agent import usage
 from agent.report.deps import Deps, default_deps
 from agent.report.research import make_research_steps
 from agent.report.review import after_review, make_review_step
@@ -95,6 +98,24 @@ RESEARCH_NODES = ["research_competitor", "research_market", "research_news",
                   "research_trend"]
 
 
+def counted(step):
+    """Wrap a step so that the model calls it makes are counted.
+
+    The step runs inside usage.collecting(). Whatever was reported while it
+    ran is added to the step's result under "usage", and the state adds the
+    records of all steps together.
+    """
+    @wraps(step)
+    def run(state):
+        with usage.collecting() as calls:
+            result = step(state)
+        if calls and isinstance(result, dict):
+            return {**result, "usage": [usage.to_record(usage.total(calls))]}
+        return result
+
+    return run
+
+
 def build_report_graph(deps: Deps | None = None, review: bool = False):
     """Build and compile the report workflow.
 
@@ -111,7 +132,7 @@ def build_report_graph(deps: Deps | None = None, review: bool = False):
 
     graph = StateGraph(ReportState)
     for name, function in steps.items():
-        graph.add_node(name, function)
+        graph.add_node(name, counted(function))
 
     graph.add_edge(START, "understand_request")
     graph.add_edge("understand_request", "find_candidates")

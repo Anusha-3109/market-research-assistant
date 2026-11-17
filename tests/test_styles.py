@@ -147,9 +147,18 @@ def test_a_style_leaves_tables_and_refusals_alone():
 
 # --- seam 2: what the model is told while a report is written ----------------------------------
 
-def write_report(context: UserContext, asks_for_report: AIMessage | None = None):
+def write_report(context: UserContext, asks_for_report: AIMessage | None = None,
+                 model_call=None, then=None, expect_report: bool = True):
     """Ask the agent for a report the way the app does, with these user
-    settings. Returns three things:
+    settings.
+
+    model_call:    called each time the workflow asks its model something,
+                   for a test that needs the model to report what a call used.
+    then:          called with the agent once it has stopped, for a test that
+                   carries on after the pause for the competitor review.
+    expect_report: False for a test in which no report is written.
+
+    Returns three things:
 
     - what the report workflow told its model, grouped by the kind of
       answer it asked for: {"Swot": [...], "ResearchBrief": [...], ...};
@@ -175,6 +184,8 @@ def write_report(context: UserContext, asks_for_report: AIMessage | None = None)
 
     def ask(schema, instructions, material):
         heard.setdefault(schema.__name__, []).append(instructions)
+        if model_call:
+            model_call()
         if schema is Swot:
             return Swot(strengths=["a", "b"], weaknesses=["a", "b"],
                         opportunities=["a", "b"], threats=["a", "b"])
@@ -189,10 +200,21 @@ def write_report(context: UserContext, asks_for_report: AIMessage | None = None)
     agent = assemble_agent(model, [], tools=[create_market_report], checkpointer=InMemorySaver(),
                            store=InMemoryStore(), extract_facts=lambda message: {})
     # The workflow is normally built with the real model and the real search.
-    with patch("agent.report.tool.report_graph", lambda *args, **kwargs: build_report_graph(deps)):
+    # As in the app, one workflow is built per setting and then reused.
+    built: dict[bool, object] = {}
+
+    def workflow(review=False, *args, **kwargs):
+        if review not in built:
+            built[review] = build_report_graph(deps, review=review)
+        return built[review]
+
+    with patch("agent.report.tool.report_graph", workflow):
         list(stream_steps(agent, "Give me a market research report for meal kits in Germany.",
                           "thread-report", context=context))
-    assert "Swot" in heard, "the report workflow did not reach the SWOT step"
+        if then:
+            then(agent)
+    if expect_report:
+        assert "Swot" in heard, "the report workflow did not reach the SWOT step"
     return heard, load_messages(agent, "thread-report"), model
 
 

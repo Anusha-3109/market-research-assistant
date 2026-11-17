@@ -32,6 +32,12 @@ GOOD_SWOT = Swot(strengths=["Fresh brand", "Low prices"],
                  opportunities=["Growing market", "Vegan demand"],
                  threats=["HelloFresh's scale", "Price pressure"])
 
+# What the report's details say about model calls when the stand-in workflow
+# made none.
+NOTHING_USED = {"calls": 0, "input_tokens": 0, "output_tokens": 0,
+                "cost": 0.0, "priced_calls": 0}
+
+
 
 def competitor(name: str, shop: str = "", offer: str = "Meal kits") -> Competitor:
     return Competitor(name=name, shop_url=shop, evidence_url=f"https://list.example/{name}",
@@ -294,7 +300,7 @@ def test_the_tool_returns_the_report_and_keeps_the_check_result_aside():
 
     assert text == "# Market research report: x"
     assert details == {"problems": [], "log": ["Report check: passed"],
-                       "titles": {}, "official": []}
+                       "titles": {}, "official": [], "usage": NOTHING_USED}
     assert graph.request == {"product": "meal kits", "country": "Germany",
                              "idea": "vegan bowls", "style": "Balanced"}
 
@@ -332,7 +338,7 @@ def test_a_failure_inside_the_workflow_becomes_a_readable_message():
 
     assert text.startswith("The report could not be produced")
     assert "no internet" in text
-    assert details == {}
+    assert details == {"usage": NOTHING_USED}
 
 
 def test_progress_lines_are_passed_on_as_each_step_finishes():
@@ -348,7 +354,7 @@ def test_a_run_that_produces_no_report_gives_a_readable_message():
     text, details = run_report("meal kits", "Germany", "", graph=FakeGraph({}))
 
     assert text.startswith("The report could not be produced")
-    assert details == {}
+    assert details == {"usage": NOTHING_USED}
 
 
 def test_the_report_tool_hands_its_result_straight_to_the_user():

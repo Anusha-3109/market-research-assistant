@@ -14,6 +14,7 @@ from agent.config import MODEL_NAME, REVIEW_COMPETITORS, TEMPERATURE
 from agent.countries import find_country
 from agent.memory import UserContext
 from agent.report.deps import default_deps
+from agent import usage
 from agent.report.graph import build_report_graph
 from agent.styles import known_style
 
@@ -35,6 +36,12 @@ def own_sites(final: dict) -> list[str]:
     urls = [c.shop_url for c in final.get("competitors", [])]
     urls += [p.price_source for p in final.get("profiles", [])]
     return sorted({domain_of(url) for url in urls if url})
+
+
+def used(final: dict) -> dict:
+    """The tokens and cost of all the workflow's model calls, as one plain
+    record for the tool's details."""
+    return usage.to_record(usage.total(final.get("usage")))
 
 
 def run_report(product: str, country: str, idea: str, graph=None,
@@ -81,15 +88,18 @@ def run_report(product: str, country: str, idea: str, graph=None,
         raise
     except Exception as error:  # a failed model call or network problem
         return (f"The report could not be produced because a step failed: "
-                f"{error}. Please try again."), {}
+                f"{error}. Please try again."), {"usage": used(final)}
 
     if final.get("cancelled"):
-        return CANCELLED_MESSAGE, {"log": final.get("log", [])}
+        return CANCELLED_MESSAGE, {"log": final.get("log", []), "usage": used(final)}
     if "report" not in final:
-        return "The report could not be produced. Please try again.", {}
+        return "The report could not be produced. Please try again.", {"usage": used(final)}
     return final["report"], {
         "problems": final.get("problems", []),
         "log": final.get("log", []),
+        # What the workflow's model calls used. Shown with the report, also
+        # when it was cancelled or failed: that work was paid for too.
+        "usage": used(final),
         # For the app's source list: what each page is called, and which
         # sites are a competitor's own.
         "titles": final.get("titles", {}),

@@ -31,6 +31,7 @@ from langgraph.store.base import BaseStore
 from langgraph.store.sqlite import SqliteStore
 from pydantic import BaseModel, Field
 
+from agent import usage
 from agent.config import MEMORY_BACKUP, MEMORY_DB, PROFILE_KEYS, PROFILE_VALUE_MAX_CHARS
 
 DEFAULT_USER = "default-user"
@@ -232,13 +233,16 @@ EXTRACTION_INSTRUCTIONS = (
 def make_fact_extractor(model) -> Callable[[str], dict[str, str]]:
     """Build the function that pulls lasting facts out of a message, using
     a model with a fixed answer shape."""
-    structured = model.with_structured_output(ProfileFacts, method="function_calling")
+    # include_raw=True also returns the raw message, which holds the tokens
+    # and the cost of this call, so it can be counted (agent/usage.py).
+    structured = model.with_structured_output(ProfileFacts, method="function_calling",
+                                              include_raw=True)
 
     def extract(text: str) -> dict[str, str]:
-        facts = structured.invoke([
+        facts = usage.answer_of(structured.invoke([
             {"role": "system", "content": EXTRACTION_INSTRUCTIONS},
             {"role": "user", "content": text},
-        ])
+        ]))
         return {key: value for key, value in facts.model_dump().items() if value.strip()}
 
     return extract
