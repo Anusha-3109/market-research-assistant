@@ -1,4 +1,11 @@
+<p align="center">
+  <img src="ui/static/logo.svg" width="84" alt="Markavi logo">
+</p>
+
 # Markavi: an AI market research assistant
+
+**Live app:** <https://markavi-1037824678664.europe-west1.run.app>
+(password protected, see [Deployment](#deployment))
 
 An AI agent that researches a market for a first-time founder: it finds the
 real competitors in a country, reads their prices from their own websites,
@@ -67,7 +74,7 @@ agent with tools can decide what to look up next.
 
 | Capability | Detail |
 |---|---|
-| Web app | A chat interface with example cards, live progress, forms for your decisions, and saved conversations |
+| Web app | Example cards to start from, then a research view: the answer on the left, live steps and numbered sources on the right, one tab per question |
 | Market research report | Six fixed sections: market overview, competitors, pricing, trends, SWOT analysis, references |
 | Verified competitors | Each candidate is checked: does it sell this product, in this country? Others are dropped with the reason |
 | First-hand prices | Read only from the competitor's own website; the source link is set by code |
@@ -75,7 +82,11 @@ agent with tools can decide what to look up next.
 | Your review | The agent pauses so you can approve, remove or add competitors, or cancel |
 | Save with approval | A report is written to a file only after you approve, and you can change the title |
 | Memory | Remembers the conversation across restarts, and your country, industry and idea across conversations |
-| Resilience | Every data source has a free backup, so one outage does not stop a report |
+| Numbered sources | Every link in an answer becomes a number such as [1]; the source list shows each page's title and site, and marks a company's own site as Official |
+| Download | Any answer as a Markdown file or a PDF |
+| Stop | A run can be stopped; what was found so far is kept and the conversation continues |
+| Resilience | Every data source has a free backup, so one outage does not stop a report. If the model leaves out a required field, the question is asked again instead of losing the report |
+| Deployed | Runs on Google Cloud Run behind a password, and redeploys itself after the tests pass |
 
 The assistant does **not** give investment or financial advice, invent or
 estimate numbers, use paid databases, or answer questions unrelated to
@@ -140,6 +151,10 @@ five numbered step cards, a written explanation, and follow-up chips
 is fixed text, so it appears instantly and costs nothing.
 
 On a narrow window the cards sit in rows of three.
+
+The Markavi logo, a dark tile with a rising line, appears next to the
+name in the sidebar, on the "Learn how Markavi works" card, on the
+password screen of the deployed copy, and as the icon of the browser tab.
 
 ### Ask for a report
 
@@ -355,7 +370,7 @@ facts. Only the SWOT is written by the model, from those sections.
 
 ### 3. The web app
 
-A Streamlit app, kept as a thin layer over the agent. It calls three
+A Streamlit app, kept as a thin layer over the agent. It calls four
 functions and contains no agent logic:
 
 | Function | Used when |
@@ -363,6 +378,7 @@ functions and contains no agent logic:
 | `stream_steps` | The user asks a question |
 | `resume_steps` | The user submits an approval form |
 | `pending_pause` | The page loads, to see if a form should be shown |
+| `settle_stopped_turn` | The page loads, to tidy a run that was stopped half-way |
 
 Streamlit reruns the page script on every click, so nothing important is
 kept in the page. The conversation is read from the agent's saved state on
@@ -487,6 +503,15 @@ value put into a template is escaped by `fill()` in `ui/assets.py`, so a
 page title from the web is always shown as text and can never act as
 markup.
 
+**One logo file.** The logo is a single SVG, `ui/static/logo.svg`. The
+app, the browser tab and this README all use that one file. Streamlit does
+not serve files from `ui/static/`, so inside the app the picture is passed
+to the stylesheet as a CSS variable and drawn from there.
+
+**The name is set once.** `APP_NAME` in `agent/config.py` is the only
+place the app's name is written; the page title, the sidebar, the guide
+and the password screen all read it from there.
+
 **Download and save are separate.** A download goes to the user's own
 computer and needs no approval. Saving writes on the machine running the
 app, so it goes through the agent and its approval step.
@@ -522,6 +547,10 @@ sources as plain functions, so the tests replace them with fakes.
   saying what to do.
 - **A failed source**: the next source is tried; if all fail, the tool
   returns a readable message and the report says "not found".
+- **An answer from the model in the wrong shape**: in the report workflow
+  the question is asked again, up to three times, with the problem named.
+- **A run stopped half-way**: the conversation is tidied the next time the
+  page loads, so it can continue.
 - **A failed step in the workflow or the model**: the app shows a readable
   error and keeps it on screen.
 - **A runaway loop**: tool rounds are limited to 12 per question.
@@ -534,6 +563,9 @@ sources as plain functions, so the tests replace them with fakes.
 - **Privacy**: only four fixed kinds of fact can be remembered; names,
   contact details and finances are not saved; `data/` and `.env` are
   excluded from Git.
+- **A deployed copy**: a password screen comes before anything else, the
+  keys live in Secret Manager and never in the image, and the app runs as
+  an account that can reach only its own secrets and bucket.
 - **Boundaries**: investment advice and off-topic requests are declined.
 
 ## Tests
@@ -553,6 +585,7 @@ services and the model are replaced with fakes.
 | `test_trends.py` | The rising, falling or stable calculation |
 | `test_names.py` | Matching company names |
 | `test_report_workflow.py`, `test_report_research.py`, `test_report_writing.py` | The report workflow, step by step |
+| `test_report_deps.py` | Asking the model again when its answer is missing a required field |
 | `test_report_check.py` | The report checker |
 | `test_memory.py` | Both kinds of memory and the country check |
 | `test_approval.py` | Every decision at both approval points, live progress, form answers |
