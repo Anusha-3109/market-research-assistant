@@ -24,16 +24,23 @@ from tests.test_app import make_runtime, page  # noqa: F401  (page is a fixture)
 
 
 class ListeningModel(GenericFakeChatModel):
-    """A fake model that answers "ok" and keeps everything it was sent."""
+    """A fake model that answers "ok" and keeps everything it was sent:
+    the messages of each call, and the settings each call was made with
+    (such as a limit on the length of the answer)."""
 
     received: list = Field(default_factory=list)
+    settings: list = Field(default_factory=list)
 
     def bind_tools(self, tools, **kwargs):
-        return self
+        # A real model keeps the settings it is given together with the
+        # tools. Which tools it was offered does not matter to these tests.
+        kwargs.pop("tool_choice", None)
+        return self.bind(**kwargs) if kwargs else self
 
-    def _generate(self, messages, *args, **kwargs):
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         self.received.append(messages)
-        return super()._generate(messages, *args, **kwargs)
+        self.settings.append(kwargs)
+        return super()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
 
     def told(self) -> str:
         """The instructions (system prompt) of the latest call."""
@@ -140,21 +147,25 @@ def test_a_style_leaves_tables_and_refusals_alone():
 
 # --- seam 2: what the model is told while a report is written ----------------------------------
 
-def told_in_report(style: str | None) -> dict[str, list[str]]:
-    """Ask the agent for a report with this answer style, the way the app
-    does, and return the instructions the model received while the report
-    was written, grouped by the kind of answer it was asked for:
-    {"Swot": [...], "ResearchBrief": [...], ...}.
+def write_report(context: UserContext, asks_for_report: AIMessage | None = None):
+    """Ask the agent for a report the way the app does, with these user
+    settings. Returns three things:
+
+    - what the report workflow told its model, grouped by the kind of
+      answer it asked for: {"Swot": [...], "ResearchBrief": [...], ...};
+    - the saved conversation;
+    - the chat model, to see how it was called.
 
     The whole path is real: the agent calls the report tool, the tool reads
-    the style from the user's settings and starts the workflow. Only the
-    outside services are fake: the search, and the model at both ends.
+    the user's settings and starts the workflow. Only the outside services
+    are fake: the search, and the model at both ends.
     """
     from unittest.mock import patch
 
     from agent.report.graph import build_report_graph
     from agent.report.state import Candidate, Swot
     from agent.report.tool import create_market_report
+    from agent.session import load_messages
     from tests.test_report_workflow import make_deps, yes
 
     deps = make_deps([Candidate(name="HelloFresh", mentioned_at="https://list.example/top")],
@@ -171,20 +182,26 @@ def told_in_report(style: str | None) -> dict[str, list[str]]:
 
     deps.ask = ask
     # The chat model's part is to ask for the report tool.
-    asks_for_report = AIMessage("", tool_calls=[{
+    asks_for_report = asks_for_report or AIMessage("", tool_calls=[{
         "name": "create_market_report", "id": "r1",
         "args": {"product": "meal kits", "country": "Germany"}}])
-    agent = assemble_agent(ListeningModel(messages=iter([asks_for_report, AIMessage("ok")])),
-                           [], tools=[create_market_report], checkpointer=InMemorySaver(),
+    model = ListeningModel(messages=iter([asks_for_report, AIMessage("ok")]))
+    agent = assemble_agent(model, [], tools=[create_market_report], checkpointer=InMemorySaver(),
                            store=InMemoryStore(), extract_facts=lambda message: {})
-    # No pause for the competitor review: this test is about the wording.
-    context = UserContext(user_id="tester", answer_style=style, review_competitors=False)
     # The workflow is normally built with the real model and the real search.
     with patch("agent.report.tool.report_graph", lambda *args, **kwargs: build_report_graph(deps)):
         list(stream_steps(agent, "Give me a market research report for meal kits in Germany.",
                           "thread-report", context=context))
     assert "Swot" in heard, "the report workflow did not reach the SWOT step"
-    return heard
+    return heard, load_messages(agent, "thread-report"), model
+
+
+def told_in_report(style: str | None) -> dict[str, list[str]]:
+    """What the report workflow told its model when the user's answer style
+    was this one."""
+    # No pause for the competitor review: these tests are about the wording.
+    context = UserContext(user_id="tester", answer_style=style, review_competitors=False)
+    return write_report(context)[0]
 
 
 def test_the_swot_of_a_report_is_asked_for_in_the_chosen_style():
@@ -230,9 +247,37 @@ def test_the_settings_offer_four_styles_with_balanced_chosen(page, tmp_path):
 
     setting = style_setting(app)
 
-    assert [option.split(":")[0] for option in setting.options] == \
-        ["Balanced", "Formal", "Friendly", "Concise"]
+    # The box shows the names only; a longer text would be cut off there.
+    assert list(setting.options) == ["Balanced", "Formal", "Friendly", "Concise"]
     assert setting.value == "Balanced"
+
+
+def sidebar_notes(app) -> list[str]:
+    """The small grey lines in the sidebar."""
+    return [note.value for note in app.sidebar.caption]
+
+
+def test_a_small_line_under_the_box_describes_the_chosen_style(page, tmp_path):
+    app, _ = open_app(page, tmp_path)
+    assert "The assistant's normal way of writing" in sidebar_notes(app)
+
+    style_setting(app).set_value("Formal").run()
+
+    assert "Professional wording, for a document you hand to others" in sidebar_notes(app)
+    assert "The assistant's normal way of writing" not in sidebar_notes(app)
+
+
+def test_the_help_text_explains_all_four_styles(page, tmp_path):
+    app, _ = open_app(page, tmp_path)
+
+    help_text = style_setting(app).help
+
+    for line in ("**Balanced**: The assistant's normal way of writing",
+                 "**Formal**: Professional wording, for a document you hand to others",
+                 "**Friendly**: Warm and plain, with business terms explained",
+                 "**Concise**: The shortest useful answer, without introductions or closing remarks"):
+        assert line in help_text, line
+    assert "It never changes the facts, numbers or sources." in help_text
 
 
 def test_a_style_picked_in_the_settings_reaches_the_model_with_the_next_question(page, tmp_path):

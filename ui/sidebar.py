@@ -3,9 +3,11 @@
 import streamlit as st
 
 from agent.config import (
+    ANSWER_LENGTH,
     ANSWER_STYLE,
     APP_NAME,
     APP_TAGLINE,
+    LENGTH_CHOICES,
     MODEL_CHOICES,
     MODEL_NAME,
     PROFILE_KEYS,
@@ -35,6 +37,8 @@ def current_settings() -> dict:
         "temperature": state.get("set_temperature", TEMPERATURE),
         "review_competitors": state.get("set_review", REVIEW_COMPETITORS),
         "answer_style": state.get("set_style", ANSWER_STYLE),
+        # The slider shows a word; the agent is given the number behind it.
+        "max_answer_tokens": LENGTH_CHOICES.get(state.get("set_length", ANSWER_LENGTH)),
     }
 
 
@@ -120,12 +124,24 @@ def _settings_panel(waiting: bool) -> None:
             disabled=waiting,
             help="Lower gives more factual, repeatable answers. Higher gives "
                  "more varied wording. Research works best low.")
+        st.select_slider(
+            "Maximum answer length", list(LENGTH_CHOICES), value=ANSWER_LENGTH,
+            key="set_length", disabled=waiting,
+            help="A hard limit on one chat answer: Short is about 180 words, "
+                 "Medium about 450, Long about 900. An answer that reaches it "
+                 "is cut off and says so. Reports are never cut. To ask for "
+                 "brief wording instead, use the Concise answer style.")
         styles = list(STYLE_CHOICES)
-        st.selectbox(
+        # The box shows the name only: with its description added, the text
+        # was cut off in the narrow sidebar. The help text lists all four,
+        # and the line under the box describes the one that is chosen.
+        all_styles = "\n\n".join(f"**{name}**: {line}" for name, line in STYLE_CHOICES.items())
+        chosen = st.selectbox(
             "Answer style", styles, index=styles.index(ANSWER_STYLE), key="set_style",
-            format_func=lambda name: f"{name}: {STYLE_CHOICES[name]}", disabled=waiting,
+            disabled=waiting,
             help="How answers are worded. It never changes the facts, "
-                 "numbers or sources.")
+                 f"numbers or sources.\n\n{all_styles}")
+        st.caption(STYLE_CHOICES[chosen])
         st.toggle(
             "Review competitors before a report", value=REVIEW_COMPETITORS,
             key="set_review", disabled=waiting,

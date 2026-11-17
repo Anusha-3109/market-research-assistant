@@ -19,6 +19,12 @@ from langchain.agents.middleware import (
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.types import Command
 
+from agent.answer_length import (
+    answer_limit,
+    is_an_answer,
+    was_cut_off,
+    with_cut_off_note,
+)
 from agent.approval import SAVE_APPROVAL_CONFIG, Pause, Progress, read_pause
 from agent.config import (
     FALLBACK_MODELS,
@@ -80,6 +86,33 @@ def keep_sources(request: ModelRequest, handler):
     checked = [check_answer(message, request.messages) if isinstance(message, AIMessage)
                else message for message in response.result]
     return ModelResponse(result=checked, structured_response=response.structured_response)
+
+
+@wrap_model_call
+def limit_answer_length(request: ModelRequest, handler):
+    """Middleware that applies the user's "Maximum answer length" to each
+    model call of the chat agent (agent/answer_length.py).
+
+    When the limit cuts the model off, what happens depends on what it was
+    writing:
+    - an answer keeps what was written and gets a note saying it was cut;
+    - a step, such as a request for a tool, is useless half-written, so the
+      model is asked for it again without the limit.
+    """
+    limit = answer_limit(request.runtime.context)
+    if limit is None:
+        return handler(request)
+    limited = request.override(model_settings={**request.model_settings, "max_tokens": limit})
+    response = handler(limited)
+
+    replies = [message for message in response.result if isinstance(message, AIMessage)]
+    if any(was_cut_off(message) and not is_an_answer(message) for message in replies):
+        return handler(request)
+
+    noted = [with_cut_off_note(message)
+             if isinstance(message, AIMessage) and was_cut_off(message) else message
+             for message in response.result]
+    return ModelResponse(result=noted, structured_response=response.structured_response)
 
 
 # Tools whose "country" argument must come from the user, not from the model.
@@ -150,6 +183,7 @@ def assemble_agent(model, fallback_models: list, tools: list,
     - prompt_with_profile writes the system prompt, including the user's
       saved profile;
     - keep_sources puts back the link to a source if the answer left it out;
+    - limit_answer_length applies the user's cap on the length of an answer;
     - require_country_from_user blocks a market tool call for a country the
       user never named;
     - ModelFallbackMiddleware repeats a failed call with a backup model.
@@ -161,6 +195,7 @@ def assemble_agent(model, fallback_models: list, tools: list,
         middleware.append(make_profile_capture(extract_facts))
     middleware.append(prompt_with_profile)
     middleware.append(keep_sources)
+    middleware.append(limit_answer_length)
     middleware.append(require_country_from_user)
     if fallback_models:
         middleware.append(ModelFallbackMiddleware(*fallback_models))

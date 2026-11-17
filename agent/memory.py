@@ -52,6 +52,9 @@ class UserContext:
     review_competitors: bool | None = None
     # How answers are worded (agent/styles.py). None means the default.
     answer_style: str | None = None
+    # The most tokens one chat answer may have (agent/answer_length.py).
+    # None means no limit.
+    max_answer_tokens: int | None = None
 
 
 def checkpoint_serializer() -> JsonPlusSerializer:

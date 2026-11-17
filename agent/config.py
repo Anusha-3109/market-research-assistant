@@ -49,6 +49,17 @@ STYLE_CHOICES = {
     "Concise": "The shortest useful answer, without introductions or closing remarks",
 }
 
+# "Maximum answer length" in the app's settings: a hard cap on one chat
+# answer, in tokens (a token is about three quarters of a word). The key is
+# the position on the slider; None means no cap. See agent/answer_length.py.
+ANSWER_LENGTH = "No limit"
+LENGTH_CHOICES = {
+    "Short": 250,
+    "Medium": 600,
+    "Long": 1200,
+    "No limit": None,
+}
+
 # The longest question the app accepts, in characters.
 MAX_QUESTION_CHARS = 2000
 

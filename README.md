@@ -269,6 +269,7 @@ Both are in the sidebar, closed by default so they stay out of the way.
 |---|---|
 | Model | Chooses between three models from different companies, all reached through OpenRouter |
 | Temperature | Lower gives more factual, repeatable answers; higher gives more varied wording |
+| Maximum answer length | A hard limit on one chat answer: Short, Medium, Long or No limit |
 | Answer style | How answers are worded: Balanced, Formal, Friendly or Concise |
 | Review competitors before a report | Turn off for a quicker report with no pause |
 
@@ -286,7 +287,23 @@ report. A report's six sections, its tables, numbers, prices and source
 links are the same in every style. If you once told the assistant how you
 like answers written, the style chosen here wins where the two disagree.
 
-The settings apply to the chat and to the report workflow. They are locked
+**Maximum answer length** is the model service's own limit, known there as
+"max tokens". A token is about three quarters of a word:
+
+| Position | Limit | Roughly |
+|---|---|---|
+| Short | 250 tokens | 180 words |
+| Medium | 600 tokens | 450 words |
+| Long | 1,200 tokens | 900 words |
+| No limit | none | the default |
+
+It is not the same as the Concise style. Concise asks the model to write
+briefly and the model decides how. The limit is enforced: an answer that
+reaches it stops there, and a line under it says it was cut off. A report is
+never cut; the limit applies to chat answers only.
+
+The model, the temperature, the answer style and the competitor review
+apply to the chat and to the report workflow. They are locked
 while the assistant is waiting for your decision, because changing them
 would change how a paused report continues.
 
@@ -551,6 +568,21 @@ The last point is an instruction, and an instruction can be forgotten: in
 test runs the Friendly style left out the source link in about one answer in
 thirty. So it is also checked by code, see the next decision.
 
+**A length limit that cannot break the research.** The limit is set on each
+model call of the chat agent by one piece of middleware,
+`limit_answer_length`. The model service says why it stopped writing, and
+the middleware uses that:
+
+- an answer that was cut keeps what was written and gets a note, so a
+  sentence that stops half-way does not look like a fault of the app;
+- a step that was cut, such as a half-written request for a tool, is useless,
+  so the model is asked for that step again without the limit.
+
+The report workflow has its own model calls and never receives the limit: a
+report is built from several structured answers, and a cut-off one would
+fail. The source check runs outside the limit, so an answer that was cut off
+still ends with its source.
+
 **The source check: code puts a missing link back.** `agent/source_check.py`
 wraps every model call. When the model has finished an answer, it looks at
 the tools used for that question. If they reported where their information
@@ -649,7 +681,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-537 tests, none of which use the internet or cost anything: outside
+554 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -671,6 +703,7 @@ services and the model are replaced with fakes.
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
 | `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
 | `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore, the password screen |
+| `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
 | `test_source_check.py` | The source check: a missing link is put back, an answer that has one is left alone, and addresses inside web text are never used |
 | `test_styles.py` | The answer styles, checked by what the model is told: in a chat turn, while a report is written, and from the setting on the page; and that every style keeps the facts and their sources |
 | `test_picker.py` | The pickers: which question the chips build, and clicking through one on the page |
@@ -813,6 +846,7 @@ market-research-assistant/
 │   ├── guards.py            input check and plain-language errors
 │   ├── styles.py            the answer styles: formal, friendly, concise
 │   ├── source_check.py      puts back the link to a source if an answer left it out
+│   ├── answer_length.py     the limit on the length of a chat answer
 │   ├── session.py           conversations, questions and answers, for any interface
 │   ├── citations.py         numbered citations and the source list
 │   ├── pdf_export.py        a report as a PDF file
@@ -851,6 +885,16 @@ market-research-assistant/
 
 - Token usage and cost are not shown.
 - Tracing with LangSmith is prepared in `.env.example` but not switched on.
+
+**Maximum answer length**
+
+- The limit counts tokens, so the word counts next to each position are
+  approximate and differ between languages and models.
+- An answer that reaches the limit stops in the middle of a sentence. It is
+  marked as cut off, not completed.
+- The limit was tried with the default model. The two other models in the
+  settings are reached through the same service and should behave the same,
+  but that was not checked.
 
 **Answer styles**
 
