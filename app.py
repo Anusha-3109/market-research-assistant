@@ -13,7 +13,13 @@ import streamlit as st
 from agent.agent import pending_pause, settle_stopped_turn
 from agent.config import APP_NAME, MAX_QUESTION_CHARS, MissingKeyError
 from agent.guards import check_question
-from agent.memory import DEFAULT_USER, UserContext, forget_profile, load_profile
+from agent.memory import (
+    DEFAULT_USER,
+    UserContext,
+    backup_memory,
+    forget_profile,
+    load_profile,
+)
 from agent.session import (
     list_conversations,
     load_messages,
@@ -70,6 +76,7 @@ waiting = pending_pause(runtime.agent, thread_id)
 # A turn that was cut off (Stop was pressed, or the page was closed while a
 # tool was running) is tidied here so the conversation can continue.
 if waiting is None and settle_stopped_turn(runtime.agent, thread_id):
+    backup_memory()
     st.toast("Stopped. What was found so far is kept.", icon=":material/stop_circle:")
 st.session_state.pop("stopped", None)
 
@@ -86,6 +93,7 @@ if action == NEW:
     st.rerun()
 elif action == FORGET:
     forget_profile(runtime.store, DEFAULT_USER)
+    backup_memory()
     st.toast("Everything remembered about you was deleted.", icon=":material/check:")
     st.rerun()
 elif action == GUIDE:
@@ -170,10 +178,14 @@ if answer is not None:
         run_live(runtime.agent, thread_id, context, title=latest.question,
                  turn_index=len(turns) - 1, answer=answer,
                  earlier_steps=latest.answer.activity if latest.answer else [])
+    # A deployed copy keeps a copy of the memory file after every answer.
+    backup_memory()
     st.rerun()
 elif question and not waiting:
     view.empty()
     with live.container():
         run_live(runtime.agent, thread_id, context, title=question,
                  turn_index=len(turns), question=question)
+    # A deployed copy keeps a copy of the memory file after every answer.
+    backup_memory()
     st.rerun()

@@ -16,7 +16,11 @@ pulls out any lasting facts. In testing, the chat model simply did not call
 its "remember" tool, so nothing was ever saved.
 """
 
+import logging
+import os
+import shutil
 import sqlite3
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -27,7 +31,7 @@ from langgraph.store.base import BaseStore
 from langgraph.store.sqlite import SqliteStore
 from pydantic import BaseModel, Field
 
-from agent.config import MEMORY_DB, PROFILE_KEYS, PROFILE_VALUE_MAX_CHARS
+from agent.config import MEMORY_BACKUP, MEMORY_DB, PROFILE_KEYS, PROFILE_VALUE_MAX_CHARS
 
 DEFAULT_USER = "default-user"
 
@@ -63,10 +67,12 @@ def checkpoint_serializer() -> JsonPlusSerializer:
     return JsonPlusSerializer(allowed_msgpack_modules=allowed)
 
 
-def open_memory(path: Path = MEMORY_DB) -> tuple[SqliteSaver, SqliteStore]:
+def open_memory(path: Path = MEMORY_DB,
+                backup: Path | None = MEMORY_BACKUP) -> tuple[SqliteSaver, SqliteStore]:
     """Open (or create) the memory file and return the checkpointer and the
-    store that use it."""
+    store that use it. A deployed copy first brings in the saved copy."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    restore_memory(path, backup)
 
     # check_same_thread=False: Streamlit and LangGraph use worker threads,
     # and SQLite otherwise refuses a connection made on another thread.
@@ -76,6 +82,66 @@ def open_memory(path: Path = MEMORY_DB) -> tuple[SqliteSaver, SqliteStore]:
                                         isolation_level=None))
     store.setup()   # creates the tables on first use
     return checkpointer, store
+
+
+# --- keeping a copy (deployed copies only) ----------------------------------------------
+#
+# In the cloud the machine's own disk is wiped whenever the service
+# restarts. The memory file therefore works on that disk, for speed and
+# safety, and a copy is written to a folder that lasts (a storage bucket)
+# after every answer. On start the copy is brought back.
+#
+# This relies on a single running copy of the app: two would overwrite
+# each other's file.
+
+_backup_lock = threading.Lock()
+log = logging.getLogger(__name__)
+
+
+def restore_memory(path: Path = MEMORY_DB, backup: Path | None = MEMORY_BACKUP) -> bool:
+    """Bring the saved copy in, if there is one and no memory file yet.
+    Returns True if it was restored."""
+    if backup is None or path.exists() or not backup.exists():
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(backup, path)
+    return True
+
+
+def backup_memory(path: Path = MEMORY_DB, backup: Path | None = MEMORY_BACKUP) -> bool:
+    """Write a copy of the memory file to the lasting folder. Returns True
+    if a copy was written.
+
+    SQLite's own backup makes the copy, so it is complete and consistent
+    even if the database is being written at that moment. The copy is
+    written under a temporary name and then renamed, so a half-written
+    file never replaces a good one.
+
+    A failure (the folder is briefly unreachable) is logged and reported
+    as False. It must not break the page: the next answer tries again.
+    """
+    if backup is None or not path.exists():
+        return False
+    snapshot = path.with_name(path.name + ".snapshot")
+    with _backup_lock:
+        try:
+            source = sqlite3.connect(path)
+            target = sqlite3.connect(snapshot)
+            try:
+                source.backup(target)
+            finally:
+                target.close()
+                source.close()
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            incoming = backup.with_name(backup.name + ".new")
+            shutil.copyfile(snapshot, incoming)
+            os.replace(incoming, backup)
+        except (OSError, sqlite3.Error):
+            log.exception("The copy of the memory file could not be written to %s", backup)
+            return False
+        finally:
+            snapshot.unlink(missing_ok=True)
+    return True
 
 
 # --- the user profile -------------------------------------------------------------------

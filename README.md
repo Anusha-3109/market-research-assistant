@@ -6,7 +6,7 @@ collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
 
 > **Status.** The agent, the report workflow, memory, the approval steps and
-> the web app are complete and tested (427 automated tests). Token cost
+> the web app are complete and tested (433 automated tests). Token cost
 > display and tracing are still to come.
 
 ## Contents
@@ -540,7 +540,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-427 tests, none of which use the internet or cost anything: outside
+433 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |

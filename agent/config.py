@@ -5,6 +5,7 @@ is easy to find and change.
 """
 
 import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -65,26 +66,34 @@ NEWS_DAYS = 30
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 
-def storage_paths(data_dir: str) -> tuple[Path, Path]:
+def storage_paths(data_dir: str) -> tuple[Path, Path, Path | None]:
     """Where saved reports and the memory file go.
 
     On your own computer DATA_DIR is not set and both stay inside the
-    project folder. A deployed copy sets DATA_DIR to a folder that survives
-    restarts (a mounted storage bucket), and both go there.
+    project folder.
 
-    Returns (reports folder, memory file).
+    A deployed copy sets DATA_DIR to a folder that survives restarts (a
+    mounted storage bucket). Reports are written straight into it. The
+    memory file is different: it is a database that is written after every
+    step and needs file locking, which a mounted bucket does not offer. So
+    the database works on the machine's own disk, and a copy of it is kept
+    in DATA_DIR (see agent/memory.py).
+
+    Returns (reports folder, memory file, where its copy is kept or None).
     """
     data_dir = data_dir.strip()
     if not data_dir:
-        return PROJECT_DIR / "reports", PROJECT_DIR / "data" / "memory.db"
+        return PROJECT_DIR / "reports", PROJECT_DIR / "data" / "memory.db", None
     root = Path(data_dir)
-    return root / "reports", root / "memory.db"
+    working = Path(tempfile.gettempdir()) / "markavi" / "memory.db"
+    return root / "reports", working, root / "memory.db"
 
 
-# REPORTS_DIR: folder where saved reports are written.
-# MEMORY_DB: the file that holds the agent's memory (conversations and
-# user profiles).
-REPORTS_DIR, MEMORY_DB = storage_paths(os.getenv("DATA_DIR", ""))
+# REPORTS_DIR:   folder where saved reports are written.
+# MEMORY_DB:     the file that holds the agent's memory (conversations and
+#                user profiles).
+# MEMORY_BACKUP: where a copy of it is kept, for a deployed copy; else None.
+REPORTS_DIR, MEMORY_DB, MEMORY_BACKUP = storage_paths(os.getenv("DATA_DIR", ""))
 
 # A deployed copy is opened with this password, so that strangers with the
 # link cannot spend the API credit. Not set (as on your own computer): the
