@@ -1,11 +1,12 @@
-<img src="ui/static/logo.svg" width="72" align="left" alt="Markavi logo">
+# <img src="ui/static/logo.svg" alt="" height="34"> Markavi
 
-# Markavi<br><sub>AI Market Research Assistant</sub>
+**Your AI market research assistant: verified competitors, first-hand prices, every fact linked to its source.**
 
-An AI agent that researches a market for a first-time founder: it finds the
-real competitors in a country, reads their prices from their own websites,
-collects market figures, news and demand trends, and writes a six-section
-report in which every fact links to its source.
+[![Tests](https://github.com/Anusha-3109/market-research-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/Anusha-3109/market-research-assistant/actions/workflows/tests.yml) [![Deploy](https://github.com/Anusha-3109/market-research-assistant/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anusha-3109/market-research-assistant/actions/workflows/deploy.yml)
+
+Markavi researches a market for a first-time founder: it finds the real competitors in a country, reads their prices from their own websites, collects market figures, news and demand trends, and writes a six-section report in which every fact links to its source. It pauses so you can review the competitor list, and asks before it saves a file. It is built with LangChain, LangGraph, OpenRouter (GPT-4.1 mini by default) and Streamlit, and combines a ReAct agent with a fixed report workflow, memory and human-in-the-loop approval.
+
+The Sprint 3 task description is in [`135.md`](135.md).
 
 ## Contents
 
