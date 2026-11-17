@@ -1,21 +1,11 @@
-<p align="center">
-  <img src="ui/static/logo.svg" width="84" alt="Markavi logo">
-</p>
+<img src="ui/static/logo.svg" width="72" align="left" alt="Markavi logo">
 
-# Markavi: an AI market research assistant
-
-**Live app:** <https://markavi-1037824678664.europe-west1.run.app>
-(password protected, see [Deployment](#deployment))
+# Markavi<br><sub>AI Market Research Assistant</sub>
 
 An AI agent that researches a market for a first-time founder: it finds the
 real competitors in a country, reads their prices from their own websites,
 collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
-
-> **Status.** The agent, the report workflow, memory, the approval steps and
-> the web app are complete and tested (433 automated tests), and the app
-> is [deployed](#deployment). Token cost display and tracing are still to
-> come.
 
 ## Contents
 
