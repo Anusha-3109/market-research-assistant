@@ -99,7 +99,7 @@ def test_an_empty_conversation_shows_the_headline_and_nine_example_cards(page):
     assert app.title[0].value == "Research **any market**."
     cards = [b for b in app.button if (b.key or "").startswith("card_")]
     assert len(cards) == 9
-    assert button(app, "learn").label == "Learn how **Groundwork** works."
+    assert button(app, "learn").label == "Learn how **Markavi** works."
 
 
 def test_clicking_an_example_card_asks_its_question_and_shows_the_answer(page):

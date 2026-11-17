@@ -21,16 +21,22 @@ from agent.session import (
     to_blocks,
     to_turns,
 )
+from ui.assets import LOGO
 from ui.guide import render_guide
+from ui.password import password_ok
 from ui.research import render_tabs, render_turn, run_live
 from ui.runtime import get_runtime
 from ui.sidebar import FORGET, GUIDE, NEW, current_settings, render_sidebar
 from ui.start import OPEN_GUIDE, render_start_screen
 from ui.styles import apply_styles
 
-st.set_page_config(page_title=APP_NAME, page_icon=":material/travel_explore:",
+st.set_page_config(page_title=APP_NAME, page_icon=str(LOGO),
                    layout="centered", initial_sidebar_state="collapsed")
 apply_styles()
+
+# A deployed copy asks for a password before anything else happens.
+if not password_ok():
+    st.stop()
 
 # --- the agent -------------------------------------------------------------------------
 # The settings chosen in the sidebar decide which agent is used. They also

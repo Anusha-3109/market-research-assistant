@@ -1,0 +1,19 @@
+# Keys and local state never go into the image.
+.env
+.streamlit/secrets.toml
+data/
+reports/
+.venv/
+.git/
+.github/
+.claude/
+.pytest_cache/
+**/__pycache__/
+*.pyc
+*.db
+
+# Not needed to run the app.
+tests/
+pytest.ini
+main.py
+135.md

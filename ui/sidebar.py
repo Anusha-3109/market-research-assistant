@@ -12,6 +12,7 @@ from agent.config import (
     TEMPERATURE,
 )
 from agent.session import Conversation
+from ui.assets import brand
 
 # How many conversations are listed before the rest fold away.
 RECENT_SHOWN = 5
@@ -46,7 +47,7 @@ def render_sidebar(conversations: list[Conversation], current: str,
     """
     action = None
     with st.sidebar:
-        st.subheader(APP_NAME, anchor=False)
+        st.html(brand(APP_NAME))
         st.caption(APP_TAGLINE)
 
         if st.button("New conversation", icon=":material/add:", width="stretch",

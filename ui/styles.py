@@ -6,9 +6,11 @@ the page.
 
 import streamlit as st
 
-from ui.assets import style_tag
+from ui.assets import logo_data_uri, style_tag
 
 
 def apply_styles() -> None:
     """Add the app's CSS to the page."""
-    st.html(style_tag("styles.css"))
+    # The stylesheet draws the logo from the --logo variable set here.
+    logo = f'<style>:root {{ --logo: url("{logo_data_uri()}"); }}</style>'
+    st.html(logo + style_tag("styles.css"))

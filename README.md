@@ -1,4 +1,4 @@
-# Groundwork: an AI market research assistant
+# Markavi: an AI market research assistant
 
 An AI agent that researches a market for a first-time founder: it finds the
 real competitors in a country, reads their prices from their own websites,
@@ -6,7 +6,7 @@ collects market figures, news and demand trends, and writes a six-section
 report in which every fact links to its source.
 
 > **Status.** The agent, the report workflow, memory, the approval steps and
-> the web app are complete and tested (417 automated tests). Token cost
+> the web app are complete and tested (427 automated tests). Token cost
 > display and tracing are still to come.
 
 ## Contents
@@ -132,7 +132,7 @@ question, or type your own in the box at the bottom.
 | Test my idea | A report for a vegan bakery in the Netherlands |
 | Set your market | Tells the assistant your country and industry |
 
-The wider card, **"Learn how Groundwork works"**, opens a guide in the chat:
+The wider card, **"Learn how Markavi works"**, opens a guide in the chat:
 five numbered step cards, a written explanation, and follow-up chips
 ("Where do the prices come from?", "Why check the competitors?"). The guide
 is fixed text, so it appears instantly and costs nothing.
@@ -540,7 +540,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-417 tests, none of which use the internet or cost anything: outside
+427 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -581,7 +581,8 @@ market-research-assistant/
 │   ├── static/              the interface's own HTML, CSS and JavaScript
 │   │   ├── styles.css       the look: sky background, frosted panels
 │   │   ├── *.html           templates: source list, guide steps, placeholder
-│   │   └── *.js             two small scripts that hold the scroll position
+│   │   ├── *.js             two small scripts that hold the scroll position
+│   │   └── logo.svg         the Markavi logo
 │   ├── start.py             start screen and example cards
 │   ├── guide.py             the "How it works" guide
 │   ├── research.py          the research view: answer, steps, sources, live progress

@@ -43,7 +43,23 @@ def test_every_template_blank_is_filled_by_the_code_that_uses_it():
     assert "gw-skeleton" in load("skeleton.html")
 
 
-def test_the_static_folder_holds_only_html_css_and_javascript():
+def test_the_static_folder_holds_only_html_css_javascript_and_the_logo():
     kinds = {path.suffix for path in STATIC.iterdir()}
 
-    assert kinds == {".html", ".css", ".js"}
+    assert kinds == {".html", ".css", ".js", ".svg"}
+
+
+def test_the_logo_is_handed_to_the_page_as_a_picture_address():
+    from ui.assets import logo_data_uri
+
+    assert logo_data_uri().startswith("data:image/svg+xml;base64,")
+
+
+def test_the_brand_shows_the_logo_and_the_escaped_name():
+    from ui.assets import brand
+
+    html = brand("Mark<avi>", size="large")
+
+    assert 'class="gw-brand large"' in html
+    assert 'class="gw-logo"' in html
+    assert "Mark&lt;avi&gt;" in html

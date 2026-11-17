@@ -10,6 +10,7 @@ the web and must be shown as text. A value that already is HTML (another
 filled template) is wrapped in Html and is put in as it is.
 """
 
+import base64
 from functools import lru_cache
 from html import escape
 from pathlib import Path
@@ -38,6 +39,22 @@ def fill(name: str, **values) -> Html:
 def join(parts) -> Html:
     """Several pieces of safe HTML as one."""
     return Html("".join(parts))
+
+
+LOGO = STATIC / "logo.svg"
+
+
+@lru_cache(maxsize=None)
+def logo_data_uri() -> str:
+    """The logo as a "data:" address. Streamlit does not serve files from
+    ui/static/, so the picture travels inside the page's own CSS."""
+    encoded = base64.b64encode(LOGO.read_bytes()).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
+def brand(name: str, size: str = "") -> Html:
+    """The logo next to the app's name. size is "" or "large"."""
+    return fill("brand.html", app=name, size=size)
 
 
 def style_tag(name: str) -> str:

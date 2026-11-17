@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # The name shown in the app. Change it here and it changes everywhere.
-APP_NAME = "Groundwork"
+APP_NAME = "Markavi"
 APP_TAGLINE = "Market research before you launch"
 
 # Model: any OpenRouter model id that supports tool calling.
@@ -62,11 +62,34 @@ NEWS_TIME_RANGE = "month"
 # The same window in days, for sources that take a number.
 NEWS_DAYS = 30
 
-# Folder where saved reports are written.
-REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
-# The file that holds the agent's memory: conversations and user profiles.
-MEMORY_DB = Path(__file__).resolve().parent.parent / "data" / "memory.db"
+
+def storage_paths(data_dir: str) -> tuple[Path, Path]:
+    """Where saved reports and the memory file go.
+
+    On your own computer DATA_DIR is not set and both stay inside the
+    project folder. A deployed copy sets DATA_DIR to a folder that survives
+    restarts (a mounted storage bucket), and both go there.
+
+    Returns (reports folder, memory file).
+    """
+    data_dir = data_dir.strip()
+    if not data_dir:
+        return PROJECT_DIR / "reports", PROJECT_DIR / "data" / "memory.db"
+    root = Path(data_dir)
+    return root / "reports", root / "memory.db"
+
+
+# REPORTS_DIR: folder where saved reports are written.
+# MEMORY_DB: the file that holds the agent's memory (conversations and
+# user profiles).
+REPORTS_DIR, MEMORY_DB = storage_paths(os.getenv("DATA_DIR", ""))
+
+# A deployed copy is opened with this password, so that strangers with the
+# link cannot spend the API credit. Not set (as on your own computer): the
+# app opens directly.
+APP_PASSWORD = os.getenv("APP_PASSWORD", "").strip()
 
 # The only facts the agent may remember about a user between conversations.
 PROFILE_KEYS = ["region", "industry", "business_idea", "report_style"]

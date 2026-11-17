@@ -205,8 +205,9 @@
     width: auto; height: auto; overflow: visible; flex-shrink: 0;
 }
 .st-key-learn button [data-testid="stIconMaterial"] {
-    background: #1c1c1a;
-    color: #ffffff;
+    /* The tile shows the logo; the icon's own glyph is hidden. */
+    background: var(--logo) center / contain no-repeat;
+    color: transparent;
     border-radius: 10px;
     width: 2.5rem; height: 2.5rem;
     min-width: 2.5rem;
@@ -469,3 +470,26 @@ a.gw-source:hover .gw-source-title { text-decoration: underline; }
 }
 [class*="st-key-chip_"] button:hover { background: var(--glass-strong); border-color: #ffffff; }
 .st-key-chip_back button { background: transparent; border: none; }
+
+/* --- the password screen of a deployed copy ------------------------------- */
+.st-key-password_panel {
+    max-width: 24rem;
+    margin: 18vh auto 0;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid var(--glass-edge);
+    border-radius: 18px;
+    padding: 1.6rem 1.7rem 1.3rem;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 8px 30px rgba(80, 60, 50, 0.07);
+}
+.st-key-password_panel h1 { font-size: 1.9rem; font-weight: 650; letter-spacing: -0.02em; padding: 0; }
+
+/* --- the logo next to the app's name (sidebar, password screen) ---------- */
+.gw-brand { display: flex; align-items: center; gap: 0.6rem; }
+.gw-logo {
+    width: 1.9rem; height: 1.9rem; flex-shrink: 0;
+    background: var(--logo) center / contain no-repeat;
+}
+.gw-brand-name { font-size: 1.25rem; font-weight: 650; letter-spacing: -0.02em; color: #1c1c1a; }
+.gw-brand.large .gw-logo { width: 2.6rem; height: 2.6rem; }
+.gw-brand.large .gw-brand-name { font-size: 1.9rem; }
