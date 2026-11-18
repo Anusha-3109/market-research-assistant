@@ -13,7 +13,7 @@ from agent.config import MAX_QUESTION_CHARS
 from agent.guards import check_question, friendly_error
 from agent.side_assistant import ask
 from agent.usage import Usage
-from ui.assets import fill
+from ui.assets import AVATAR, fill
 
 TITLE_MAX_CHARS = 34
 
@@ -44,8 +44,10 @@ def render_assistant(thread_id: str, title: str, context: str, get_model) -> Non
     """
     if not st.session_state.get("assistant_is_open"):
         with st.container(key="assistant_launcher"):
-            st.button("Assistant", icon=":material/forum:", key="assistant_open",
-                      type="primary", on_click=_open)
+            # Drawn as the robot's face alone (styles.css); pointing at it
+            # says what it is.
+            st.button("Assistant", key="assistant_open", help="Ask the assistant",
+                      on_click=_open)
         return
 
     chat = _chats().setdefault(thread_id, {"messages": [], "used": Usage()})
@@ -106,5 +108,5 @@ def _message(number: int, message: dict) -> None:
         st.html(fill("helper_question.html", question=message["text"]))
     else:
         # st.markdown shows any HTML in an answer as text.
-        with st.chat_message("assistant", avatar=":material/forum:"):
+        with st.chat_message("assistant", avatar=str(AVATAR)):
             st.markdown(message["text"])

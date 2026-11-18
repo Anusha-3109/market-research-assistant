@@ -52,6 +52,17 @@ def logo_data_uri() -> str:
     return f"data:image/svg+xml;base64,{encoded}"
 
 
+AVATAR = STATIC / "avatar.svg"
+
+
+@lru_cache(maxsize=None)
+def avatar_data_uri() -> str:
+    """The assistant's robot face as a "data:" address, for the same
+    reason as the logo."""
+    encoded = base64.b64encode(AVATAR.read_bytes()).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
 def brand(name: str, size: str = "") -> Html:
     """The logo next to the app's name. size is "" or "large"."""
     return fill("brand.html", app=name, size=size)

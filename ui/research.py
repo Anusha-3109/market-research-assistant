@@ -23,6 +23,7 @@ from langgraph.errors import GraphRecursionError
 from agent.agent import resume_steps, stream_steps
 from agent.approval import Pause, Progress
 from agent.citations import Source, domain_of, titles_in_results
+from agent.config import APP_NAME
 from agent.guards import friendly_error
 from agent.pdf_export import report_to_pdf
 from agent.report_check import format_check
@@ -223,6 +224,11 @@ def question_bubble(question: str) -> None:
     st.html(fill("ask_question.html", question=question))
 
 
+def answer_head() -> None:
+    """The assistant's robot face and name at the top of an answer."""
+    st.html(fill("answer_head.html", app=APP_NAME))
+
+
 def steps_above_answer(activity: list[str]) -> None:
     steps = steps_for_thread(activity)
     if steps:
@@ -260,6 +266,7 @@ def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
     """One answer in the chat, under its question."""
     block = turn.answer
     with panel("answer_panel"):
+        answer_head()
         steps_above_answer(block.activity if block else [])
         if waiting is not None:
             outcome.answer = render_pause(waiting)
@@ -570,6 +577,7 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
         question_bubble(title)
         steps_slot = st.empty()
         with panel("answer_panel"):
+            answer_head()
             st.markdown(":shimmer[Writing the answer.] It appears here when it is ready.")
             st.html(load("skeleton.html"))
         sources_slot = st.empty()

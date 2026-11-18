@@ -272,8 +272,8 @@ report stays one click away in the sidebar.
 
 ### The assistant
 
-An **Assistant** button sits at the bottom right of every view. It opens a
-small chat of its own, for a quick question in between: what a term in the
+A round robot icon sits at the bottom right of every view. Clicking it
+opens the assistant, a small chat of its own, for a quick question in between: what a term in the
 report means, what the report says about a competitor, what to check next.
 
 - It is given the newest report of the open conversation (or the newest
@@ -792,7 +792,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-880 tests, none of which use the internet or cost anything: outside
+882 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |

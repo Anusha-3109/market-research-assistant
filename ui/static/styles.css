@@ -1081,11 +1081,21 @@ a.gw-source:hover .gw-source-title { text-decoration: underline; }
 /* In the Ask view the question box is at the bottom: stay above it. */
 body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant_launcher,
 body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant_panel { bottom: 6.2rem; }
+/* The button is the robot's face alone, in a round coral ring. Its word
+   ("Assistant") stays in the page for screen readers but is not drawn. */
 .st-key-assistant_launcher button {
-    background: var(--coral); border-color: var(--coral); color: var(--coral-text);
-    border-radius: 999px; padding: 0.6rem 1.15rem;
-    box-shadow: 0 6px 18px rgba(74, 29, 12, 0.28);
+    width: 3.7rem; height: 3.7rem; min-height: 0; padding: 0;
+    border-radius: 50%; border: 3px solid var(--coral);
+    background: var(--avatar) center / cover no-repeat, #fff3d6;
+    box-shadow: 0 6px 18px rgba(74, 29, 12, 0.3);
+    transition: transform 0.12s ease;
 }
+.st-key-assistant_launcher button:hover,
+.st-key-assistant_launcher button:focus-visible {
+    background: var(--avatar) center / cover no-repeat, #fff3d6;
+    border-color: var(--coral-text); transform: scale(1.06);
+}
+.st-key-assistant_launcher button * { visibility: hidden; }
 .st-key-assistant_panel {
     width: min(390px, calc(100vw - 2rem));
     max-height: min(620px, calc(100vh - 8rem));
@@ -1119,3 +1129,11 @@ body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant
 .st-key-assistant_messages [data-testid="stChatMessage"] p,
 .st-key-assistant_messages [data-testid="stChatMessage"] li { font-size: 0.88rem; line-height: 1.5; }
 .st-key-assistant_panel [data-testid="stCaptionContainer"] { text-align: right; font-size: 0.74rem; }
+
+/* --- the assistant's avatar above an answer in the Ask view -------------- */
+.gw-answer-head { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.2rem; }
+.gw-avatar {
+    width: 2rem; height: 2rem; flex-shrink: 0; border-radius: 50%;
+    background: var(--avatar) center / contain no-repeat;
+}
+.gw-answer-name { font-size: 0.88rem; font-weight: 600; color: #1c1c1a; }

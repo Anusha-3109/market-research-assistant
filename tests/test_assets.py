@@ -63,3 +63,19 @@ def test_the_brand_shows_the_logo_and_the_escaped_name():
     assert 'class="gw-brand large"' in html
     assert 'class="gw-logo"' in html
     assert "Mark&lt;avi&gt;" in html
+
+
+def test_the_assistant_avatar_is_the_analyst_robot_and_reaches_the_page():
+    from ui.assets import AVATAR, avatar_data_uri
+
+    assert AVATAR.name == "avatar.svg"
+    assert "magnifying glass" in AVATAR.read_text(encoding="utf-8")
+    assert avatar_data_uri().startswith("data:image/svg+xml;base64,")
+
+
+def test_the_answer_head_shows_the_avatar_and_the_app_name():
+    html = fill("answer_head.html", app="Markavi")
+
+    assert 'class="gw-avatar"' in html
+    assert "Markavi" in html
+    assert ".gw-avatar" in load("styles.css")
