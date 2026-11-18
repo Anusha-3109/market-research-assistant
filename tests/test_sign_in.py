@@ -77,9 +77,10 @@ def sign_in(app, username: str, password: str):
     return press(fill(app, sign_in_username=username, sign_in_password=password), "Sign in")
 
 
-def create(app, name="Anna", username="anna", password=PASSWORD, code=CODE):
-    fill(app, create_name=name, create_username=username, create_password=password,
-         create_code=code)
+def create(app, name="Anna", username="anna", password=PASSWORD, code=CODE,
+           email="anna@example.com"):
+    fill(app, create_name=name, create_username=username, create_email=email,
+         create_password=password, create_code=code)
     return press(app, "Create account")
 
 

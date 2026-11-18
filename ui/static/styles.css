@@ -310,15 +310,29 @@
     gap: 0.6rem !important;
 }
 /* Who is signed in, in the sidebar, and the greeting on the start screen. */
-.st-key-account_panel {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid var(--glass-edge);
-    border-radius: 14px;
-    padding: 0.6rem 0.7rem;
-    gap: 0.45rem !important;
+/* The foot of the sidebar: a line, who is signed in, then Sign out,
+   Settings and Help as plain rows. The sidebar is made a column as tall as
+   the window, and the foot is pushed to its bottom. */
+[data-testid="stSidebarContent"] { display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"] { flex: 1; display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"] > div { flex: 1; display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"] > div > [data-testid="stVerticalBlock"] { flex: 1; }
+/* Streamlit wraps the foot in a box of its own; that box is what is pushed down. */
+[data-testid="stSidebarUserContent"] [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_foot) {
+    margin-top: auto;
 }
-.gw-account-label { display: block; font-size: 0.72rem; color: #6b7a7f; }
-.gw-account-name { display: block; font-size: 0.95rem; font-weight: 650; overflow-wrap: anywhere; }
+.st-key-sidebar_foot {
+    border-top: 1px solid rgba(31, 42, 46, 0.14);
+    padding-top: 0.9rem;
+    gap: 0.15rem !important;
+}
+.gw-account { font-size: 0.8rem; font-weight: 600; color: #6b7a7f; padding: 0 0.25rem 0.3rem;
+              overflow-wrap: anywhere; }
+.gw-account-name { color: inherit; }
+.st-key-sign_out button { justify-content: flex-start; padding: 0.35rem 0.25rem; min-height: 0;
+                          color: inherit; font-weight: 400; }
+.st-key-sidebar_foot [data-testid="stExpander"] details { border: 0; background: transparent; }
+.st-key-sidebar_foot [data-testid="stExpander"] summary { padding: 0.35rem 0.25rem; }
 .gw-hello { text-align: center; font-size: 0.95rem; font-weight: 600; color: #25605a; margin: 0; }
 
 /* What an answer cost, in a pill above the steps panel. */

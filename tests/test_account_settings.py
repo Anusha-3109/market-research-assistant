@@ -165,6 +165,44 @@ def test_the_sidebar_shows_who_is_signed_in(site):  # noqa: F811
     assert "Ben" not in html_on(app.sidebar)
 
 
+def in_order(block) -> list[str]:
+    """What a part of the page shows, from top to bottom: the text of each
+    element, or the label of a button or a folding section."""
+    seen = []
+    for child in block.children.values():
+        if hasattr(child, "children"):
+            seen.append(getattr(child, "label", "") or "")
+            seen += in_order(child)
+        elif child.type == "html":
+            seen.append(child.proto.body)
+        else:
+            seen.append(str(getattr(child, "label", "") or getattr(child, "value", "")))
+    return seen
+
+
+def position(sequence: list[str], words: str) -> int:
+    return next(index for index, text in enumerate(sequence) if words in text)
+
+
+def test_who_is_signed_in_and_sign_out_sit_at_the_bottom_above_settings(site):  # noqa: F811
+    two_accounts(site)
+    memory.save_preference(site.store, ANNA, "region", "Portugal")
+
+    sidebar = in_order(visit_as(site, "anna").sidebar)
+
+    assert (position(sidebar, "New conversation") < position(sidebar, "What I remember")
+            < position(sidebar, "Forget me") < position(sidebar, "Signed in as")
+            < position(sidebar, "Sign out") < position(sidebar, "Settings")
+            < position(sidebar, "Help"))
+
+
+def test_the_name_follows_signed_in_as_on_one_line(site):  # noqa: F811
+    two_accounts(site)
+
+    assert "Signed in as <span class=\"gw-account-name\">Anna</span>" in \
+        html_on(visit_as(site, "anna").sidebar)
+
+
 def test_signing_out_brings_back_the_sign_in_screen(site):  # noqa: F811
     two_accounts(site)
     app = visit_as(site, "anna")

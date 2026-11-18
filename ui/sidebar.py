@@ -10,9 +10,11 @@ from agent.config import (
     PROFILE_KEYS,
     STYLE_CHOICES,
 )
+from agent.accounts import Account
 from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
-from ui.assets import brand, fill
+from ui.account_panel import render_account_rows
+from ui.assets import brand
 
 # How many conversations are listed before the rest fold away.
 RECENT_SHOWN = 5
@@ -64,14 +66,14 @@ def current_settings() -> dict:
 
 def render_sidebar(conversations: list[Conversation], current: str,
                    profile: dict[str, str], waiting: bool,
-                   signed_in_as: str | None = None) -> str | None:
+                   account: Account | None = None) -> str | None:
     """Show the sidebar. Returns NEW, FORGET, GUIDE or SIGN_OUT if the user
     asked for that, the thread id of a conversation they picked, or None.
 
     Args:
         profile: What is remembered about the user.
-        signed_in_as: The name of the account that is signed in. None when
-            the app runs without accounts.
+        account: The account that is signed in. None when the app runs
+            without accounts.
         waiting: True while the agent is stopped for an approval. Settings
             that would change how a paused report continues are locked.
     """
@@ -79,14 +81,6 @@ def render_sidebar(conversations: list[Conversation], current: str,
     with st.sidebar:
         st.html(brand(APP_NAME))
         st.caption(APP_TAGLINE)
-
-        if signed_in_as:
-            with st.container(key="account_panel"):
-                # The name was typed by a person: fill() shows it as text.
-                st.html(fill("account.html", person=signed_in_as))
-                if st.button("Sign out", icon=":material/logout:", key="sign_out",
-                             width="stretch"):
-                    action = SIGN_OUT
 
         if st.button("New conversation", icon=":material/add:", width="stretch",
                      key="new_conversation"):
@@ -106,8 +100,14 @@ def render_sidebar(conversations: list[Conversation], current: str,
                     action = _conversation_button(conversation, current) or action
 
         action = _memory_panel(profile) or action
-        _settings_panel(waiting)
-        action = _help_panel() or action
+
+        # The foot of the sidebar: who is signed in, then plain rows. The
+        # stylesheet keeps it at the bottom when the list above is short.
+        with st.container(key="sidebar_foot"):
+            if account and render_account_rows(account):
+                action = SIGN_OUT
+            _settings_panel(waiting)
+            action = _help_panel() or action
     return action
 
 

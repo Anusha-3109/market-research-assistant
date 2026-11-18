@@ -133,7 +133,7 @@ action = render_sidebar(
     list_conversations(runtime.agent, runtime.checkpointer, store=runtime.store,
                        user_id=user_id if account else None), thread_id,
     profile=load_profile(runtime.store, user_id), waiting=waiting is not None,
-    signed_in_as=account.name if account else None)
+    account=account)
 if action == SIGN_OUT:
     # Everything this browser session held goes: who was signed in, their
     # settings, and the address of the conversation that was open.

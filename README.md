@@ -583,6 +583,9 @@ sign-in service was added.
 | The screen does not reveal who has an account | An unknown username and a wrong password give the same message and take the same time |
 | The address of a conversation is not a key to it | Each conversation records the account that asked its first question. Another account that opens its address gets an empty conversation |
 | Nothing is created before sign-in | The agent, and with it the API keys, is only reached after someone has signed in |
+| A password or email address is changed only by its owner | Both changes ask for the current password, so someone at a browser left open cannot take the account |
+| A forgotten password is reset by a link sent by email | The link holds a long random token, of which only a hash is stored. It works once, for 30 minutes; asking again cancels the earlier link; at most three are given out per account per hour |
+| The reset form does not reveal who has an account | It says the same thing whether or not an email went out, and the email is sent in the background so the answer takes the same time |
 
 Each account has its own conversations, remembered profile, settings and
 folder of saved reports. The first account to open the app takes over what
@@ -592,6 +595,11 @@ Without `APP_PASSWORD`, as on your own computer, there are no accounts: the
 app opens directly for one user, as before. The rules are in
 `agent/accounts.py` (accounts) and `agent/session.py` (whose conversation
 is whose).
+
+The email is sent through an ordinary mail account with Python's own mail
+library (`agent/mailer.py`); no mail service was added. The message is
+plain text, so a name someone typed can never become markup. Without the
+three email settings the app shows no "Forgot password?" link.
 
 **The cost shown is the cost charged.** The model service, OpenRouter,
 returns with every call the tokens it read and wrote and what the call cost
@@ -732,7 +740,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-662 tests, none of which use the internet or cost anything: outside
+720 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -758,6 +766,9 @@ services and the model are replaced with fakes.
 | `test_sign_in.py` | The sign-in screen: nothing is shown or created before sign-in, wrong passwords and invite codes, a new account is signed in and copied at once |
 | `test_ownership.py` | Whose conversation is whose: claiming, the list, opening by address, the first account taking over earlier data, the reports folder |
 | `test_two_accounts.py` | Two accounts on one copy: neither sees the other's conversations or profile, and the agent is told only the asking account's profile |
+| `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
+| `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
+| `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, the sidebar rows for password and email |
 | `test_account_settings.py` | Settings kept per account, the greeting by name, signing out, and that the next person on the same browser gets nothing from the one before |
 | `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
@@ -794,13 +805,14 @@ Each account has its own conversations, remembered profile and settings.
 | Saved data | A private Cloud Storage bucket mounted at `/mnt/data` (`DATA_DIR`) |
 | Identity | The app runs as its own service account, which can read only those three secrets and use only that bucket |
 
-### The two settings a deployed copy uses
+### The settings a deployed copy uses
 
-Both are empty on your own computer, where nothing changes.
+All are empty on your own computer, where nothing changes.
 
 | Setting | What it does |
 |---|---|
 | `APP_PASSWORD` | Turns accounts on: the sign-in screen comes before the app, and this value is the invite code needed to create an account |
+| `SMTP_USER`, `SMTP_PASSWORD`, `APP_URL` | Switch on the "Forgot password?" link: the address email is sent from, the app password of that mail account, and the public address of the app for the link. Gmail is the default mail server; `SMTP_HOST` and `SMTP_PORT` change it |
 | `DATA_DIR` | The folder that survives restarts. Saved reports are written straight into it. The memory file is handled differently, see below |
 
 ### Why the memory file is copied instead of stored in the bucket
@@ -891,14 +903,16 @@ market-research-assistant/
 │   ├── research.py          the research view: answer, steps, sources, live progress
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
-│   ├── sign_in.py           the sign-in screen of a deployed copy
+│   ├── sign_in.py           the sign-in screen of a deployed copy, and a forgotten password
+│   ├── account_panel.py     sidebar rows: sign out, change password, email address
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
 │   ├── prompts.py           the system prompt
 │   ├── tools.py             the single-question tools
 │   ├── memory.py            checkpointer, store, user profile, saved settings
-│   ├── accounts.py          user accounts: creating one, signing in
+│   ├── accounts.py          user accounts: creating one, signing in, password and email
+│   ├── mailer.py            the email with a link for a forgotten password
 │   ├── memory_tools.py      remember and forget tools
 │   ├── approval.py          the two approval points
 │   ├── guards.py            input check and plain-language errors
@@ -983,8 +997,17 @@ market-research-assistant/
 
 - Signing in lasts for one browser session. A refresh of the page signs
   you out.
-- There is no way to change or reset a password, or to delete an account,
-  from the app.
+- An account cannot be deleted from the app.
+- An email address is not verified. A mistyped one means the link for a
+  forgotten password never arrives; it can be corrected in the sidebar
+  while still signed in.
+- An account made before email was added has no address until its owner
+  adds one, and cannot reset a forgotten password until then.
+- Changing a password does not sign out other browsers where the account
+  is open; they stay in until closed or refreshed.
+- Email sent from a personal mail account can land in the spam folder.
+- Email addresses are personal data. They are stored with the accounts in
+  the bucket, readable by the author of the app.
 - Everyone who has the invite code can create any number of accounts, and
   all accounts spend the same API credit. There is no limit per account.
 - The author of the app, who can read the bucket, can read every
@@ -1058,7 +1081,7 @@ market-research-assistant/
 ## What I would improve
 
 1. Switch on tracing with LangSmith.
-2. Let a person change their password and delete their account.
+2. Let a person delete their account, and verify email addresses.
 3. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.
 4. Read prices from pages that need JavaScript, with a headless browser.

@@ -18,7 +18,7 @@ ANNA, BEN = "u-anna", "u-ben"
 
 def two_accounts(site, replies=None, model=None):  # noqa: F811
     site.allow_agent(replies=replies, model=model)
-    accounts.create_account(site.store, "anna", "Anna", PASSWORD)
+    accounts.create_account(site.store, "anna", "Anna", PASSWORD, email="anna@example.com")
     accounts.create_account(site.store, "ben", "Ben", PASSWORD)
     # Nothing was there before the accounts, and that has been settled.
     session.adopt_existing(site.store, site.runtime.checkpointer, ANNA)
@@ -141,7 +141,7 @@ def test_the_first_account_created_takes_over_the_old_conversations_and_memory(s
     memory.save_preference(site.store, memory.DEFAULT_USER, "region", "Portugal")
 
     first = create(site.visit(), name="Anna", username="anna")
-    second = create(site.visit(), name="Ben", username="ben")
+    second = create(site.visit(), name="Ben", username="ben", email="ben@example.com")
 
     assert listed(first) == ["A question from before accounts"]
     assert any("Portugal" in m.value for m in first.sidebar.markdown)

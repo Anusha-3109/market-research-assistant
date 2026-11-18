@@ -117,10 +117,21 @@ def storage_paths(data_dir: str) -> tuple[Path, Path, Path | None]:
 # MEMORY_BACKUP: where a copy of it is kept, for a deployed copy; else None.
 REPORTS_DIR, MEMORY_DB, MEMORY_BACKUP = storage_paths(os.getenv("DATA_DIR", ""))
 
-# A deployed copy is opened with this password, so that strangers with the
-# link cannot spend the API credit. Not set (as on your own computer): the
-# app opens directly.
+# Set on a deployed copy, this turns accounts on: visitors sign in, and this
+# value is the invite code needed to create an account, so that strangers
+# with the link cannot spend the API credit. Not set (as on your own
+# computer): the app opens directly, for one user.
 APP_PASSWORD = os.getenv("APP_PASSWORD", "").strip()
+
+# Email, for the link sent when someone has forgotten their password (see
+# agent/mailer.py). Without SMTP_USER, SMTP_PASSWORD and APP_URL the app
+# offers no "Forgot password?" link.
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip() or "smtp.gmail.com"
+SMTP_PORT = int(os.getenv("SMTP_PORT", "").strip() or 587)
+SMTP_USER = os.getenv("SMTP_USER", "").strip()          # the address email is sent from
+# An app password is often shown in groups of four with spaces between them.
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").replace(" ", "").strip()
+APP_URL = os.getenv("APP_URL", "").strip()              # the public address of the app
 
 # The only facts the agent may remember about a user between conversations.
 PROFILE_KEYS = ["region", "industry", "business_idea", "report_style"]
