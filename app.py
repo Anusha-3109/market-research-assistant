@@ -33,15 +33,15 @@ from agent.session import (
     to_blocks,
     to_turns,
 )
+from ui.account_badge import render_account_badge
 from ui.assets import LOGO
 from ui.guide import render_guide
-from ui.research import question_box_text, render_tabs, render_turn, run_live
+from ui.research import question_box_text, render_bar, render_tabs, render_turn, run_live
 from ui.runtime import get_runtime, get_store
 from ui.sidebar import (
     FORGET,
     GUIDE,
     NEW,
-    SIGN_OUT,
     chosen_settings,
     current_settings,
     prepare_settings,
@@ -132,9 +132,9 @@ def open_guide(for_thread: str) -> None:
 action = render_sidebar(
     list_conversations(runtime.agent, runtime.checkpointer, store=runtime.store,
                        user_id=user_id if account else None), thread_id,
-    profile=load_profile(runtime.store, user_id), waiting=waiting is not None,
-    account=account)
-if action == SIGN_OUT:
+    profile=load_profile(runtime.store, user_id), waiting=waiting is not None)
+# The round badge at the top right says who is signed in.
+if account and render_account_badge(account):
     # Everything this browser session held goes: who was signed in, their
     # settings, and the address of the conversation that was open.
     st.session_state.clear()
@@ -232,11 +232,12 @@ elif resuming:
     answer = resuming["answer"]
 elif not question:
     with view.container():
+        left = render_bar(turns)
         shown = render_tabs(turns, thread_id, locked=waiting is not None)
         is_latest = shown == len(turns) - 1
         outcome = render_turn(turns[shown], shown, thread_id, is_latest,
                               waiting if is_latest else None)
-    if outcome.new:
+    if left or outcome.new:
         st.query_params["c"] = new_thread_id()
         st.rerun()
     if outcome.answer is not None:

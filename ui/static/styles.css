@@ -309,28 +309,91 @@
     backdrop-filter: blur(6px);
     gap: 0.6rem !important;
 }
-/* Who is signed in, in the sidebar, and the greeting on the start screen. */
-/* The foot of the sidebar: a line, who is signed in, then Sign out,
-   Settings and Help as plain rows. The sidebar is made a column as tall as
-   the window, and the foot is pushed to its bottom. */
-[data-testid="stSidebarContent"] { display: flex; flex-direction: column; }
-[data-testid="stSidebarUserContent"] { flex: 1; display: flex; flex-direction: column; }
-[data-testid="stSidebarUserContent"] > div { flex: 1; display: flex; flex-direction: column; }
-[data-testid="stSidebarUserContent"] > div > [data-testid="stVerticalBlock"] { flex: 1; }
-/* Streamlit wraps the foot in a box of its own; that box is what is pushed down. */
+/* The three parts of the sidebar. The head (logo and name) stays at the
+   top and the foot (who is signed in, Sign out, Settings, Help) at the
+   bottom of the window. The part between them (conversations, what is
+   remembered) scrolls by itself when it does not fit, so the scroll bar
+   runs beside that part only.
+
+   For this the sidebar is made a column exactly as tall as the window that
+   does not scroll as a whole. Streamlit wraps each of the two containers in
+   a box of its own; those boxes are what is sized. */
+[data-testid="stSidebarContent"] { display: flex; flex-direction: column; overflow: hidden; }
+[data-testid="stSidebarUserContent"] { flex: 1; min-height: 0; display: flex; flex-direction: column;
+                                       padding-bottom: 0; }
+[data-testid="stSidebarUserContent"] > div { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"] > div > [data-testid="stVerticalBlock"] { flex: 1; min-height: 0; }
+[data-testid="stSidebarUserContent"] [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_head) {
+    flex: none;
+}
+[data-testid="stSidebarUserContent"] [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_top) {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    /* Room on the right, so the scroll bar does not sit on the text. */
+    margin-right: -12px;
+    padding-right: 12px;
+    width: calc(100% + 12px);
+    max-width: none;
+}
 [data-testid="stSidebarUserContent"] [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_foot) {
-    margin-top: auto;
+    flex: none;
+    /* With Settings open it can grow tall; it then scrolls inside itself
+       and never takes the whole sidebar. */
+    max-height: 70vh;
+    overflow-y: auto;
+    border-top: 1px solid rgba(31, 42, 46, 0.14);
+    padding-bottom: 0.6rem;
 }
 .st-key-sidebar_foot {
-    border-top: 1px solid rgba(31, 42, 46, 0.14);
-    padding-top: 0.9rem;
+    padding-top: 0.8rem;
     gap: 0.15rem !important;
 }
-.gw-account { font-size: 0.8rem; font-weight: 600; color: #6b7a7f; padding: 0 0.25rem 0.3rem;
-              overflow-wrap: anywhere; }
-.gw-account-name { color: inherit; }
-.st-key-sign_out button { justify-content: flex-start; padding: 0.35rem 0.25rem; min-height: 0;
+/* The account badge: a round button with one letter, kept in the top right
+   corner of the page. Streamlit wraps it in a box of its own; that box is
+   taken out of the page's flow, so it leaves no gap where it was written. */
+[data-testid="stLayoutWrapper"]:has(> .st-key-account_badge) {
+    position: fixed;
+    top: 0.75rem;
+    right: 1.1rem;
+    width: auto;
+    z-index: 1000;
+}
+.st-key-account_badge [data-testid="stPopover"] button {
+    width: 2.5rem;
+    height: 2.5rem;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(31, 42, 46, 0.14);
+    box-shadow: 0 1px 4px rgba(20, 40, 40, 0.14);
+    font-weight: 700;
+}
+/* Only the letter: the small arrow a folding menu normally shows is hidden. */
+.st-key-account_badge [data-testid="stPopover"] button svg,
+.st-key-account_badge [data-testid="stPopover"] button [data-testid="stIconMaterial"] { display: none; }
+.gw-account { font-size: 0.8rem; color: #6b7a7f; overflow-wrap: anywhere; }
+.gw-account-name { display: block; font-size: 0.95rem; font-weight: 650; color: #1f2a2e; }
+.st-key-sign_out button { justify-content: flex-start; padding: 0.3rem 0; min-height: 0;
                           color: inherit; font-weight: 400; }
+
+/* The bar across the top of an open conversation. */
+.st-key-conversation_bar {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--glass-edge);
+    border-radius: 14px;
+    padding: 0.35rem 0.6rem 0.35rem 1rem;
+    /* Room on the right for the account badge in the corner. */
+    margin-right: 3.2rem;
+    width: calc(100% - 3.2rem);
+}
+.gw-bar { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+.gw-bar-title { font-weight: 700; font-size: 0.86rem; letter-spacing: 0.04em; text-transform: uppercase;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-bar-chip { flex: none; background: rgba(31, 42, 46, 0.07); color: #56656a; border-radius: 999px;
+               font-size: 0.74rem; padding: 0.12rem 0.6rem; }
+.st-key-conversation_bar button { min-height: 0; padding: 0.2rem 0.45rem; }
 .st-key-sidebar_foot [data-testid="stExpander"] details { border: 0; background: transparent; }
 .st-key-sidebar_foot [data-testid="stExpander"] summary { padding: 0.35rem 0.25rem; }
 .gw-hello { text-align: center; font-size: 0.95rem; font-weight: 600; color: #25605a; margin: 0; }

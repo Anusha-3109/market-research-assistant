@@ -10,10 +10,9 @@ from agent.config import (
     PROFILE_KEYS,
     STYLE_CHOICES,
 )
-from agent.accounts import Account
 from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
-from ui.assets import brand, fill
+from ui.assets import brand
 
 # How many conversations are listed before the rest fold away.
 RECENT_SHOWN = 5
@@ -22,7 +21,6 @@ RECENT_SHOWN = 5
 NEW = "new"
 FORGET = "forget"
 GUIDE = "guide"
-SIGN_OUT = "sign out"
 
 
 # Each setting has a widget in the settings panel. The widget's value is
@@ -64,51 +62,47 @@ def current_settings() -> dict:
 
 
 def render_sidebar(conversations: list[Conversation], current: str,
-                   profile: dict[str, str], waiting: bool,
-                   account: Account | None = None) -> str | None:
-    """Show the sidebar. Returns NEW, FORGET, GUIDE or SIGN_OUT if the user
-    asked for that, the thread id of a conversation they picked, or None.
+                   profile: dict[str, str], waiting: bool) -> str | None:
+    """Show the sidebar. Returns NEW, FORGET or GUIDE if the user asked for
+    that, the thread id of a conversation they picked, or None.
 
     Args:
         profile: What is remembered about the user.
-        account: The account that is signed in. None when the app runs
-            without accounts.
         waiting: True while the agent is stopped for an approval. Settings
             that would change how a paused report continues are locked.
     """
     action = None
     with st.sidebar:
-        st.html(brand(APP_NAME))
-        st.caption(APP_TAGLINE)
+        # The sidebar has three parts. The head (logo and name) and the
+        # foot never move. The part between them holds the conversations
+        # and scrolls when they do not fit. The stylesheet does this (see
+        # "The three parts of the sidebar").
+        with st.container(key="sidebar_head"):
+            st.html(brand(APP_NAME))
+            st.caption(APP_TAGLINE)
 
-        if st.button("New conversation", icon=":material/add:", width="stretch",
-                     key="new_conversation"):
-            action = NEW
+        with st.container(key="sidebar_top"):
+            if st.button("New conversation", icon=":material/add:", width="stretch",
+                         key="new_conversation"):
+                action = NEW
 
-        st.caption("Conversations")
-        if not conversations:
-            st.caption("None yet. Ask a question to start one.")
-        # The newest few are always visible; the rest fold away so the
-        # panels below are not pushed off the screen.
-        for conversation in conversations[:RECENT_SHOWN]:
-            action = _conversation_button(conversation, current) or action
-        older = conversations[RECENT_SHOWN:]
-        if older:
-            with st.expander(f"{len(older)} older", type="compact"):
-                for conversation in older:
-                    action = _conversation_button(conversation, current) or action
+            st.caption("Conversations")
+            if not conversations:
+                st.caption("None yet. Ask a question to start one.")
+            # The newest few are always visible; the rest fold away so the
+            # panels below are not pushed off the screen.
+            for conversation in conversations[:RECENT_SHOWN]:
+                action = _conversation_button(conversation, current) or action
+            older = conversations[RECENT_SHOWN:]
+            if older:
+                with st.expander(f"{len(older)} older", type="compact"):
+                    for conversation in older:
+                        action = _conversation_button(conversation, current) or action
 
-        action = _memory_panel(profile) or action
+            action = _memory_panel(profile) or action
 
-        # The foot of the sidebar: who is signed in, then plain rows. The
-        # stylesheet keeps it at the bottom when the list above is short.
+        # The foot: two plain rows.
         with st.container(key="sidebar_foot"):
-            if account:
-                # The name was typed by a person: fill() shows it as text.
-                st.html(fill("account.html", person=account.name))
-                if st.button("Sign out", icon=":material/logout:", key="sign_out",
-                             type="tertiary"):
-                    action = SIGN_OUT
             _settings_panel(waiting)
             action = _help_panel() or action
     return action

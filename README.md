@@ -740,7 +740,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-724 tests, none of which use the internet or cost anything: outside
+731 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -769,6 +769,7 @@ services and the model are replaced with fakes.
 | `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
 | `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
+| `test_conversation_bar.py` | The bar across the top of an open conversation: its title, the number of questions, and the two buttons that leave it |
 | `test_account_settings.py` | Settings kept per account, the greeting by name, signing out, and that the next person on the same browser gets nothing from the one before |
 | `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
@@ -904,6 +905,7 @@ market-research-assistant/
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
 │   ├── sign_in.py           the sign-in screen: sign in, create an account, change or reset a password
+│   ├── account_badge.py     the round badge at the top right: who is signed in, sign out
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware

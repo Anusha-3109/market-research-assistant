@@ -194,6 +194,26 @@ def tab_labels(turns: list[Turn], limit: int) -> list[str]:
     return labels
 
 
+def render_bar(turns: list[Turn]) -> bool:
+    """The bar across the top of an open conversation: its title (the first
+    question), how many questions it holds, and two buttons that leave it.
+    Returns True if one of them was pressed.
+
+    "New" and the cross both lead to an empty conversation; this one stays
+    in the list in the sidebar.
+    """
+    count = plural(len(turns), "question")
+    with st.container(key="conversation_bar", horizontal=True, vertical_alignment="center"):
+        # The title was typed by a person: fill() shows it as text.
+        st.html(fill("bar.html", title=short_title(turns[0].question, 60), count=count),
+                width="stretch")
+        new = st.button("New", key="bar_new", type="tertiary",
+                        help="Start a new conversation. This one is kept.")
+        close = st.button("", icon=":material/close:", key="bar_close", type="tertiary",
+                          help="Close this conversation. It is kept in the list.")
+    return new or close
+
+
 def render_tabs(turns: list[Turn], thread_id: str, locked: bool) -> int:
     """The questions of this conversation as tabs. Returns the index of the
     one to show. The newest is selected when a new answer arrives."""

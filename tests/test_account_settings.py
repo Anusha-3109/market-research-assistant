@@ -147,23 +147,15 @@ def test_a_name_is_shown_as_text_never_as_markup(site):  # noqa: F811
     assert "<b>Anna</b>" not in html_on(app.main) + html_on(app.sidebar)
 
 
-def test_without_accounts_nobody_is_greeted_and_there_is_no_sign_out(page):
+def test_without_accounts_nobody_is_greeted_and_there_is_no_badge(page):
     app = page()
 
     assert "Welcome" not in html_on(app.main)
-    assert "sign_out" not in [b.key for b in app.sidebar.button]
+    assert "sign_out" not in [b.key for b in app.button]
+    assert "Signed in as" not in html_on(app.main) + html_on(app.sidebar)
 
 
-# --- signing out -----------------------------------------------------------------------------------
-
-def test_the_sidebar_shows_who_is_signed_in(site):  # noqa: F811
-    two_accounts(site)
-
-    app = visit_as(site, "anna")
-
-    assert "Anna" in html_on(app.sidebar)
-    assert "Ben" not in html_on(app.sidebar)
-
+# --- the badge at the top right, and signing out ------------------------------------------------
 
 def in_order(block) -> list[str]:
     """What a part of the page shows, from top to bottom: the text of each
@@ -184,30 +176,50 @@ def position(sequence: list[str], words: str) -> int:
     return next(index for index, text in enumerate(sequence) if words in text)
 
 
-def test_who_is_signed_in_and_sign_out_sit_at_the_bottom_above_settings(site):  # noqa: F811
+def badge(app):
+    """The round badge: a folding menu whose label is one letter."""
+    return next(block for block in app.main.get("popover"))
+
+
+def letter_on(popover) -> str:
+    return popover.proto.popover.label
+
+
+def test_the_badge_shows_the_first_letter_of_your_name(site):  # noqa: F811
+    two_accounts(site)
+
+    assert letter_on(badge(visit_as(site, "anna"))) == "A"
+    assert letter_on(badge(visit_as(site, "ben"))) == "B"
+
+
+def test_the_badge_opens_to_who_is_signed_in_and_sign_out(site):  # noqa: F811
+    two_accounts(site)
+
+    inside = in_order(badge(visit_as(site, "anna")))
+
+    assert position(inside, "Signed in as <span class=\"gw-account-name\">Anna</span>") \
+        < position(inside, "Sign out")
+    assert not any("Ben" in text for text in inside)
+
+
+def test_the_sidebar_no_longer_says_who_is_signed_in(site):  # noqa: F811
     two_accounts(site)
     memory.save_preference(site.store, ANNA, "region", "Portugal")
 
-    sidebar = in_order(visit_as(site, "anna").sidebar)
+    app = visit_as(site, "anna")
+    sidebar = in_order(app.sidebar)
 
+    assert not any("Signed in as" in text or "Sign out" in text for text in sidebar)
     assert (position(sidebar, "New conversation") < position(sidebar, "What I remember")
-            < position(sidebar, "Forget me") < position(sidebar, "Signed in as")
-            < position(sidebar, "Sign out") < position(sidebar, "Settings")
+            < position(sidebar, "Forget me") < position(sidebar, "Settings")
             < position(sidebar, "Help"))
-
-
-def test_the_name_follows_signed_in_as_on_one_line(site):  # noqa: F811
-    two_accounts(site)
-
-    assert "Signed in as <span class=\"gw-account-name\">Anna</span>" in \
-        html_on(visit_as(site, "anna").sidebar)
 
 
 def test_signing_out_brings_back_the_sign_in_screen(site):  # noqa: F811
     two_accounts(site)
     app = visit_as(site, "anna")
 
-    button(app.sidebar, "sign_out").click().run()
+    button(app, "sign_out").click().run()
 
     assert not app.exception
     assert [tab.label for tab in app.tabs] == ["Sign in", "Create account"]
@@ -220,7 +232,7 @@ def test_the_next_person_on_the_same_browser_gets_nothing_from_the_one_before(si
     app = visit_as(site, "anna")
     choose(app, style="Friendly")
     ask(app, "Anna's question about oat milk")
-    button(app.sidebar, "sign_out").click().run()
+    button(app, "sign_out").click().run()
 
     sign_in(app, "ben", PASSWORD)
 
