@@ -87,6 +87,10 @@ class Block:
     # True for a report written before costs were recorded: the workflow's
     # own calls are missing from the figures.
     usage_is_partial: bool = False
+    # The key figures of a report as separate values (agent/report/snapshot.py).
+    # None for an answer that is not a report, or a report saved before
+    # snapshots existed.
+    snapshot: dict | None = None
 
 
 def to_blocks(messages: list) -> list[Block]:
@@ -164,6 +168,8 @@ def to_blocks(messages: list) -> list[Block]:
                 block.usage_is_partial = True
             titles.update(details.get("titles", {}))
             official.update(details.get("official", []))
+            if block.report:
+                block.snapshot = details.get("snapshot")
 
         elif isinstance(message, ToolMessage):
             # Search results carry the titles of the pages they found.
@@ -197,8 +203,9 @@ def to_turns(blocks: list[Block]) -> list[Turn]:
 
 # --- the chat panel: a few lines about each turn ---------------------------------------
 #
-# The panel beside the page lists every question of the conversation with
-# the first steps taken and a short reply. The full answer is on the page.
+# In the chat (the Ask view) a report is one short line, because the report
+# itself is in the Report view. While the agent works, earlier answers are
+# shown as short lines too.
 
 REPLY_MAX_CHARS = 220
 STEPS_IN_THREAD = 3
@@ -223,10 +230,8 @@ def _plain(text: str) -> str:
     return re.sub(r"\s+([.,;:!?])", r"\1", text)
 
 
-def reply_summary(block: "Block | None", waiting: bool = False) -> str:
-    """One or two lines about an answer, for the chat panel."""
-    if waiting:
-        return "Waiting for your decision, on the left."
+def reply_summary(block: "Block | None") -> str:
+    """One or two lines about an answer, for the chat."""
     if block is None or not (block.report or block.text):
         return "No answer was written for this question."
     if block.report:
@@ -239,7 +244,7 @@ def reply_summary(block: "Block | None", waiting: bool = False) -> str:
         else:
             points = len(block.problems)
             check = f", the report check found {points} point" + ("" if points == 1 else "s")
-        return f"The report is ready: {sources}{check}. It is shown on the left."
+        return f"The report is ready: {sources}{check}."
 
     text = _plain(block.text)
     if len(text) <= REPLY_MAX_CHARS:
@@ -255,6 +260,54 @@ def steps_for_thread(activity: list[str]) -> list[str]:
     if hidden <= 0:
         return steps
     return steps[:STEPS_IN_THREAD] + [f"and {hidden} more step" + ("" if hidden == 1 else "s")]
+
+
+# --- the Report view: a report as sections ---------------------------------------------
+#
+# A report is one text in markdown. The Report view shows each of its
+# sections as a card, so the text is split at the section headings ("## ").
+
+@dataclass
+class Section:
+    title: str      # "2. Competitors"
+    body: str       # the markdown under the heading
+
+
+def report_sections(report: str) -> tuple[str, list[Section]]:
+    """Split a report into the text before its first section and its
+    sections. The report's own title line ("# ...") is left out: the view
+    shows the title itself."""
+    intro: list[str] = []
+    sections: list[Section] = []
+    for line in report.splitlines():
+        if line.startswith("## "):
+            sections.append(Section(line[3:].strip(), ""))
+        elif sections:
+            sections[-1].body += line + "\n"
+        elif not line.startswith("# "):
+            intro.append(line)
+    for section in sections:
+        section.body = section.body.strip()
+    return "\n".join(intro).strip(), sections
+
+
+_SOURCE_NUMBER = re.compile(r"\[\[(\d+)\]\]")
+
+
+def section_status(body: str) -> tuple[str, str] | None:
+    """A short status for a section, with its kind ("ok" or "warn").
+
+    Only what can be counted in the text is reported: how many values the
+    research could not find, or else how many different sources the
+    section cites. A section with neither has no status.
+    """
+    missing = len(re.findall(r"not found", body, flags=re.IGNORECASE))
+    if missing:
+        return f"{missing} not found", "warn"
+    sources = len(set(_SOURCE_NUMBER.findall(body)))
+    if sources:
+        return (f"{sources} source" if sources == 1 else f"{sources} sources"), "ok"
+    return None
 
 
 STEPS_WHILE_WORKING = 6

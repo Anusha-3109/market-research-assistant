@@ -15,6 +15,7 @@ from agent.countries import find_country
 from agent.memory import UserContext
 from agent.report.deps import default_deps
 from agent import usage
+from agent.report.snapshot import build_snapshot
 from agent.report.graph import build_report_graph
 from agent.styles import known_style
 
@@ -104,6 +105,8 @@ def run_report(product: str, country: str, idea: str, graph=None,
         # sites are a competitor's own.
         "titles": final.get("titles", {}),
         "official": own_sites(final),
+        # The report's key figures as separate values, for the Snapshot view.
+        "snapshot": build_snapshot(final),
     }
 
 

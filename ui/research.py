@@ -1,15 +1,14 @@
-"""The research view.
+"""The views of an open conversation.
 
-A finished conversation has two panes. On the left is the page: the answer
-to one question, with what it cost and the numbered list of sources it
-cites. On the right is the chat panel: every question of the conversation
-with its first steps and a short reply. Clicking a question puts its answer
-on the page.
+- Ask: the conversation as one full-width chat. Every question is followed
+  by the steps taken and its answer. A report is one line there, with a
+  button that opens it.
+- Report: the newest report on its own, with what it cost and its sources.
 
-The same layout is used in two states:
-- finished: drawn from the saved conversation (render_conversation);
-- live: drawn while the agent is working, with a placeholder where the
-  answer will go and the right-hand panels filling in (run_live).
+The Ask view is drawn in two states:
+- finished: from the saved conversation (render_ask_view);
+- live: while the agent is working, with the steps of the new question
+  appearing one by one (run_live).
 """
 
 import itertools
@@ -23,7 +22,6 @@ from langgraph.errors import GraphRecursionError
 
 from agent.agent import resume_steps, stream_steps
 from agent.approval import Pause, Progress
-from agent.config import MAX_QUESTION_CHARS
 from agent.citations import Source, domain_of, titles_in_results
 from agent.guards import friendly_error
 from agent.pdf_export import report_to_pdf
@@ -32,11 +30,14 @@ from agent.session import (
     Turn,
     describe_tool_call,
     reply_summary,
+    report_sections,
+    section_status,
     report_title,
     short_title,
     steps_for_thread,
     steps_while_working,
 )
+from agent.report.snapshot import trend_bars
 from agent.tools import safe_filename
 from agent import usage
 from agent.usage import Usage
@@ -83,7 +84,7 @@ def question_box_text(resuming: bool, waiting: bool, has_turns: bool) -> str:
     if resuming:
         return "Working on it. You can ask a follow-up when it is done."
     if waiting:
-        return "Answer the question on the left to continue"
+        return "Answer the question above to continue"
     return "Ask a follow-up" if has_turns else "Ask about a market"
 
 
@@ -185,79 +186,6 @@ def render_bar(turns: list[Turn]) -> bool:
     return new or close
 
 
-def shown_turn(turns: list[Turn], thread_id: str, locked: bool) -> int:
-    """The index of the turn whose answer is on the page. It is the newest,
-    unless the user clicked an earlier question in the chat panel. A new
-    answer, or an approval that is waiting, brings the page back to the
-    newest."""
-    latest = len(turns) - 1
-    chosen = st.session_state.get("shown_turn")
-    if locked or not chosen or chosen["thread"] != thread_id or chosen["turns"] != len(turns):
-        return latest
-    return min(chosen["index"], latest)
-
-
-def _show_turn(thread_id: str, turns: int, index: int) -> None:
-    st.session_state["shown_turn"] = {"thread": thread_id, "turns": turns, "index": index}
-
-
-def thread_entries(turns: list[Turn], shown: int | None, thread_id: str,
-                   waiting: bool = False, locked: bool = False, live: bool = False) -> None:
-    """Every question of the conversation with its first steps and a short
-    reply.
-
-    shown:  the turn whose answer is on the page; its question is drawn
-            filled. None while the agent is working on a new one.
-    locked: the questions cannot be clicked (an approval is waiting, or
-            the agent is working).
-    live:   drawn by the live view. When a question is sent, the finished
-            view and the live view are both drawn in the same run, and
-            Streamlit allows a key only once per run; the live view's
-            buttons therefore have keys of their own.
-    """
-    labels = tab_labels(turns, 60)
-    latest = len(turns) - 1
-    for index, turn in enumerate(turns):
-        block = turn.answer
-        # The question is a button: clicking it puts its answer on the page.
-        st.button(short_title(turn.question, 90),
-                  key=f"live_turn_{index}" if live else f"turn_{index}",
-                  type="secondary" if index == shown else "tertiary",
-                  help=f"Show: {labels[index]}", width="stretch", disabled=locked,
-                  on_click=_show_turn, args=(thread_id, len(turns), index))
-        used = usage.cost_text(block.usage) if block else ""
-        count = len(block.sources) if block else 0
-        meta = " · ".join(part for part in (used, plural(count, "source") if count else "") if part)
-        # Steps and replies hold words from the web and from the model:
-        # fill() shows them as text.
-        st.html(fill(
-            "thread_entry.html",
-            steps=join(fill("thread_step.html", text=step)
-                       for step in steps_for_thread(block.activity if block else [])),
-            reply=reply_summary(block, waiting=waiting and index == latest),
-            meta=meta))
-
-
-def chat_panel(turns: list[Turn], shown: int, thread_id: str, waiting: Pause | None,
-               box_text: str) -> tuple[bool, str | None]:
-    """The panel beside the page: the bar, every question with its first
-    steps and a short reply, and the question box at the bottom.
-
-    Returns whether the bar's "New" or its cross was pressed, and the
-    question that was typed, if any.
-    """
-    with st.container(key="chat_panel"):
-        left = render_bar(turns)
-        with st.container(key="chat_thread"):
-            thread_entries(turns, shown, thread_id, waiting=waiting is not None,
-                           locked=waiting is not None)
-        typed = st.chat_input(box_text, key="question", submit_mode="disable",
-                              disabled=waiting is not None, max_chars=MAX_QUESTION_CHARS)
-    # Keep the newest entry of a long conversation in view.
-    st.html(script_tag("thread_to_end.js"), unsafe_allow_javascript=True)
-    return left, typed
-
-
 def downloads(turn: Turn, index: int) -> None:
     """Download the answer as a Markdown file or a PDF. Both go to the
     user's own computer, so neither needs approval."""
@@ -273,72 +201,220 @@ def downloads(turn: Turn, index: int) -> None:
                            key=f"download_pdf_{index}")
 
 
-def render_conversation(turns: list[Turn], thread_id: str, waiting: Pause | None,
-                        box_text: str = "Ask a follow-up") -> Outcome:
-    """Show a finished conversation: the page on the left, the chat panel
-    on the right. box_text is what the empty question box says.
+# Offered under the chat. They lean on the conversation so far, so "they"
+# and "demand" mean the market that is being talked about.
+SUGGESTIONS = ["Who are the main competitors?", "What do they charge?", "Is demand rising?"]
 
-    If the agent is waiting for an approval, the form takes the place of
-    the newest answer on the page.
+
+def _open_report(thread_id: str) -> None:
+    st.session_state["view"] = {"thread": thread_id, "name": "report"}
+
+
+def question_bubble(question: str) -> None:
+    # The question was typed by a person: fill() shows it as text.
+    st.html(fill("ask_question.html", question=question))
+
+
+def steps_above_answer(activity: list[str]) -> None:
+    steps = steps_for_thread(activity)
+    if steps:
+        # Steps hold words from the web: fill() shows them as text.
+        st.html(fill("ask_steps.html", steps=join(fill("thread_step.html", text=step)
+                                                 for step in steps)))
+
+
+def render_ask_view(turns: list[Turn], thread_id: str, waiting: Pause | None) -> Outcome:
+    """Show a finished conversation as a chat: the bar, every question with
+    its steps and its answer, then suggestions for a next question.
+
+    If the agent is waiting for an approval, its form takes the place of
+    the newest answer. The question box itself is drawn by the page, which
+    keeps it at the bottom of the window.
     """
     outcome = Outcome()
-    shown = shown_turn(turns, thread_id, locked=waiting is not None)
-    is_latest = shown == len(turns) - 1
-    page, panel_column = st.columns([1.75, 1], gap="medium")
-    with page:
-        _page(turns[shown], shown, thread_id, is_latest, waiting if is_latest else None, outcome)
-    with panel_column:
-        outcome.new, typed = chat_panel(turns, shown, thread_id, waiting, box_text)
-        # A button on the page ("Save to reports folder") also asks a
-        # question; what was typed comes first.
-        outcome.question = typed or outcome.question
-    # Hold the page at the top of the answer (see the script for why).
+    outcome.new = render_bar(turns)
+    latest = len(turns) - 1
+    with st.container(key="ask_thread"):
+        for index, turn in enumerate(turns):
+            question_bubble(turn.question)
+            _answer(turn, index, thread_id, waiting if index == latest else None, outcome)
+
+    if waiting is None:
+        with st.container(key="ask_suggestions", horizontal=True):
+            for number, suggestion in enumerate(SUGGESTIONS):
+                if st.button(suggestion, key=f"suggest_{number}"):
+                    outcome.question = suggestion
+    return outcome
+
+
+def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
+            outcome: Outcome) -> None:
+    """One answer in the chat, under its question."""
+    block = turn.answer
+    with panel("answer_panel"):
+        steps_above_answer(block.activity if block else [])
+        if waiting is not None:
+            outcome.answer = render_pause(waiting)
+            return
+        if block is None or not (block.report or block.text):
+            st.caption("No answer was written for this question.")
+            return
+        if block.report:
+            # The report is in the Report view; here it is one line.
+            st.markdown(reply_summary(block))
+            st.button("Open report", icon=":material/description:", key=f"open_report_{index}",
+                      type="primary", on_click=_open_report, args=(thread_id,))
+        else:
+            st.markdown(block.cited)
+            if sources_cited(block):
+                st.caption(DISCLAIMER)
+
+    elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
+    with st.container(key=f"page_foot_{next(_serial)}"):
+        took_and_cost(len(block.activity), len(block.sources), elapsed, used=block.usage,
+                      used_is_partial=block.usage_is_partial, waiting=False)
+        if not block.report:
+            if block.sources:
+                with st.expander(plural(len(block.sources), "source"), type="compact"):
+                    st.html(sources_html(block.sources, empty=""))
+            downloads(turn, index)
+
+
+def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
+    """Show the newest report of a conversation: the Report view.
+
+    On the left each section of the report is a card with its title and a
+    status. On the right a box lists the contents, says what the report
+    cost, and holds the buttons that download or save it. The sources are
+    listed under the cards.
+    """
+    outcome = Outcome()
+    index = max(number for number, turn in enumerate(turns)
+                if turn.answer is not None and turn.answer.report)
+    turn = turns[index]
+    block = turn.answer
+    title = report_title(block.report)
+    title = title[:1].upper() + title[1:]
+    intro, sections = report_sections(block.cited)
+
+    # The heading is plain text from the report: fill() shows it as text.
+    st.html(fill("ask_head.html", kicker="Report", title=title))
+    cards, side = st.columns([2.1, 1], gap="medium")
+    with cards:
+        if block.problems is not None:
+            if block.problems:
+                st.warning(format_check(block.problems), title="Report check")
+            else:
+                st.badge("Report check passed", icon=":material/check:", color="green")
+        if intro:
+            st.caption(intro)
+        for section in sections:
+            status = section_status(section.body)
+            tag = fill("section_tag.html", text=status[0], kind=status[1]) if status else Html("")
+            with panel("report_section"):
+                st.html(fill("section_head.html", title=section.title, tag=tag))
+                st.markdown(section.body)
+        st.caption(DISCLAIMER)
+        sources_panel(block.sources)
+    with side:
+        with st.container(key="report_side"):
+            st.html(fill("contents.html", title=title,
+                         items=join(fill("contents_item.html", title=section.title)
+                                    for section in sections)))
+            elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
+            took_and_cost(len(block.activity), len(block.sources), elapsed, used=block.usage,
+                          used_is_partial=block.usage_is_partial, waiting=False)
+            downloads(turn, index)
+            if index == len(turns) - 1 and st.button(
+                    "Save to reports folder", icon=":material/save:", key=f"save_{index}",
+                    type="primary", width="stretch"):
+                outcome.question = SAVE_QUESTION
     st.html(script_tag("start_at_top.js"), unsafe_allow_javascript=True)
     return outcome
 
 
-def _page(turn: Turn, index: int, thread_id: str, is_latest: bool,
-          waiting: Pause | None, outcome: Outcome) -> None:
-    """The page: one question's answer, what it took, and its sources."""
-    block = turn.answer
-    has_answer = block is not None and bool(block.report or block.text)
-    elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
-    steps = block.activity if block else []
-    sources = block.sources if block else []
+def _open_view(thread_id: str, name: str) -> None:
+    st.session_state["view"] = {"thread": thread_id, "name": name}
 
-    with panel("answer_panel"):
-        if waiting is not None:
-            panel_heading(short_title(turn.question, 80), "WAITING FOR YOU")
-            outcome.answer = render_pause(waiting)
-        elif not has_answer:
-            panel_heading(short_title(turn.question, 80), "QUESTION")
-            st.caption("No answer was written for this question.")
+
+def _is_web_address(url: str) -> bool:
+    return url.startswith(("https://", "http://"))
+
+
+def render_snapshot_view(turns: list[Turn], thread_id: str) -> Outcome:
+    """Show the key figures of the newest report at a glance: the Snapshot
+    view. Everything shown was kept by the report workflow as a separate
+    value (agent/report/snapshot.py); nothing is worked out here.
+
+    The words come from the web and from the model, so every one of them
+    goes through fill(), which shows it as text.
+    """
+    block = next(turn.answer for turn in reversed(turns)
+                 if turn.answer is not None and turn.answer.report)
+    snapshot = block.snapshot
+    title = report_title(block.report)
+
+    head, action = st.columns([4, 1], vertical_alignment="bottom")
+    head.html(fill("ask_head.html", kicker="Snapshot", title=title[:1].upper() + title[1:]))
+    with action.container(key="snapshot_actions"):
+        st.button("Open report", icon=":material/description:", key="snapshot_report",
+                  type="primary", width="stretch", on_click=_open_view,
+                  args=(thread_id, "report"))
+
+    tiles = [fill("snap_tile.html", label=figure["label"], value=figure["value"],
+                  note=figure["note"],
+                  source=fill("snap_source.html", url=figure["url"])
+                  if _is_web_address(figure["url"]) else Html(""),
+                  # A snapshot saved before conversion existed has no such value.
+                  converted=fill("snap_converted.html", text=figure["converted"])
+                  if figure.get("converted") else Html(""))
+             for figure in snapshot["figures"]]
+    tiles.append(fill("snap_tile.html", label="Competitors confirmed",
+                      value=snapshot["confirmed"],
+                      note=f"of {plural(snapshot['candidates'], 'candidate')}", source=Html(""),
+                      converted=Html("")))
+    st.html(fill("snap_tiles.html", tiles=join(tiles)))
+
+    chart, found = st.columns([3, 2], gap="medium")
+    with chart:
+        _trend_chart(snapshot["trend"])
+    with found:
+        if snapshot["opportunities"]:
+            st.html(fill("snap_list.html", items=join(
+                fill("snap_item.html", text=text) for text in snapshot["opportunities"])))
         else:
-            title = report_title(block.report) if block.report else short_title(turn.question, 80)
-            panel_heading(title[:1].upper() + title[1:], "REPORT" if block.report else "ANSWER")
-            if block.problems is not None:
-                if block.problems:
-                    st.warning(format_check(block.problems), title="Report check")
-                else:
-                    st.badge("Report check passed", icon=":material/check:", color="green")
-            st.markdown(block.cited)
-            if block.report or sources_cited(block):
-                st.caption(DISCLAIMER)
+            st.html(fill("snap_empty.html", head="Opportunities found",
+                         text="The report has no SWOT section."))
+        with st.container(key="snapshot_ask_row"):
+            st.button("Ask a follow-up", icon=":material/chat_bubble:", key="snapshot_ask",
+                      type="tertiary", on_click=_open_view, args=(thread_id, "ask"))
 
-    # Under the answer: what it took, the ways to keep it, and its sources.
-    with st.container(key=f"page_foot_{next(_serial)}"):
-        took_and_cost(len(steps), len(sources), elapsed,
-                      used=block.usage if block else None,
-                      used_is_partial=bool(block and block.usage_is_partial),
-                      waiting=waiting is not None)
-        if has_answer and waiting is None:
-            if block.report or sources:
-                downloads(turn, index)
-            if block.report and is_latest and st.button(
-                    "Save to reports folder", icon=":material/save:", key=f"save_{index}"):
-                outcome.question = SAVE_QUESTION
-    sources_panel(sources, empty="None yet." if waiting is not None
-                  else "No pages were cited.")
+    if snapshot["competitors"]:
+        st.html(fill("snap_table.html", rows=join(
+            fill("snap_row.html", company=row["name"], offer=row["offer"], size=row["size"],
+                 price=row["price"]) for row in snapshot["competitors"])))
+    st.html(script_tag("start_at_top.js"), unsafe_allow_javascript=True)
+    return Outcome()
+
+
+def _trend_chart(trend: dict | None) -> None:
+    """The demand trend as bars. The tallest bars are drawn stronger, so
+    the peak stands out."""
+    bars = trend_bars(trend["points"]) if trend else []
+    if not bars:
+        st.html(fill("snap_empty.html", head="Search interest",
+                     text="No demand trend was measured for this report."))
+        return
+    top = max(value for _, value in bars) or 1
+    direction = trend["direction"] or "measured"
+    if not trend["reliable"]:
+        direction += " (few searches, so treat this with caution)"
+    st.html(fill(
+        "snap_chart.html", term=trend["term"], direction=direction,
+        first=bars[0][0], last=bars[-1][0],
+        bars=join(fill("snap_bar.html", height=max(3, round(value / top * 100)),
+                       high=Html(" gw-snap-bar-high") if value >= 0.85 * top else Html(""))
+                  for _, value in bars)))
 
 
 def took_and_cost(step_count: int, source_count: int, elapsed: float | None,
@@ -378,44 +454,36 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
     """Run the agent and show the research as it happens.
 
     Give `question` to start a new turn, or `answer` to continue after an
-    approval form. `turns` is the conversation so far, for the chat panel.
-    When the agent finishes or pauses, the caller redraws the page from
-    the saved conversation.
+    approval form. `turns` is the conversation so far. When the agent
+    finishes or pauses, the caller redraws the page from the saved
+    conversation.
 
-    The layout is the same as the finished view. On the left a placeholder
-    stands where the answer will be, with the pages found so far under it.
-    On the right the chat panel shows the earlier questions, then this
-    one with each step as it happens.
+    The chat shows the earlier questions, each with a short line for its
+    answer, then this question with every step as it happens, a placeholder
+    where the answer will be, and the pages found so far.
     """
     turns = turns or []
     # When an approval form was answered, the question is already the last
     # turn of the conversation.
     earlier = turns[:-1] if answer is not None and turns else turns
 
-    page, panel_column = st.columns([1.75, 1], gap="medium")
-    with page:
+    with st.container(key="ask_thread_live"):
+        for turn in earlier:
+            question_bubble(turn.question)
+            # A short line only: the finished view, drawn earlier in this
+            # same run, already used the keys of the full answers.
+            st.caption(reply_summary(turn.answer))
+        question_bubble(title)
+        steps_slot = st.empty()
         with panel("answer_panel"):
-            panel_heading(short_title(title, 80), "QUESTION")
             st.markdown(":shimmer[Writing the answer.] It appears here when it is ready.")
             st.html(load("skeleton.html"))
         sources_slot = st.empty()
-    with panel_column:
-        # These keys differ from the finished view's for the reason given
-        # in thread_entries; the stylesheet matches both.
-        with st.container(key="chat_panel_live"):
-            with st.container(key="chat_thread_live"):
-                thread_entries(earlier, None, thread_id, locked=True, live=True)
-                st.button(short_title(title, 90), key=f"live_turn_{turn_index}", type="secondary",
-                          width="stretch", disabled=True)
-                steps_slot = st.empty()
-            # Pressing any button makes Streamlit start the page again, which
-            # ends this run. The page then tidies the half-finished turn
-            # (app.py).
-            st.button("Stop", icon=":material/stop_circle:", key=f"stop_{thread_id}_{turn_index}",
-                      on_click=_mark_stopped, args=(thread_id,), width="stretch")
-            st.chat_input("Working on it. You can ask a follow-up when it is done.",
-                          key="question_while_working", disabled=True)
-    st.html(script_tag("thread_to_end.js"), unsafe_allow_javascript=True)
+        # Pressing any button makes Streamlit start the page again, which
+        # ends this run. The page then tidies the half-finished turn
+        # (app.py).
+        st.button("Stop", icon=":material/stop_circle:", key=f"stop_{thread_id}_{turn_index}",
+                  on_click=_mark_stopped, args=(thread_id,))
 
     steps = [step.removeprefix("Workflow: ") for step in (earlier_steps or [])]
     found: dict[str, str] = {}         # address -> title, in the order found
@@ -427,10 +495,11 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
                          steps=join(fill("thread_step.html", text=step)
                                     for step in steps_while_working(steps)),
                          took=format_seconds(time.monotonic() - started)))
-        with sources_slot.container():
-            sources_panel([Source(number, page_title, domain_of(url), url)
-                           for number, (url, page_title) in enumerate(found.items(), start=1)][:12],
-                          empty="None yet.")
+        if found:
+            with sources_slot.container():
+                sources_panel([Source(number, page_title, domain_of(url), url)
+                               for number, (url, page_title)
+                               in enumerate(found.items(), start=1)][:12])
 
     def stay_with_message() -> None:
         """Keep an error on screen. Any button draws the page again from

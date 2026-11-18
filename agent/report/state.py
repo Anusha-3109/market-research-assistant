@@ -186,6 +186,10 @@ class TrendResult(BaseModel):
     term: str          # the search word that was measured
     summary: str       # direction, figures and source, as text
     reliable: bool     # False when there were too few searches to trust it
+    # The measurements themselves, for the chart in the Snapshot view. Empty
+    # for a trend saved before the chart existed.
+    unit: str = ""
+    points: list[tuple[str, float]] = []
 
 
 # --- step 8: the analysis ------------------------------------------------------------------------

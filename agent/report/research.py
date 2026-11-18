@@ -281,7 +281,8 @@ def make_research_steps(deps: Deps) -> dict:
                 continue
             trend_titles[clean_url(series.url)] = f"Search interest for '{term}'"
             result = TrendResult(term=term, summary=summarise(series),
-                                 reliable=not is_low_volume(series))
+                                 reliable=not is_low_volume(series),
+                                 unit=series.unit, points=list(series.points))
             if result.reliable:
                 return {"trend": result, "titles": trend_titles,
                         "log": [f"Demand trend: measured with '{term}'"]}

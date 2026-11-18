@@ -30,20 +30,31 @@ from agent.session import (
     load_messages,
     may_open,
     new_thread_id,
+    short_title,
     to_blocks,
     to_turns,
 )
 from ui.account_badge import render_account_badge
 from ui.assets import LOGO
 from ui.guide import render_guide
-from ui.research import question_box_text, render_conversation, run_live
+from ui.research import (
+    question_box_text,
+    render_ask_view,
+    render_report_view,
+    render_snapshot_view,
+    run_live,
+)
 from ui.runtime import get_runtime, get_store
 from ui.sidebar import (
     FORGET,
     GUIDE,
+    ASK,
     NEW,
+    REPORT,
+    SNAPSHOT,
     chosen_settings,
     current_settings,
+    current_view,
     prepare_settings,
     render_sidebar,
 )
@@ -129,10 +140,33 @@ def open_guide(for_thread: str) -> None:
     st.session_state["guide"] = {"thread": for_thread, "topics": ["how"], "scroll": True}
 
 
+# --- the conversation ------------------------------------------------------------------------
+# Each question with its answer is one "turn". It is read here, before the
+# sidebar is drawn, because the sidebar shows the views this conversation has.
+turns = to_turns(to_blocks(load_messages(runtime.agent, thread_id)))
+# Every open conversation has the Ask view. One that holds a report has
+# the Report view as well, and the Snapshot view if the report's key figures
+# were kept with it.
+reports = [turn.answer for turn in turns if turn.answer is not None and turn.answer.report]
+views = [ASK] if turns else []
+if reports:
+    views.append(REPORT)
+    if reports[-1].snapshot:
+        views.insert(0, SNAPSHOT)
+# A conversation whose newest answer is a report opens on its snapshot;
+# any other opens on Ask. While an approval is waiting, its form is on the
+# Ask view.
+# (Named open_view: further down, `view` is the placeholder the page is drawn in.)
+newest_is_report = bool(turns and turns[-1].answer is not None and turns[-1].answer.report)
+open_view = ASK if waiting is not None else current_view(
+    thread_id, views, default=SNAPSHOT if newest_is_report else ASK)
+
 action = render_sidebar(
     list_conversations(runtime.agent, runtime.checkpointer, store=runtime.store,
                        user_id=user_id if account else None), thread_id,
-    profile=load_profile(runtime.store, user_id), waiting=waiting is not None)
+    profile=load_profile(runtime.store, user_id), waiting=waiting is not None,
+    title=short_title(turns[0].question) if turns else "", views=views,
+    shown_view=open_view)
 # The round badge at the top right says who is signed in.
 if account and render_account_badge(account):
     # Everything this browser session held goes: who was signed in, their
@@ -158,10 +192,6 @@ elif action:
     st.query_params["c"] = action
     st.rerun()
 
-# --- the conversation ------------------------------------------------------------------------
-# Each question with its answer is one "turn". The research view shows one
-# turn at a time; the others are tabs.
-turns = to_turns(to_blocks(load_messages(runtime.agent, thread_id)))
 
 # A picker screen, opened by clicking a start card, belongs to one empty
 # conversation and lives in the browser session, like the guide below.
@@ -178,13 +208,15 @@ picker = picker if picker and picker["thread"] == thread_id and not turns else N
 resuming = st.session_state.pop("resume", None)
 resuming = resuming if resuming and resuming["thread"] == thread_id and waiting else None
 
-# An open conversation has its question box inside the chat panel (see
-# render_conversation). The start screen has it at the bottom of the page.
+# The question box, kept at the bottom of the window. A picker has its own
+# box, and the Snapshot and Report views have none: questions are asked in
+# the Ask view.
 question = None
-if not picker and not turns:
+if not picker and open_view == ASK:
     question = st.chat_input(
-        question_box_text(False, False, False),
-        key="question", submit_mode="disable", max_chars=MAX_QUESTION_CHARS)
+        question_box_text(bool(resuming), waiting is not None, bool(turns)),
+        key="question", submit_mode="disable",
+        disabled=waiting is not None, max_chars=MAX_QUESTION_CHARS)
 
 # The "How it works" guide is shown for this conversation only, and only
 # until a real question is asked. It lives in the browser session, not in
@@ -233,9 +265,12 @@ elif resuming:
     answer = resuming["answer"]
 elif not question:
     with view.container():
-        outcome = render_conversation(
-            turns, thread_id, waiting,
-            box_text=question_box_text(False, waiting is not None, True))
+        if open_view == SNAPSHOT:
+            outcome = render_snapshot_view(turns, thread_id)
+        elif open_view == REPORT:
+            outcome = render_report_view(turns, thread_id)
+        else:
+            outcome = render_ask_view(turns, thread_id, waiting)
     if outcome.new:
         st.query_params["c"] = new_thread_id()
         st.rerun()

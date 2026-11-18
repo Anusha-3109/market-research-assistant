@@ -61,12 +61,80 @@ def current_settings() -> dict:
     }
 
 
+# The views of an open conversation, in the order of their links.
+SNAPSHOT, ASK, REPORT = "snapshot", "ask", "report"
+VIEW_NAMES = {SNAPSHOT: "Snapshot", ASK: "Ask", REPORT: "Report"}
+VIEW_ICONS = {SNAPSHOT: ":material/dashboard:", ASK: ":material/chat_bubble:",
+              REPORT: ":material/description:"}
+
+
+def current_view(thread_id: str, views: list[str], default: str = ASK) -> str:
+    """The view of this conversation that is open: the one chosen with a
+    link in the sidebar, for this conversation only, or else `default`."""
+    chosen = st.session_state.get("view")
+    if chosen and chosen["thread"] == thread_id and chosen["name"] in views:
+        return chosen["name"]
+    return default if default in views else ASK
+
+
+def _choose_view(thread_id: str, name: str) -> None:
+    st.session_state["view"] = {"thread": thread_id, "name": name}
+
+
+def _note_picked() -> None:
+    """Runs when the conversation picker is changed, before the page is
+    drawn again: keeps what was picked."""
+    st.session_state["picked_conversation"] = st.session_state["pick_conversation"]
+
+
+def picker_entries(conversations: list[Conversation], current: str, title: str) -> dict[str, str]:
+    """What the conversation picker lists: the id of each conversation and
+    the text of its entry, with the open conversation first.
+
+    Every entry reads differently. The browser tells the picker which
+    entry is chosen by its text, so two conversations with the same title
+    were mixed up: any click in one of them jumped to the other. A repeated
+    title gets a number: "Oat milk in Germany (2)".
+    """
+    titles = {conversation.thread_id: conversation.title for conversation in conversations}
+    titles.setdefault(current, title)        # an older one that is not in the recent list
+    entries: dict[str, str] = {}
+    for thread_id in [current] + [other for other in titles if other != current]:
+        entry, copy = titles[thread_id], 2
+        while entry in entries.values():
+            entry, copy = f"{titles[thread_id]} ({copy})", copy + 1
+        entries[thread_id] = entry
+    return entries
+
+
+def _conversation_picker(conversations: list[Conversation], current: str, title: str) -> str | None:
+    """The conversations in one box, with the open one chosen. Returns the
+    id of another one if it was just picked."""
+    entries = picker_entries(conversations, current, title)
+    # The box always shows the conversation that is open. Without this line
+    # it would keep showing one picked earlier after "New conversation".
+    st.session_state["pick_conversation"] = current
+    st.selectbox("Conversation", list(entries), key="pick_conversation",
+                 format_func=entries.get, on_change=_note_picked, width="stretch")
+    picked = st.session_state.pop("picked_conversation", None)
+    return picked if picked and picked != current else None
+
+
 def render_sidebar(conversations: list[Conversation], current: str,
-                   profile: dict[str, str], waiting: bool) -> str | None:
+                   profile: dict[str, str], waiting: bool,
+                   title: str = "", views: list[str] | None = None,
+                   shown_view: str | None = None) -> str | None:
     """Show the sidebar. Returns NEW, FORGET or GUIDE if the user asked for
     that, the thread id of a conversation they picked, or None.
 
+    On the front page the conversations are listed one under the other.
+    Inside an open conversation the list gives way to a picker, followed by
+    the links to the views of that conversation.
+
     Args:
+        title: The title of the open conversation; "" on the front page.
+        views: The views the open conversation has, such as [ASK, REPORT].
+        shown_view: The one of them that is open.
         profile: What is remembered about the user.
         waiting: True while the agent is stopped for an approval. Settings
             that would change how a paused report continues are locked.
@@ -86,18 +154,27 @@ def render_sidebar(conversations: list[Conversation], current: str,
                          key="new_conversation"):
                 action = NEW
 
-            st.caption("Conversations")
-            if not conversations:
-                st.caption("None yet. Ask a question to start one.")
-            # The newest few are always visible; the rest fold away so the
-            # panels below are not pushed off the screen.
-            for conversation in conversations[:RECENT_SHOWN]:
-                action = _conversation_button(conversation, current) or action
-            older = conversations[RECENT_SHOWN:]
-            if older:
-                with st.expander(f"{len(older)} older", type="compact"):
-                    for conversation in older:
-                        action = _conversation_button(conversation, current) or action
+            if views:
+                action = _conversation_picker(conversations, current, title) or action
+                shown = shown_view or current_view(current, views)
+                with st.container(key="view_links"):
+                    for name in views:
+                        st.button(VIEW_NAMES[name], key=f"view_{name}", icon=VIEW_ICONS[name],
+                                  type="secondary" if name == shown else "tertiary",
+                                  width="stretch", on_click=_choose_view, args=(current, name))
+            else:
+                st.caption("Conversations")
+                if not conversations:
+                    st.caption("None yet. Ask a question to start one.")
+                # The newest few are always visible; the rest fold away so
+                # the panels below are not pushed off the screen.
+                for conversation in conversations[:RECENT_SHOWN]:
+                    action = _conversation_button(conversation, current) or action
+                older = conversations[RECENT_SHOWN:]
+                if older:
+                    with st.expander(f"{len(older)} older", type="compact"):
+                        for conversation in older:
+                            action = _conversation_button(conversation, current) or action
 
             action = _memory_panel(profile) or action
 

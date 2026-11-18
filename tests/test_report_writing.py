@@ -299,6 +299,10 @@ def test_the_tool_returns_the_report_and_keeps_the_check_result_aside():
     text, details = run_report("meal kits", "Germany", "vegan bowls", graph=graph)
 
     assert text == "# Market research report: x"
+    # The key figures travel with it too; they have their own tests in
+    # test_snapshot.py.
+    snapshot = details.pop("snapshot")
+    assert snapshot["figures"] == [] and snapshot["competitors"] == []
     assert details == {"problems": [], "log": ["Report check: passed"],
                        "titles": {}, "official": [], "usage": NOTHING_USED}
     assert graph.request == {"product": "meal kits", "country": "Germany",

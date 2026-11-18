@@ -79,9 +79,15 @@ def page(tmp_path):
 
 
 def texts(app) -> str:
-    """Everything written on the page, as one string."""
+    """Everything written on the page, as one string: headings, text, small
+    print, and the questions in the chat (which are drawn as bubbles)."""
+    import html
+    import re
+
     written = list(app.subheader) + list(app.markdown) + list(app.caption)
-    return "\n".join(element.value for element in written)
+    bubbles = [html.unescape(re.sub(r"<[^>]+>", "", element.proto.body)).strip()
+               for element in app.get("html") if 'class="gw-ask-question"' in element.proto.body]
+    return "\n".join([element.value for element in written] + bubbles)
 
 
 def source_list(app) -> str:
@@ -218,6 +224,9 @@ def test_back_to_start_returns_to_the_cards(page):
 def test_a_finished_conversation_is_listed_in_the_sidebar(page):
     app = page([AIMessage("An answer.")])
     app.chat_input[0].set_value("How big is the vegan snack market?").run()
+    # The list is on the front page; inside a conversation there is a
+    # picker instead (see test_views.py).
+    button(app.sidebar, "new_conversation").click().run()
 
     titles = [b.label for b in app.sidebar.button if (b.key or "").startswith("open_")]
 
@@ -290,7 +299,7 @@ def test_a_save_request_shows_the_approval_form_and_locks_the_question_box(page)
     assert app.text_input[0].label == "Title"
     assert app.text_input[0].value == "Meal kits Germany"
     assert app.chat_input[0].disabled
-    assert app.chat_input[0].placeholder == "Answer the question on the left to continue"
+    assert app.chat_input[0].placeholder == "Answer the question above to continue"
 
 
 def test_pressing_save_writes_under_the_title_in_the_form(page):
@@ -310,7 +319,7 @@ def test_the_question_box_says_what_is_going_on():
 
     assert question_box_text(False, False, False) == "Ask about a market"
     assert question_box_text(False, False, True) == "Ask a follow-up"
-    assert question_box_text(False, True, True) == "Answer the question on the left to continue"
+    assert question_box_text(False, True, True) == "Answer the question above to continue"
     # Once the form is submitted the agent is working again: the box must
     # stop asking for an answer that has already been given.
     assert question_box_text(True, True, True) ==         "Working on it. You can ask a follow-up when it is done."
@@ -353,7 +362,7 @@ def test_settings_are_locked_while_an_approval_is_waiting(page):
     app = page([SAVE_CALL, AIMessage("Saved.")])
     app.chat_input[0].set_value("Save this report.").run()
 
-    assert app.sidebar.selectbox[0].disabled
+    assert next(box for box in app.sidebar.selectbox if box.label == "Model").disabled
     assert app.sidebar.toggle[0].disabled
 
 
@@ -420,13 +429,12 @@ def test_a_report_tab_is_named_after_the_report():
     assert tab_labels(turns, 40) == ["oat milk in Germany"]
 
 
-def test_asking_the_same_question_twice_still_opens_the_right_answer(page):
+def test_asking_the_same_question_twice_keeps_both_answers_apart(page):
     app = page([AIMessage("First answer."), AIMessage("Second answer.")])
     app.chat_input[0].set_value("Same question").run()
     app.chat_input[0].set_value("Same question").run()
 
-    # Both questions read the same; each has its own entry in the chat panel.
-    button(app, "turn_0").click().run()
-
-    assert "First answer." in texts(app)
-    assert "Second answer." not in texts(app)
+    # Both questions read the same; each has its own answer under it.
+    shown = texts(app)
+    assert shown.count("Same question") == 2
+    assert shown.index("First answer.") < shown.index("Second answer.")

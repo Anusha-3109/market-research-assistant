@@ -430,15 +430,16 @@ def test_the_cost_of_an_answer_is_shown_in_a_pill_above_the_steps(page, tmp_path
     assert any("1,240 tokens" in note for note in notes(app))
 
 
-def test_the_pill_shows_the_cost_of_the_answer_on_screen_not_of_the_conversation(page, tmp_path):
+def test_each_answer_has_its_own_pill_with_its_own_cost(page, tmp_path):
     app = open_app(page, tmp_path, [reply("First answer.", read=500, written=10, cost=0.0002),
                                     reply("Second answer.", read=900, written=30, cost=0.0004)])
     app.chat_input[0].set_value("First question").run()
 
     app.chat_input[0].set_value("Second question").run()
 
-    [pill] = pills(app)
-    assert "$0.0004" in pill
+    first, second = pills(app)
+    assert "$0.0002" in first and "$0.0004" in second
+    assert any("510 tokens" in note for note in notes(app))
     assert any("930 tokens" in note for note in notes(app))
 
 

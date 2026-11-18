@@ -65,7 +65,7 @@ agent with tools can decide what to look up next.
 
 | Capability | Detail |
 |---|---|
-| Web app | Example cards to start from, then a two-pane view: the answer as a page on the left with its cost and numbered sources, and the conversation as a chat panel on the right |
+| Web app | Example cards to start from, then three views of a conversation: Snapshot (a report's key figures at a glance), Ask (the chat) and Report (the report as cards) |
 | Market research report | Six fixed sections: market overview, competitors, pricing, trends, SWOT analysis, references |
 | Verified competitors | Each candidate is checked: does it sell this product, in this country? Others are dropped with the reason |
 | First-hand prices | Read only from the competitor's own website; the source link is set by code |
@@ -194,33 +194,28 @@ Before the detailed research, the agent stops and shows a form:
 Untick what does not belong, add what is missing, and continue. Cancelling
 stops the report with no further research.
 
-### The research view
+### The three views of a conversation
 
-Every answer, whether a full report or a single question, opens in the
-same view with two panes: the answer as a page on the left, and the
-conversation as a chat panel on the right.
+The front page shows the example cards. Once a conversation is open, the
+sidebar shows a picker with your conversations and links to its views. A
+conversation has **Ask**; one that holds a report also has **Report**, and
+**Snapshot** if the report's key figures were kept with it.
 
-| Where | What it shows |
+| View | What it shows |
 |---|---|
-| Left, the page | The answer to one question. Each fact carries a small number such as [1] that links to its source. A report also shows its "Report check" result above the text |
-| Left, under the answer | A pill with what the answer cost, for example "LLM cost $0.00076", and a line with the number of steps, sources and tokens. Then the download buttons and "Sources": the numbered pages the answer cites, with their site. A company's own site is marked **Official** |
-| Right, top of the panel | A bar with the conversation's title, the number of questions, and "New" and a cross, which both open an empty conversation |
-| Right, the thread | Every question of the conversation as a dark bubble, with its first three steps and a short reply. Clicking a question puts its answer on the page; the one on the page has a green ring |
-| Right, bottom of the panel | The question box |
+| Snapshot | The report's key figures as cards, each with where and when it applies and a link to its source; how many competitors were confirmed; the search interest as a bar chart; the opportunities from the SWOT; and a table of the competitors with what they offer, their size and one price. A conversation whose newest answer is a report opens here |
+| Ask | The conversation as one chat. Every question is a bubble on the right, followed by the steps taken and the full answer with its numbered sources. Under each answer are its cost, its sources (folded away) and the downloads. A report is one line here, with an "Open report" button. Three suggestions for a next question sit under the chat, and the question box stays at the bottom of the window |
+| Report | Each section of the report as a card with a status counted from its own text: how many values were "not found", or how many sources it cites. Beside the cards a box lists the contents, says what the report cost, and holds the downloads and "Save to reports folder" |
 
-The panel stays in view while the page is scrolled. A long conversation
-scrolls inside the panel, starting at its newest question.
+While the agent is working, the chat shows the new question with each step
+as it happens, a placeholder where the answer will be, the pages found so
+far, and a **Stop** button that ends the run. What was found up to that
+point is kept and the conversation can continue.
 
-While the agent is working the layout is the same. The page shows a
-placeholder and the pages found so far. In the panel the new question is
-followed by each step as it happens, a timer, and a **Stop** button that
-ends the run. What was found up to that point is kept and the conversation
-can continue.
-
-The short reply in the panel costs nothing: for a single question it is the
-start of the answer as plain text, and for a report it is put together from
-what is already known, such as "The report is ready: 15 sources, report
-check passed."
+A figure in a foreign currency, such as a market size in US dollars for a
+report on Germany, keeps its value exactly as the source wrote it. Under it
+the Snapshot shows the same amount in the country's own currency, worded as
+"about EUR 274 million, converted at the ECB rate of 18 Nov 2026".
 
 ### Download and save
 
@@ -240,8 +235,9 @@ Save. The competitor review form appears in the same place.
 Go deeper on pricing for the cheapest competitor you found.
 ```
 
-Type it in the box at the bottom of the chat panel. It is added to the
-thread under the earlier questions, so the report stays one click away.
+Type it in the box at the bottom of the Ask view, or click one of the
+suggestions. It is added to the chat under the earlier questions, and the
+report stays one click away in the sidebar.
 
 ### Conversations
 
@@ -749,7 +745,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-745 tests, none of which use the internet or cost anything: outside
+820 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -778,8 +774,12 @@ services and the model are replaced with fakes.
 | `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
 | `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
-| `test_chat_panel.py` | The two-pane view: the questions listed in the chat panel, choosing one, the short reply, the steps under a question and while working, the question box inside the panel |
-| `test_conversation_bar.py` | The bar at the top of the chat panel: its title, the number of questions, and the two buttons that leave it |
+| `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
+| `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
+| `test_snapshot.py` | The Snapshot view: which figures are kept with a report, the competitor rows, the chart's bars, and the page |
+| `test_views.py` | The sidebar of an open conversation: the conversation picker, the links to the views, and conversations that share a title |
+| `test_currency.py` | Converting a figure to the country's currency: reading amounts in English and German number styles, the rounding, the wording, a rate service that fails |
+| `test_conversation_bar.py` | The bar at the top of the chat: its title, the number of questions, and the two buttons that leave it |
 | `test_account_settings.py` | Settings kept per account, the greeting by name, signing out, and that the next person on the same browser gets nothing from the one before |
 | `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
@@ -911,7 +911,7 @@ market-research-assistant/
 │   ├── start.py             start screen and example cards
 │   ├── picker.py            the picker screen behind each card: box and chips
 │   ├── guide.py             the "How it works" guide
-│   ├── research.py          the two-pane view: the page, the chat panel, live progress
+│   ├── research.py          the three views: Snapshot, Ask, Report, and live progress
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
 │   ├── sign_in.py           the sign-in screen: sign in, create an account, change or reset a password
@@ -931,6 +931,7 @@ market-research-assistant/
 │   ├── source_check.py      puts back the link to a source if an answer left it out
 │   ├── answer_length.py     the limit on the length of a chat answer
 │   ├── usage.py             token usage and cost of the model calls
+│   ├── currency.py          a figure in the country's own currency, beside the original
 │   ├── session.py           conversations, questions and answers, for any interface
 │   ├── citations.py         numbered citations and the source list
 │   ├── pdf_export.py        a report as a PDF file
@@ -949,6 +950,7 @@ market-research-assistant/
 │   │   ├── research.py      figures, prices, market, news, trend
 │   │   ├── writing.py       SWOT and final check
 │   │   ├── render.py        builds the report text
+│   │   ├── snapshot.py      a report's key figures, kept as separate values
 │   │   ├── tool.py          the tool the chat agent calls
 │   │   └── demo.py          runs the workflow from the terminal
 │   └── sources/             one file per outside service
@@ -1030,6 +1032,27 @@ market-research-assistant/
   service starts.
 - A deploy, or the service shutting down while idle, signs everyone out.
 - If the service stops in the middle of an answer, that answer is lost.
+
+**The three views and the converted figures**
+
+- A report written before the Snapshot view existed has no saved figures,
+  so it has no Snapshot. The figures cannot be rebuilt afterwards.
+- The Snapshot shows what the research found, without correcting it. A
+  competitor matched to the wrong company, or a price for the wrong
+  product, stands out more there than in the report text.
+- Figure labels are the source's own wording and can be long sentences.
+  Values are copied as written, also in another language.
+- The status on a report card is a count of words and source numbers in
+  the section. It says nothing about whether the section is right.
+- A converted amount is a number no source published. It uses the latest
+  exchange rate, also for a figure about another year, so it is a rough
+  guide. Ranges and texts with several numbers are not converted. About
+  thirty countries have a currency in the table.
+- The converted amount is on the Snapshot only. The report text and the
+  downloads keep the original figures alone.
+- The three suggestions under the chat are the same for every
+  conversation.
+- The heading font is fetched from Google Fonts by the visitor's browser.
 
 **The web app**
 
