@@ -36,7 +36,7 @@ from agent.session import (
 from ui.account_badge import render_account_badge
 from ui.assets import LOGO
 from ui.guide import render_guide
-from ui.research import question_box_text, render_bar, render_tabs, render_turn, run_live
+from ui.research import question_box_text, render_conversation, run_live
 from ui.runtime import get_runtime, get_store
 from ui.sidebar import (
     FORGET,
@@ -178,12 +178,13 @@ picker = picker if picker and picker["thread"] == thread_id and not turns else N
 resuming = st.session_state.pop("resume", None)
 resuming = resuming if resuming and resuming["thread"] == thread_id and waiting else None
 
+# An open conversation has its question box inside the chat panel (see
+# render_conversation). The start screen has it at the bottom of the page.
 question = None
-if not picker:
+if not picker and not turns:
     question = st.chat_input(
-        question_box_text(bool(resuming), waiting is not None, bool(turns)),
-        key="question", submit_mode="disable",
-        disabled=waiting is not None, max_chars=MAX_QUESTION_CHARS)
+        question_box_text(False, False, False),
+        key="question", submit_mode="disable", max_chars=MAX_QUESTION_CHARS)
 
 # The "How it works" guide is shown for this conversation only, and only
 # until a real question is asked. It lives in the browser session, not in
@@ -232,12 +233,10 @@ elif resuming:
     answer = resuming["answer"]
 elif not question:
     with view.container():
-        left = render_bar(turns)
-        shown = render_tabs(turns, thread_id, locked=waiting is not None)
-        is_latest = shown == len(turns) - 1
-        outcome = render_turn(turns[shown], shown, thread_id, is_latest,
-                              waiting if is_latest else None)
-    if left or outcome.new:
+        outcome = render_conversation(
+            turns, thread_id, waiting,
+            box_text=question_box_text(False, waiting is not None, True))
+    if outcome.new:
         st.query_params["c"] = new_thread_id()
         st.rerun()
     if outcome.answer is not None:
@@ -264,7 +263,7 @@ if answer is not None:
     with live.container():
         run_live(runtime.agent, thread_id, context, title=latest.question,
                  turn_index=len(turns) - 1, answer=answer,
-                 earlier_steps=latest.answer.activity if latest.answer else [])
+                 earlier_steps=latest.answer.activity if latest.answer else [], turns=turns)
     # A deployed copy keeps a copy of the memory file after every answer.
     backup_memory()
     st.rerun()
@@ -275,7 +274,7 @@ elif question and not waiting:
     view.empty()
     with live.container():
         run_live(runtime.agent, thread_id, context, title=question,
-                 turn_index=len(turns), question=question)
+                 turn_index=len(turns), question=question, turns=turns)
     # A deployed copy keeps a copy of the memory file after every answer.
     backup_memory()
     st.rerun()

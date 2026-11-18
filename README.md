@@ -65,7 +65,7 @@ agent with tools can decide what to look up next.
 
 | Capability | Detail |
 |---|---|
-| Web app | Example cards to start from, then a research view: the answer on the left, live steps and numbered sources on the right, one tab per question |
+| Web app | Example cards to start from, then a two-pane view: the answer as a page on the left with its cost and numbered sources, and the conversation as a chat panel on the right |
 | Market research report | Six fixed sections: market overview, competitors, pricing, trends, SWOT analysis, references |
 | Verified competitors | Each candidate is checked: does it sell this product, in this country? Others are dropped with the reason |
 | First-hand prices | Read only from the competitor's own website; the source link is set by code |
@@ -197,20 +197,30 @@ stops the report with no further research.
 ### The research view
 
 Every answer, whether a full report or a single question, opens in the
-same two-column view:
+same view with two panes: the answer as a page on the left, and the
+conversation as a chat panel on the right.
 
 | Where | What it shows |
 |---|---|
-| Left | The answer. Each fact carries a small number such as [1] that links to its source |
-| Right, top | "Researching" with a timer and each step as it happens, then "Done" with the full list and the tokens used. Above the panel, a pill shows what the answer cost, for example "LLM cost $0.00076" |
-| Right, below | "Sources": the numbered pages the answer cites, with their site. A company's own site is marked **Official** |
-| Top | One tab per question in the conversation. The newest opens first |
+| Left, the page | The answer to one question. Each fact carries a small number such as [1] that links to its source. A report also shows its "Report check" result above the text |
+| Left, under the answer | A pill with what the answer cost, for example "LLM cost $0.00076", and a line with the number of steps, sources and tokens. Then the download buttons and "Sources": the numbered pages the answer cites, with their site. A company's own site is marked **Official** |
+| Right, top of the panel | A bar with the conversation's title, the number of questions, and "New" and a cross, which both open an empty conversation |
+| Right, the thread | Every question of the conversation as a dark bubble, with its first three steps and a short reply. Clicking a question puts its answer on the page; the one on the page has a green ring |
+| Right, bottom of the panel | The question box |
 
-While the agent is working, the answer panel shows a placeholder and a
-**Stop** button ends the run. What was found up to that point is kept and
-the conversation can continue.
+The panel stays in view while the page is scrolled. A long conversation
+scrolls inside the panel, starting at its newest question.
 
-A report also shows its "Report check" result above the text.
+While the agent is working the layout is the same. The page shows a
+placeholder and the pages found so far. In the panel the new question is
+followed by each step as it happens, a timer, and a **Stop** button that
+ends the run. What was found up to that point is kept and the conversation
+can continue.
+
+The short reply in the panel costs nothing: for a single question it is the
+start of the answer as plain text, and for a report it is put together from
+what is already known, such as "The report is ready: 15 sources, report
+check passed."
 
 ### Download and save
 
@@ -219,9 +229,8 @@ A report also shows its "Report check" result above the text.
 | Markdown | Sends the answer to your own computer as a Markdown file |
 | PDF | The same as a PDF, with working links and tables |
 | Save to reports folder | Asks the agent to save a report in the app's `reports/` folder |
-| Research another market | Opens a new, empty conversation |
 
-Saving shows a form in the answer panel with an editable title, and
+Saving shows a form on the page with an editable title, and
 **Save** and **Don't save** buttons. Nothing is written until you press
 Save. The competitor review form appears in the same place.
 
@@ -231,8 +240,8 @@ Save. The competitor review form appears in the same place.
 Go deeper on pricing for the cheapest competitor you found.
 ```
 
-Type it in the box at the bottom. It becomes a new tab next to the earlier
-ones, so the report stays one click away.
+Type it in the box at the bottom of the chat panel. It is added to the
+thread under the earlier questions, so the report stays one click away.
 
 ### Conversations
 
@@ -740,7 +749,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-731 tests, none of which use the internet or cost anything: outside
+745 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -769,14 +778,15 @@ services and the model are replaced with fakes.
 | `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
 | `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
-| `test_conversation_bar.py` | The bar across the top of an open conversation: its title, the number of questions, and the two buttons that leave it |
+| `test_chat_panel.py` | The two-pane view: the questions listed in the chat panel, choosing one, the short reply, the steps under a question and while working, the question box inside the panel |
+| `test_conversation_bar.py` | The bar at the top of the chat panel: its title, the number of questions, and the two buttons that leave it |
 | `test_account_settings.py` | Settings kept per account, the greeting by name, signing out, and that the next person on the same browser gets nothing from the one before |
 | `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
 | `test_source_check.py` | The source check: a missing link is put back, an answer that has one is left alone, and addresses inside web text are never used |
 | `test_styles.py` | The answer styles, checked by what the model is told: in a chat turn, while a report is written, and from the setting on the page; and that every style keeps the facts and their sources |
 | `test_picker.py` | The pickers: which question the chips build, and clicking through one on the page |
-| `test_app.py` | The page itself, run without a browser: cards, the research view and its tabs, guide, sidebar, approval form, a stopped run, missing key |
+| `test_app.py` | The page itself, run without a browser: cards, the research view, guide, sidebar, approval form, a stopped run, missing key |
 | `test_agent.py` | How the agent is assembled; model fallback |
 
 `test_app.py` uses Streamlit's `AppTest` with a fake agent, so it checks what
@@ -901,7 +911,7 @@ market-research-assistant/
 │   ├── start.py             start screen and example cards
 │   ├── picker.py            the picker screen behind each card: box and chips
 │   ├── guide.py             the "How it works" guide
-│   ├── research.py          the research view: answer, steps, sources, live progress
+│   ├── research.py          the two-pane view: the page, the chat panel, live progress
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
 │   ├── sign_in.py           the sign-in screen: sign in, create an account, change or reset a password

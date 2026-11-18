@@ -8,6 +8,7 @@ reused by any interface.
 - with accounts on, keep track of which account a conversation belongs to.
 """
 
+import re
 import uuid
 from dataclasses import dataclass, field
 
@@ -192,6 +193,81 @@ def to_turns(blocks: list[Block]) -> list[Turn]:
         elif turns and turns[-1].answer is None:
             turns[-1].answer = block
     return turns
+
+
+# --- the chat panel: a few lines about each turn ---------------------------------------
+#
+# The panel beside the page lists every question of the conversation with
+# the first steps taken and a short reply. The full answer is on the page.
+
+REPLY_MAX_CHARS = 220
+STEPS_IN_THREAD = 3
+
+_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")       # [words](address)
+_CITATION = re.compile(r"\[\[\d+\]\]\([^)]*\)")    # [[1]](address)
+_NUMBER = re.compile(r"^\[?\d+\]?$")                # the words of a citation: 1 or [1]
+
+
+def _plain(text: str) -> str:
+    """Markdown as plain words: links keep their words, a link that is only
+    a citation ("source", or a number) goes, and marks for bold and
+    headings are dropped."""
+    def words_of(link: re.Match) -> str:
+        words = link.group(1).strip()
+        return "" if words.lower() == "source" or _NUMBER.match(words) else words
+
+    text = _CITATION.sub("", text)
+    text = _LINK.sub(words_of, text)
+    text = re.sub(r"[*`#]", "", text)
+    text = " ".join(text.split())
+    return re.sub(r"\s+([.,;:!?])", r"\1", text)
+
+
+def reply_summary(block: "Block | None", waiting: bool = False) -> str:
+    """One or two lines about an answer, for the chat panel."""
+    if waiting:
+        return "Waiting for your decision, on the left."
+    if block is None or not (block.report or block.text):
+        return "No answer was written for this question."
+    if block.report:
+        count = len(block.sources)
+        sources = f"{count} source" if count == 1 else f"{count} sources"
+        if block.problems is None:
+            check = ""
+        elif not block.problems:
+            check = ", report check passed"
+        else:
+            points = len(block.problems)
+            check = f", the report check found {points} point" + ("" if points == 1 else "s")
+        return f"The report is ready: {sources}{check}. It is shown on the left."
+
+    text = _plain(block.text)
+    if len(text) <= REPLY_MAX_CHARS:
+        return text
+    # Cut at the last whole word that fits.
+    return text[:REPLY_MAX_CHARS].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
+
+
+def steps_for_thread(activity: list[str]) -> list[str]:
+    """The first few steps of a turn, and a count of the rest."""
+    steps = [step.removeprefix("Workflow: ") for step in activity]
+    hidden = len(steps) - STEPS_IN_THREAD
+    if hidden <= 0:
+        return steps
+    return steps[:STEPS_IN_THREAD] + [f"and {hidden} more step" + ("" if hidden == 1 else "s")]
+
+
+STEPS_WHILE_WORKING = 6
+
+
+def steps_while_working(steps: list[str]) -> list[str]:
+    """The latest steps of a turn that is still running, with a count of
+    the earlier ones in front."""
+    steps = [step.removeprefix("Workflow: ") for step in steps]
+    hidden = len(steps) - STEPS_WHILE_WORKING
+    if hidden <= 0:
+        return steps
+    return [f"and {hidden} earlier step" + ("" if hidden == 1 else "s")] + steps[hidden:]
 
 
 def short_title(text: str, limit: int = TITLE_MAX_CHARS) -> str:

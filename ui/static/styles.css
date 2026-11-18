@@ -378,16 +378,83 @@
 .st-key-sign_out button { justify-content: flex-start; padding: 0.3rem 0; min-height: 0;
                           color: inherit; font-weight: 400; }
 
-/* The bar across the top of an open conversation. */
-.st-key-conversation_bar {
-    background: rgba(255, 255, 255, 0.8);
+/* The chat panel beside the page. It stays in view while the page is
+   scrolled, and scrolls inside itself when the conversation is long. The
+   room left under it is for the question box at the bottom of the window. */
+[data-testid="stColumn"]:has([class*="st-key-chat_panel"]) {
+    position: sticky;
+    top: 4.2rem;
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.66);
     border: 1px solid var(--glass-edge);
-    border-radius: 14px;
-    padding: 0.35rem 0.6rem 0.35rem 1rem;
-    /* Room on the right for the account badge in the corner. */
-    margin-right: 3.2rem;
-    width: calc(100% - 3.2rem);
+    border-radius: 16px;
+    backdrop-filter: blur(6px);
+    padding: 0.2rem 0.8rem 0.8rem;
 }
+[class*="st-key-chat_panel"] { gap: 0.35rem !important; }
+/* The questions and replies scroll inside the panel; the bar above them and
+   the question box below them stay where they are. Streamlit wraps the
+   thread in a box of its own, which is the one that scrolls. */
+[data-testid="stLayoutWrapper"]:has(> [class*="st-key-chat_thread"]) {
+    max-height: calc(100vh - 15.5rem);
+    overflow-y: auto;
+    padding: 0.3rem 0.3rem 0.3rem 0;
+}
+[class*="st-key-chat_thread"] { gap: 0.35rem !important; }
+[class*="st-key-chat_panel"] [data-testid="stChatInput"] { margin-top: 0.3rem; }
+/* The turn that is being worked on. */
+.gw-working { display: flex; align-items: center; gap: 0.45rem; font-size: 0.76rem; color: #25605a;
+              font-weight: 600; margin: 0.4rem 0 0.2rem 0.1rem; }
+.gw-working-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #2f8f7f;
+                  animation: gw-pulse 1.1s ease-in-out infinite; }
+@keyframes gw-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* The bar at the top of the panel: the conversation's title, how many
+   questions it holds, and the two buttons that leave it. */
+.st-key-conversation_bar {
+    border-bottom: 1px solid rgba(31, 42, 46, 0.12);
+    padding: 0.35rem 0 0.35rem 0.2rem;
+    margin-bottom: 0.4rem;
+    /* One line: the title gives way (and is cut with three dots) so that
+       the two buttons always fit beside it. */
+    flex-wrap: nowrap !important;
+}
+.st-key-conversation_bar > :first-child { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; }
+.st-key-conversation_bar > :not(:first-child) { flex: none !important; width: auto !important; }
+/* A question: a dark bubble on the right. The one whose answer is on the
+   page has a green ring. */
+[class*="st-key-turn_"], [class*="st-key-live_turn_"] { align-items: flex-end; }
+[class*="st-key-turn_"] button, [class*="st-key-live_turn_"] button {
+    width: auto;
+    max-width: 88%;
+    margin-left: auto;
+    background: #1f2a2e;
+    color: #fff;
+    border: 0;
+    border-radius: 12px;
+    padding: 0.4rem 0.75rem;
+    min-height: 0;
+    text-align: left;
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+[class*="st-key-turn_"] button:hover, [class*="st-key-live_turn_"] button:hover { background: #33424a; color: #fff; }
+[class*="st-key-turn_"] button p, [class*="st-key-live_turn_"] button p { font-size: 0.82rem; }
+[class*="st-key-turn_"] [data-testid="stBaseButton-secondary"],
+[class*="st-key-live_turn_"] [data-testid="stBaseButton-secondary"] {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 4px #2f8f7f;
+}
+[class*="st-key-turn_"] button:disabled, [class*="st-key-live_turn_"] button:disabled {
+    background: #1f2a2e; color: #fff; opacity: 1; cursor: default;
+}
+.gw-thread-step { font-family: ui-monospace, Consolas, monospace; font-size: 0.7rem; color: #56656a;
+                  line-height: 1.45; overflow-wrap: anywhere; }
+.gw-reply { background: rgba(31, 42, 46, 0.06); border-radius: 12px; padding: 0.5rem 0.7rem;
+            margin: 0.35rem 12% 0 0; font-size: 0.82rem; line-height: 1.45; overflow-wrap: anywhere; }
+.gw-reply-meta { font-size: 0.7rem; color: #6b7a7f; margin: 0.25rem 0 0.5rem 0.2rem; }
+
+/* Under the answer: the cost pill, the line about steps, and the buttons. */
+[class*="st-key-page_foot_"] { padding: 0 0.3rem; }
 .gw-bar { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
 .gw-bar-title { font-weight: 700; font-size: 0.86rem; letter-spacing: 0.04em; text-transform: uppercase;
                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

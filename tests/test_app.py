@@ -159,40 +159,9 @@ def test_links_in_an_answer_become_numbers_with_a_source_list(page):
     assert "prepmymeal.com" in sources and "Official" in sources
 
 
-def test_each_question_is_a_tab_and_the_newest_is_shown(page):
-    app = page([AIMessage("First answer."), AIMessage("Second answer.")])
-    app.chat_input[0].set_value("First question").run()
-
-    app.chat_input[0].set_value("Second question").run()
-
-    assert not app.exception
-    tabs = app.button_group[0]
-    assert len(tabs.options) == 2
-    assert "Second answer." in texts(app)
-    assert "First answer." not in texts(app)
-
-
-def test_an_earlier_tab_shows_its_own_answer(page):
-    app = page([AIMessage("First answer."), AIMessage("Second answer.")])
-    app.chat_input[0].set_value("First question").run()
-    app.chat_input[0].set_value("Second question").run()
-
-    tabs = app.button_group[0]
-    tabs.set_value(0).run()
-
-    assert "First answer." in texts(app)
-    assert "Second answer." not in texts(app)
-
-
-def test_research_another_market_opens_an_empty_conversation(page):
-    app = page([AIMessage("An answer.")])
-    app.chat_input[0].set_value("A question").run()
-    first = app.query_params["c"]
-
-    button(app, "another_0").click().run()
-
-    assert app.query_params["c"] != first
-    assert app.title[0].value == "Research **any market**."
+# How the questions of a conversation are listed, and how one is chosen, is
+# tested in test_chat_panel.py. Leaving a conversation is in
+# test_conversation_bar.py.
 
 
 def test_a_turn_cut_off_mid_tool_is_tidied_so_the_conversation_can_continue(page, tmp_path):
@@ -321,7 +290,7 @@ def test_a_save_request_shows_the_approval_form_and_locks_the_question_box(page)
     assert app.text_input[0].label == "Title"
     assert app.text_input[0].value == "Meal kits Germany"
     assert app.chat_input[0].disabled
-    assert app.chat_input[0].placeholder == "Answer the question above to continue"
+    assert app.chat_input[0].placeholder == "Answer the question on the left to continue"
 
 
 def test_pressing_save_writes_under_the_title_in_the_form(page):
@@ -341,7 +310,7 @@ def test_the_question_box_says_what_is_going_on():
 
     assert question_box_text(False, False, False) == "Ask about a market"
     assert question_box_text(False, False, True) == "Ask a follow-up"
-    assert question_box_text(False, True, True) == "Answer the question above to continue"
+    assert question_box_text(False, True, True) == "Answer the question on the left to continue"
     # Once the form is submitted the agent is working again: the box must
     # stop asking for an answer that has already been given.
     assert question_box_text(True, True, True) ==         "Working on it. You can ask a follow-up when it is done."
@@ -456,8 +425,8 @@ def test_asking_the_same_question_twice_still_opens_the_right_answer(page):
     app.chat_input[0].set_value("Same question").run()
     app.chat_input[0].set_value("Same question").run()
 
-    tabs = app.button_group[0]
-    tabs.set_value(0).run()
+    # Both questions read the same; each has its own entry in the chat panel.
+    button(app, "turn_0").click().run()
 
     assert "First answer." in texts(app)
     assert "Second answer." not in texts(app)
