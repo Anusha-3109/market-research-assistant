@@ -335,6 +335,10 @@
 .st-key-sidebar_foot [data-testid="stExpander"] summary { padding: 0.35rem 0.25rem; }
 .gw-hello { text-align: center; font-size: 0.95rem; font-weight: 600; color: #25605a; margin: 0; }
 
+/* The small links under the sign-in form. */
+.st-key-sign_in_links { gap: 0.4rem 1.1rem !important; flex-wrap: wrap; }
+.st-key-sign_in_links button { min-height: 0; padding: 0.15rem 0; font-size: 0.85rem; }
+
 /* What an answer cost, in a pill above the steps panel. */
 .gw-cost-pill-row { text-align: right; }
 .gw-cost-pill {

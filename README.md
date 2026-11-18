@@ -583,7 +583,7 @@ sign-in service was added.
 | The screen does not reveal who has an account | An unknown username and a wrong password give the same message and take the same time |
 | The address of a conversation is not a key to it | Each conversation records the account that asked its first question. Another account that opens its address gets an empty conversation |
 | Nothing is created before sign-in | The agent, and with it the API keys, is only reached after someone has signed in |
-| A password or email address is changed only by its owner | Both changes ask for the current password, so someone at a browser left open cannot take the account |
+| A password or email address is changed only by its owner | Both are changed on the sign-in page, with the username and the current password. Nothing inside the app can change them, so someone at a browser left open cannot take the account |
 | A forgotten password is reset by a link sent by email | The link holds a long random token, of which only a hash is stored. It works once, for 30 minutes; asking again cancels the earlier link; at most three are given out per account per hour |
 | The reset form does not reveal who has an account | It says the same thing whether or not an email went out, and the email is sent in the background so the answer takes the same time |
 
@@ -740,7 +740,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-720 tests, none of which use the internet or cost anything: outside
+724 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -768,7 +768,7 @@ services and the model are replaced with fakes.
 | `test_two_accounts.py` | Two accounts on one copy: neither sees the other's conversations or profile, and the agent is told only the asking account's profile |
 | `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
 | `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
-| `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, the sidebar rows for password and email |
+| `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
 | `test_account_settings.py` | Settings kept per account, the greeting by name, signing out, and that the next person on the same browser gets nothing from the one before |
 | `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
@@ -903,8 +903,7 @@ market-research-assistant/
 │   ├── research.py          the research view: answer, steps, sources, live progress
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
-│   ├── sign_in.py           the sign-in screen of a deployed copy, and a forgotten password
-│   ├── account_panel.py     sidebar rows: sign out, change password, email address
+│   ├── sign_in.py           the sign-in screen: sign in, create an account, change or reset a password
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
@@ -999,8 +998,8 @@ market-research-assistant/
   you out.
 - An account cannot be deleted from the app.
 - An email address is not verified. A mistyped one means the link for a
-  forgotten password never arrives; it can be corrected in the sidebar
-  while still signed in.
+  forgotten password never arrives; it can be corrected on the sign-in
+  page by someone who still knows the password.
 - An account made before email was added has no address until its owner
   adds one, and cannot reset a forgotten password until then.
 - Changing a password does not sign out other browsers where the account

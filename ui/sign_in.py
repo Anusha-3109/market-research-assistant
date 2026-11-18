@@ -7,8 +7,11 @@ one with the code, before anything else is shown or any API key is used.
 
 Signing in lasts for one browser session.
 
-The same screen handles a forgotten password: a form that emails a link,
-and the page that link opens (its address ends in ?reset=...).
+The same screen is where a password or an email address is changed, and
+where a forgotten password is dealt with: a form that emails a link, and
+the page that link opens (its address ends in ?reset=...). None of these
+needs the person to be signed in; the two changes ask for the username and
+the current password instead.
 """
 
 import streamlit as st
@@ -59,8 +62,13 @@ def current_account() -> Account | None:
         notice = st.session_state.pop("sign_in_notice", None)
         if notice:
             st.success(notice)
-        if st.session_state.get("forgot") and mailer.mail_is_set_up():
+        view = st.session_state.get("sign_in_view")
+        if view == FORGOT and mailer.mail_is_set_up():
             _forgot_form(store)
+        elif view == PASSWORD:
+            _change_password_form(store)
+        elif view == EMAIL:
+            _change_email_form(store)
         else:
             sign_in_tab, create_tab = st.tabs(["Sign in", "Create account"])
             with sign_in_tab:
@@ -79,9 +87,28 @@ def _panel():
     return panel
 
 
-def _go(forgot: bool) -> None:
-    """Switch between the sign-in tabs and the "Forgot password?" form."""
-    st.session_state["forgot"] = forgot
+# What the card shows in place of the two tabs.
+FORGOT, PASSWORD, EMAIL = "forgot", "password", "email"
+
+
+def _go(view: str | None, notice: str | None = None) -> None:
+    """Show one of the forms in place of the two tabs, or (None) the tabs
+    again, optionally with a line saying what was just done."""
+    st.session_state["sign_in_view"] = view
+    if notice:
+        st.session_state["sign_in_notice"] = notice
+
+
+def _back_button(key: str) -> None:
+    st.button("Back to sign in", key=key, type="tertiary", width="stretch",
+              on_click=_go, args=(None,))
+
+
+def _as_on_sign_in(problem: AccountError) -> str:
+    """The message for a refused change. Here nobody is signed in, so a
+    wrong password is worded as on the sign-in form: it must not reveal
+    whether the username exists."""
+    return accounts.NO_MATCH if str(problem) == accounts.NOT_CURRENT else str(problem)
 
 
 def _sign_in_form(store) -> None:
@@ -94,10 +121,14 @@ def _sign_in_form(store) -> None:
                 _remember(accounts.sign_in(store, username, password))
             except AccountError as problem:
                 st.error(str(problem))
-    # Offered only if this copy can send email.
+    # Small links under the form. "Forgot password?" is offered only if
+    # this copy can send email.
+    links = [("Change password", PASSWORD), ("Change email", EMAIL)]
     if mailer.mail_is_set_up():
-        st.button("Forgot password?", key="forgot_link", type="tertiary", width="stretch",
-                  on_click=_go, args=(True,))
+        links.insert(0, ("Forgot password?", FORGOT))
+    with st.container(key="sign_in_links", horizontal=True, horizontal_alignment="center"):
+        for label, view in links:
+            st.button(label, key=f"{view}_link", type="tertiary", on_click=_go, args=(view,))
 
 
 def _create_form(store) -> None:
@@ -142,16 +173,13 @@ def _forgot_form(store) -> None:
                     reset.account.name, reset.account.username, reset.email,
                     mailer.reset_link(reset.token)))
             st.success(LINK_SENT)
-    st.button("Back to sign in", key="forgot_back", type="tertiary", width="stretch",
-              on_click=_go, args=(False,))
+    _back_button("forgot_back")
 
 
 def _leave_reset_page(notice: str | None = None) -> None:
     """Drop the link from the page address and show the sign-in tabs."""
     del st.query_params["reset"]
-    st.session_state["forgot"] = False
-    if notice:
-        st.session_state["sign_in_notice"] = notice
+    _go(None, notice)
 
 
 def _reset_page(store, token: str) -> None:
@@ -182,3 +210,49 @@ def _reset_page(store, token: str) -> None:
                 st.rerun()
             except AccountError as problem:
                 st.error(str(problem))
+
+
+# --- changing the password or the email address ----------------------------------------------
+
+def _change_password_form(store) -> None:
+    st.markdown("**Change your password**")
+    with st.form("change_password_form", border=False):
+        username = st.text_input("Username", key="cp_username", max_chars=30)
+        current = st.text_input("Current password", type="password", key="cp_current")
+        new = st.text_input("New password", type="password", key="cp_new",
+                            help="At least 8 characters.")
+        again = st.text_input("New password again", type="password", key="cp_again")
+        if st.form_submit_button("Save new password", type="primary",
+                                 icon=":material/key:", width="stretch"):
+            try:
+                if new != again:
+                    raise AccountError(MISMATCH)
+                accounts.change_password(store, username, current, new)
+                backup_memory()     # kept across a restart in the cloud
+                _go(None, "Password changed. Sign in with your new password.")
+                st.rerun()
+            except AccountError as problem:
+                st.error(_as_on_sign_in(problem))
+    _back_button("cp_back")
+
+
+def _change_email_form(store) -> None:
+    st.markdown("**Email for password reset**")
+    st.caption("The address a link is sent to if you forget your password.")
+    with st.form("change_email_form", border=False):
+        username = st.text_input("Username", key="em_username", max_chars=30)
+        password = st.text_input("Current password", type="password", key="em_password")
+        email = st.text_input("New email address", key="em_email", max_chars=254)
+        if st.form_submit_button("Save email", type="primary",
+                                 icon=":material/mail:", width="stretch"):
+            try:
+                # The address is looked at first, so a typing mistake in it
+                # does not count as a wrong try at the password.
+                address = accounts.clean_email(email)
+                accounts.set_email(store, username, password, address)
+                backup_memory()
+                _go(None, f"Email address saved: {address}")
+                st.rerun()
+            except AccountError as problem:
+                st.error(_as_on_sign_in(problem))
+    _back_button("em_back")

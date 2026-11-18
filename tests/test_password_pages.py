@@ -173,71 +173,110 @@ def test_a_new_accounts_email_address_is_kept(site):  # noqa: F811
     assert accounts.email_of(site.store, "anna") == "anna@example.com"
 
 
-# --- the rows in the sidebar ---------------------------------------------------------------------------
+# --- changing the password or the email address, from the sign-in page ----------------------------
 
-def test_the_password_is_changed_from_the_sidebar(site):  # noqa: F811
+NO_MATCH = "That username and password don't match. Try again."
+
+
+def test_the_sign_in_page_offers_both_changes_even_without_email_set_up(site):  # noqa: F811
+    offered = labels(site.visit())
+
+    assert "Change password" in offered and "Change email" in offered
+    assert "Forgot password?" not in offered
+
+
+def change_password(app, username="anna", current=PASSWORD, new=NEW_PASSWORD, again=None):
+    press(app, "Change password")
+    fill(app, cp_username=username, cp_current=current, cp_new=new,
+         cp_again=new if again is None else again)
+    return press(app, "Save new password")
+
+
+def change_email(app, username="ben", password=PASSWORD, email="ben@example.com"):
+    press(app, "Change email")
+    fill(app, em_username=username, em_password=password, em_email=email)
+    return press(app, "Save email")
+
+
+def test_the_password_is_changed_from_the_sign_in_page(site):  # noqa: F811
     two_accounts(site)
-    app = visit_as(site, "anna")
 
-    with patch("ui.account_panel.backup_memory") as copy_made:
-        press(fill(app, cp_current=PASSWORD, cp_new=NEW_PASSWORD, cp_again=NEW_PASSWORD),
-              "Change password")
+    with patch("ui.sign_in.backup_memory") as copy_made:
+        app = change_password(site.visit())
 
     assert not app.exception
-    assert "Password changed." in said(app)
+    assert said(app) == ["Password changed. Sign in with your new password."]
+    assert [tab.label for tab in app.tabs] == ["Sign in", "Create account"]
     assert accounts.sign_in(site.store, "anna", NEW_PASSWORD).username == "anna"
-    assert app.session_state["account"]["username"] == "anna"        # still signed in
+    assert "account" not in app.session_state          # changing it does not sign you in
     copy_made.assert_called_once_with()
 
 
 def test_a_wrong_current_password_changes_nothing(site):  # noqa: F811
     two_accounts(site)
-    app = visit_as(site, "anna")
 
-    press(fill(app, cp_current="not the password", cp_new=NEW_PASSWORD, cp_again=NEW_PASSWORD),
-          "Change password")
+    app = change_password(site.visit(), current="not the password")
 
-    assert errors(app) == ["That is not your current password."]
+    assert errors(app) == [NO_MATCH]
     assert accounts.sign_in(site.store, "anna", PASSWORD).username == "anna"
+
+
+def test_an_unknown_username_gets_the_same_message_as_a_wrong_password(site):  # noqa: F811
+    two_accounts(site)
+
+    assert errors(change_password(site.visit(), username="nobody")) == [NO_MATCH]
+    assert errors(change_email(site.visit(), username="nobody")) == [NO_MATCH]
 
 
 def test_two_different_new_passwords_change_nothing(site):  # noqa: F811
     two_accounts(site)
-    app = visit_as(site, "anna")
 
-    press(fill(app, cp_current=PASSWORD, cp_new=NEW_PASSWORD, cp_again="something else here"),
-          "Change password")
+    app = change_password(site.visit(), again="something else here")
 
     assert errors(app) == ["The two new passwords are not the same."]
     assert accounts.sign_in(site.store, "anna", PASSWORD).username == "anna"
 
 
-def test_the_sidebar_shows_the_email_address_on_file(site):  # noqa: F811
+def test_the_email_address_is_set_from_the_sign_in_page_with_the_password(site):  # noqa: F811
     two_accounts(site)
 
-    anna, ben = visit_as(site, "anna"), visit_as(site, "ben")
-
-    assert any("anna@example.com" in caption.value for caption in anna.sidebar.caption)
-    assert any("No email address yet" in caption.value for caption in ben.sidebar.caption)
-
-
-def test_the_email_address_is_set_from_the_sidebar_with_the_password(site):  # noqa: F811
-    two_accounts(site)
-    app = visit_as(site, "ben")
-
-    press(fill(app, em_email="ben@example.com", em_password="not the password"), "Save email")
-    assert errors(app) == ["That is not your current password."]
+    refused = change_email(site.visit(), password="not the password")
+    assert errors(refused) == [NO_MATCH]
     assert accounts.email_of(site.store, "ben") == ""
 
-    press(fill(app, em_email="Ben@Example.com", em_password=PASSWORD), "Save email")
-    assert "Email address saved." in said(app)
+    with patch("ui.sign_in.backup_memory") as copy_made:
+        app = change_email(site.visit(), email="Ben@Example.com")
+
+    assert said(app) == ["Email address saved: ben@example.com"]
+    assert [tab.label for tab in app.tabs] == ["Sign in", "Create account"]
     assert accounts.email_of(site.store, "ben") == "ben@example.com"
+    copy_made.assert_called_once_with()
 
 
-def test_without_accounts_the_sidebar_has_no_password_or_email_rows(page):
-    app = page()
+def test_something_that_is_not_an_address_is_refused_on_the_page(site):  # noqa: F811
+    two_accounts(site)
+
+    app = change_email(site.visit(), email="not an address")
+
+    assert errors(app) == ["Enter a valid email address."]
+
+
+@pytest.mark.parametrize("link_label", ["Change password", "Change email"])
+def test_back_to_sign_in_leaves_either_form(site, link_label):  # noqa: F811
+    app = press(site.visit(), link_label)
+    assert len(app.tabs) == 0
+
+    press(app, "Back to sign in")
+
+    assert [tab.label for tab in app.tabs] == ["Sign in", "Create account"]
+
+
+def test_once_signed_in_the_sidebar_has_no_password_or_email_rows(site):  # noqa: F811
+    two_accounts(site)
+
+    app = visit_as(site, "anna")
 
     assert "cp_current" not in keys(app) and "em_email" not in keys(app)
+    assert "Change password" not in labels(app) and "Change email" not in labels(app)
 
 
-from tests.test_app import page  # noqa: E402,F401  (a fixture)

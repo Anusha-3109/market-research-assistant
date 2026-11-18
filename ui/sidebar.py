@@ -13,8 +13,7 @@ from agent.config import (
 from agent.accounts import Account
 from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
-from ui.account_panel import render_account_rows
-from ui.assets import brand
+from ui.assets import brand, fill
 
 # How many conversations are listed before the rest fold away.
 RECENT_SHOWN = 5
@@ -104,8 +103,12 @@ def render_sidebar(conversations: list[Conversation], current: str,
         # The foot of the sidebar: who is signed in, then plain rows. The
         # stylesheet keeps it at the bottom when the list above is short.
         with st.container(key="sidebar_foot"):
-            if account and render_account_rows(account):
-                action = SIGN_OUT
+            if account:
+                # The name was typed by a person: fill() shows it as text.
+                st.html(fill("account.html", person=account.name))
+                if st.button("Sign out", icon=":material/logout:", key="sign_out",
+                             type="tertiary"):
+                    action = SIGN_OUT
             _settings_panel(waiting)
             action = _help_panel() or action
     return action
