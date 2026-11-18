@@ -167,10 +167,11 @@ def test_a_few_points_are_one_bar_each():
 
 # --- on the page ---------------------------------------------------------------------------------
 
-def with_snapshot(page, tmp_path, snapshot=None, replies=None, report=REPORT):  # noqa: F811
+def with_snapshot(page, tmp_path, snapshot=None, replies=None, report=REPORT,  # noqa: F811
+                  runtime=None):
     """The page opened at a conversation that holds a report with a
     snapshot."""
-    runtime = make_runtime(tmp_path, replies or [])
+    runtime = runtime or make_runtime(tmp_path, replies or [])
     wants = AIMessage("", tool_calls=[{"name": "create_market_report", "id": "r1",
                                        "args": {"product": "oat milk", "country": "Germany"}}])
     details = {"problems": [], "log": [], "snapshot": snapshot or build_snapshot(final_state())}

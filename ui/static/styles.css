@@ -1072,3 +1072,50 @@ a.gw-source:hover .gw-source-title { text-decoration: underline; }
 .st-key-snapshot_tabs .react-aria-SelectionIndicator { background: var(--coral) !important; height: 3px; }
 .st-key-snapshot_tabs [data-testid="stTabPanel"] { padding-top: 1rem; }
 .gw-snap-swot { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.9rem; }
+
+/* The assistant: a round button at the bottom right of every view, and the
+   panel it opens. Both float over the page and take no room in it. */
+.st-key-assistant_launcher, .st-key-assistant_panel {
+    position: fixed; right: 1.4rem; bottom: 1.4rem; z-index: 999990; width: auto;
+}
+/* In the Ask view the question box is at the bottom: stay above it. */
+body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant_launcher,
+body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant_panel { bottom: 6.2rem; }
+.st-key-assistant_launcher button {
+    background: var(--coral); border-color: var(--coral); color: var(--coral-text);
+    border-radius: 999px; padding: 0.6rem 1.15rem;
+    box-shadow: 0 6px 18px rgba(74, 29, 12, 0.28);
+}
+.st-key-assistant_panel {
+    width: min(390px, calc(100vw - 2rem));
+    max-height: min(620px, calc(100vh - 8rem));
+    background: #fffdfb;
+    border: 1px solid rgba(31, 42, 46, 0.1);
+    border-radius: 18px;
+    box-shadow: 0 14px 40px rgba(20, 40, 40, 0.24);
+    padding: 0.9rem 1rem 0.6rem;
+    gap: 0.5rem;
+    display: flex; flex-direction: column;
+}
+.st-key-assistant_head { flex-wrap: nowrap; gap: 0.4rem; }
+.st-key-assistant_head > div:first-child { flex: 1 1 auto; min-width: 0; }
+.gw-helper-title { font-family: "Space Grotesk", "Source Sans", sans-serif; font-weight: 700; font-size: 0.98rem;
+                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-helper-scope { font-size: 0.76rem; color: #56656a; }
+.st-key-assistant_new button { white-space: nowrap; color: var(--peach-text); font-size: 0.82rem; }
+.st-key-assistant_close button { border-radius: 10px; min-height: 2rem; padding: 0 0.5rem; }
+.st-key-assistant_messages {
+    overflow-y: auto; flex: 1 1 auto; min-height: 5rem; max-height: 21rem;
+    gap: 0.5rem; padding-right: 0.2rem;
+}
+.gw-helper-empty { font-size: 0.86rem; color: #56656a; background: var(--peach); border-radius: 12px;
+                   padding: 0.7rem 0.85rem; line-height: 1.5; }
+.gw-helper-row { display: flex; justify-content: flex-end; }
+.gw-helper-question { background: var(--coral); color: var(--coral-text); border-radius: 14px 14px 4px 14px;
+                      padding: 0.5rem 0.8rem; font-size: 0.88rem; max-width: 85%; overflow-wrap: anywhere; }
+.st-key-assistant_messages [data-testid="stChatMessage"] {
+    background: #f4f1ee; border-radius: 14px 14px 14px 4px; padding: 0.55rem 0.8rem; gap: 0.5rem;
+}
+.st-key-assistant_messages [data-testid="stChatMessage"] p,
+.st-key-assistant_messages [data-testid="stChatMessage"] li { font-size: 0.88rem; line-height: 1.5; }
+.st-key-assistant_panel [data-testid="stCaptionContainer"] { text-align: right; font-size: 0.74rem; }

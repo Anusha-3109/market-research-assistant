@@ -76,6 +76,7 @@ agent with tools can decide what to look up next.
 | Numbered sources | Every link in an answer becomes a number such as [1]; the source list shows each page's title and site, and marks a company's own site as Official |
 | Download | Any answer as a Markdown file or a PDF |
 | Report formats | A report as the full text, as an investor one-pager, or as pitch deck slides with a PowerPoint download |
+| Assistant | A small chat at the bottom right of every view for a quick question in between, answered from the open report |
 | Stop | A run can be stopped; what was found so far is kept and the conversation continues |
 | Resilience | Every data source has a free backup, so one outage does not stop a report. If the model leaves out a required field, the question is asked again instead of losing the report |
 | Accounts | On a deployed copy each person signs in to their own account, with their own conversations, remembered profile, settings and saved reports |
@@ -268,6 +269,22 @@ Go deeper on pricing for the cheapest competitor you found.
 Type it in the box at the bottom of the Ask view, or click one of the
 suggestions. It is added to the chat under the earlier questions, and the
 report stays one click away in the sidebar.
+
+### The assistant
+
+An **Assistant** button sits at the bottom right of every view. It opens a
+small chat of its own, for a quick question in between: what a term in the
+report means, what the report says about a competitor, what to check next.
+
+- It is given the newest report of the open conversation (or the newest
+  answer, if there is no report) and answers from that.
+- It searches nothing and starts no report. One question is one call to
+  the model; the panel shows what the chat has cost. For new research it
+  points to the Ask view.
+- What is asked there is not added to the conversation.
+- It stays open from one view to the next. Each conversation has its own
+  chat; **New chat** empties it and the button with the line closes the
+  panel.
 
 ### Conversations
 
@@ -775,7 +792,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-860 tests, none of which use the internet or cost anything: outside
+880 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -804,6 +821,7 @@ services and the model are replaced with fakes.
 | `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
 | `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
+| `test_assistant.py` | The assistant: what the model is sent, the panel in every view, that its questions stay out of the conversation, the cost, and a failure explained |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
 | `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
 | `test_formats.py` | The Format picker and the investor one-pager: what it holds, what it leaves out, and its downloads |
@@ -949,10 +967,12 @@ market-research-assistant/
 │   ├── sidebar.py           conversations, memory, settings, help
 │   ├── sign_in.py           the sign-in screen: sign in, create an account, change or reset a password
 │   ├── account_badge.py     the round badge at the top right: who is signed in, sign out
+│   ├── assistant.py         the assistant: a floating chat at the bottom right
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
 │   ├── prompts.py           the system prompt
+│   ├── side_assistant.py    the assistant's one model call, without tools
 │   ├── tools.py             the single-question tools
 │   ├── memory.py            checkpointer, store, user profile, saved settings
 │   ├── accounts.py          user accounts: creating one, signing in, password and email
@@ -1096,6 +1116,17 @@ market-research-assistant/
 - The three suggestions under the chat are the same for every
   conversation.
 - The heading font is fetched from Google Fonts by the visitor's browser.
+
+**The assistant**
+
+- Its chat is kept in the browser session only. It is gone after a
+  refresh, after signing out, or when the tab is closed.
+- It has no web search, so it cannot check or add to a report, and it
+  repeats a mistake that is in the report.
+- A report longer than 24,000 characters is cut before it is sent, and
+  only the last ten messages of a chat are sent with a question.
+- It is told not to state figures from memory. That is an instruction to
+  the model, not a check in code.
 
 **The web app**
 

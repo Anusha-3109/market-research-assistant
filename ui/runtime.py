@@ -7,6 +7,7 @@ import streamlit as st
 from agent.agent import build_agent
 from agent.config import MODEL_NAME, TEMPERATURE
 from agent.memory import open_memory
+from agent.models import make_model
 
 
 @dataclass
@@ -31,6 +32,17 @@ def _agent(model_name: str, temperature: float):
     checkpointer, store = _memory()
     return build_agent(model_name=model_name, temperature=temperature,
                        checkpointer=checkpointer, store=store)
+
+
+# The assistant answers from the open report, so it is kept close to it.
+SIDE_TEMPERATURE = 0.2
+
+
+@st.cache_resource(show_spinner=False, max_entries=8)
+def get_side_model(model_name: str = MODEL_NAME):
+    """The model behind the assistant at the bottom right of the page
+    (agent/side_assistant.py): the chosen model alone, without tools."""
+    return make_model(model_name, SIDE_TEMPERATURE)
 
 
 def get_store():

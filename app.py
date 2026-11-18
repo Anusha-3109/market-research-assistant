@@ -30,11 +30,13 @@ from agent.session import (
     load_messages,
     may_open,
     new_thread_id,
+    report_title,
     short_title,
     to_blocks,
     to_turns,
 )
 from ui.account_badge import render_account_badge
+from ui.assistant import render_assistant
 from ui.assets import LOGO
 from ui.guide import render_guide
 from ui.research import (
@@ -44,7 +46,7 @@ from ui.research import (
     render_snapshot_view,
     run_live,
 )
-from ui.runtime import get_runtime, get_store
+from ui.runtime import get_runtime, get_side_model, get_store
 from ui.sidebar import (
     FORGET,
     GUIDE,
@@ -281,6 +283,18 @@ elif not question:
     # A button in the view (such as "Save to reports folder") sends a
     # question, just as typing it would.
     question = outcome.question
+
+# The assistant, at the bottom right of every view: a small chat of its own
+# for a quick question in between. It is given the newest report, or else
+# the newest answer, and what is asked there stays out of the conversation.
+answered = [turn.answer for turn in turns if turn.answer is not None]
+# It is named after the report, or else after the first question.
+assistant_title = (report_title(reports[-1].report) if reports
+                   else short_title(turns[0].question) if turns else "")
+render_assistant(
+    thread_id, title=assistant_title[:1].upper() + assistant_title[1:],
+    context=(reports[-1].report if reports else answered[-1].text if answered else ""),
+    get_model=lambda: get_side_model(settings["model_name"]))
 
 # A message that is empty or far too long is turned back here, before it
 # costs anything.
