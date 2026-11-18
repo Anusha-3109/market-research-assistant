@@ -93,6 +93,8 @@ def build_snapshot(final: dict) -> dict:
         "candidates": confirmed + len(final.get("rejected") or []),
         "trend": _trend(final),
         "opportunities": list(swot.opportunities[:OPPORTUNITIES_SHOWN]) if swot else [],
+        # The risks, for the one-page layout of the report (formats.py).
+        "threats": list(swot.threats[:OPPORTUNITIES_SHOWN]) if swot else [],
     }
 
 

@@ -37,6 +37,8 @@ from agent.session import (
     steps_for_thread,
     steps_while_working,
 )
+from agent.pptx_export import slides_to_pptx
+from agent.report.formats import FULL, ONE_PAGER, SLIDES, one_pager, slides
 from agent.report.snapshot import trend_bars
 from agent.tools import safe_filename
 from agent import usage
@@ -186,12 +188,18 @@ def render_bar(turns: list[Turn]) -> bool:
     return new or close
 
 
-def downloads(turn: Turn, index: int) -> None:
+def downloads(turn: Turn, index: int, content: str | None = None, suffix: str = "") -> None:
     """Download the answer as a Markdown file or a PDF. Both go to the
-    user's own computer, so neither needs approval."""
+    user's own computer, so neither needs approval.
+
+    content: another layout of the report to download in its place.
+    suffix:  added to the file name for that layout, such as "one-pager".
+    """
     block = turn.answer
-    content = block.report or block.text
+    content = content or block.report or block.text
     name = safe_filename(report_title(block.report) if block.report else turn.question)
+    if suffix:
+        name = name.removesuffix(".md") + f"-{suffix}.md"
     with st.container(horizontal=True, horizontal_alignment="right"):
         st.download_button("Markdown", data=content, file_name=name, mime="text/markdown",
                            icon=":material/download:", key=f"download_md_{index}")
@@ -300,35 +308,64 @@ def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
     # The heading is plain text from the report: fill() shows it as text.
     st.html(fill("ask_head.html", kicker="Report", title=title))
     cards, side = st.columns([2.1, 1], gap="medium")
-    with cards:
-        if block.problems is not None:
-            if block.problems:
-                st.warning(format_check(block.problems), title="Report check")
-            else:
-                st.badge("Report check passed", icon=":material/check:", color="green")
-        if intro:
-            st.caption(intro)
-        for section in sections:
-            status = section_status(section.body)
-            tag = fill("section_tag.html", text=status[0], kind=status[1]) if status else Html("")
-            with panel("report_section"):
-                st.html(fill("section_head.html", title=section.title, tag=tag))
-                st.markdown(section.body)
-        st.caption(DISCLAIMER)
-        sources_panel(block.sources)
+    # The side is drawn first in the code, because the format chosen there
+    # decides what the cards show. On the page it still sits on the right.
     with side:
         with st.container(key="report_side"):
-            st.html(fill("contents.html", title=title,
-                         items=join(fill("contents_item.html", title=section.title)
-                                    for section in sections)))
+            # Other layouts are made from the figures kept with the report,
+            # so a report without them has the full report only.
+            layout = FULL
+            if block.snapshot:
+                layout = st.selectbox("Format", [FULL, ONE_PAGER, SLIDES], key="report_format",
+                                      help="How the same findings are laid out. Changing it "
+                                           "starts no new research.")
+            page = one_pager(title, block.snapshot, block.sources) if layout == ONE_PAGER else None
+            deck = slides(title, block.snapshot, block.sources) if layout == SLIDES else None
+            if page is None and deck is None:
+                st.html(fill("contents.html", title=title,
+                             items=join(fill("contents_item.html", title=section.title)
+                                        for section in sections)))
             elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
             took_and_cost(len(block.activity), len(block.sources), elapsed, used=block.usage,
                           used_is_partial=block.usage_is_partial, waiting=False)
-            downloads(turn, index)
+            if deck is not None:
+                name = safe_filename(report_title(block.report)).removesuffix(".md")
+                st.download_button(
+                    "PowerPoint", data=slides_to_pptx(deck), file_name=f"{name}-slides.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    icon=":material/download:", key=f"download_pptx_{index}", width="stretch")
+            else:
+                downloads(turn, index, content=page, suffix="one-pager" if page else "")
             if index == len(turns) - 1 and st.button(
                     "Save to reports folder", icon=":material/save:", key=f"save_{index}",
                     type="primary", width="stretch"):
                 outcome.question = SAVE_QUESTION
+    with cards:
+        if deck is not None:
+            _slides_on_the_page(deck)
+            st.caption(DISCLAIMER)
+        elif page is not None:
+            # One page: everything after its title line, which the heading
+            # of the view already shows.
+            with panel("one_pager"):
+                st.markdown(page.split("\n", 1)[1])
+            st.caption(DISCLAIMER)
+        else:
+            if block.problems is not None:
+                if block.problems:
+                    st.warning(format_check(block.problems), title="Report check")
+                else:
+                    st.badge("Report check passed", icon=":material/check:", color="green")
+            if intro:
+                st.caption(intro)
+            for section in sections:
+                status = section_status(section.body)
+                tag = fill("section_tag.html", text=status[0], kind=status[1]) if status else Html("")
+                with panel("report_section"):
+                    st.html(fill("section_head.html", title=section.title, tag=tag))
+                    st.markdown(section.body)
+            st.caption(DISCLAIMER)
+            sources_panel(block.sources)
     st.html(script_tag("start_at_top.js"), unsafe_allow_javascript=True)
     return outcome
 
@@ -415,6 +452,26 @@ def _trend_chart(trend: dict | None) -> None:
         bars=join(fill("snap_bar.html", height=max(3, round(value / top * 100)),
                        high=Html(" gw-snap-bar-high") if value >= 0.85 * top else Html(""))
                   for _, value in bars)))
+
+
+def _slides_on_the_page(deck: list) -> None:
+    """The pitch deck as cards, two to a row. Every word goes through
+    fill(), which shows it as text: the lines come from the web."""
+    cards = []
+    for number, slide in enumerate(deck, start=1):
+        chart = Html("")
+        if slide.bars:
+            top = max(value for _, value in slide.bars) or 1
+            chart = fill("slide_chart.html", bars=join(
+                fill("snap_bar.html", height=max(3, round(value / top * 100)),
+                     high=Html(" gw-snap-bar-high") if value >= 0.85 * top else Html(""))
+                for _, value in slide.bars))
+        cards.append(fill("slide.html", title=slide.title, number=number, chart=chart,
+                          first=Html(" gw-slide-first" if number == 1
+                                     else " gw-slide-plain" if slide.numbered else ""),
+                          lines=join(fill("slide_line.html", text=bullet)
+                                     for bullet in slide.bullets)))
+    st.html(fill("slides.html", slides=join(cards)))
 
 
 def took_and_cost(step_count: int, source_count: int, elapsed: float | None,

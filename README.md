@@ -75,6 +75,7 @@ agent with tools can decide what to look up next.
 | Memory | Remembers the conversation across restarts, and your country, industry and idea across conversations |
 | Numbered sources | Every link in an answer becomes a number such as [1]; the source list shows each page's title and site, and marks a company's own site as Official |
 | Download | Any answer as a Markdown file or a PDF |
+| Report formats | A report as the full text, as an investor one-pager, or as pitch deck slides with a PowerPoint download |
 | Stop | A run can be stopped; what was found so far is kept and the conversation continues |
 | Resilience | Every data source has a free backup, so one outage does not stop a report. If the model leaves out a required field, the question is asked again instead of losing the report |
 | Accounts | On a deployed copy each person signs in to their own account, with their own conversations, remembered profile, settings and saved reports |
@@ -216,6 +217,23 @@ A figure in a foreign currency, such as a market size in US dollars for a
 report on Germany, keeps its value exactly as the source wrote it. Under it
 the Snapshot shows the same amount in the country's own currency, worded as
 "about EUR 274 million, converted at the ECB rate of 18 Nov 2026".
+
+### Report formats
+
+In the Report view, the **Format** picker in the side box changes how a
+report is laid out. It appears for a report whose key figures were kept
+(the same reports that have a Snapshot).
+
+| Format | What it shows | Downloads |
+|---|---|---|
+| Full market report | The report as written, section by section | Markdown, PDF |
+| Investor one-pager | One page: key figures, competitors, demand, opportunities, risks and sources | Markdown, PDF |
+| Pitch deck slides | Up to seven slides: title, the market, competitors, prices, demand with its bar chart, opportunities and risks, sources | PowerPoint |
+
+The one-pager and the slides are put together by code from the figures
+kept with the report. No model is asked, so switching format costs nothing
+and adds nothing the report did not find. A part with nothing to show is
+left out, and a price that was not found says "not found".
 
 ### Download and save
 
@@ -745,7 +763,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-820 tests, none of which use the internet or cost anything: outside
+848 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -776,6 +794,8 @@ services and the model are replaced with fakes.
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
 | `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
+| `test_formats.py` | The Format picker and the investor one-pager: what it holds, what it leaves out, and its downloads |
+| `test_slides.py` | The pitch deck: which slides, in which order, the PowerPoint file reopened and checked, and the page |
 | `test_snapshot.py` | The Snapshot view: which figures are kept with a report, the competitor rows, the chart's bars, and the page |
 | `test_views.py` | The sidebar of an open conversation: the conversation picker, the links to the views, and conversations that share a title |
 | `test_currency.py` | Converting a figure to the country's currency: reading amounts in English and German number styles, the rounding, the wording, a rate service that fails |
@@ -935,6 +955,7 @@ market-research-assistant/
 │   ├── session.py           conversations, questions and answers, for any interface
 │   ├── citations.py         numbered citations and the source list
 │   ├── pdf_export.py        a report as a PDF file
+│   ├── pptx_export.py       pitch deck slides as a PowerPoint file
 │   ├── fallback.py          try sources in order
 │   ├── report_check.py      checks a finished report
 │   ├── trends.py            rising, falling or stable
@@ -951,6 +972,7 @@ market-research-assistant/
 │   │   ├── writing.py       SWOT and final check
 │   │   ├── render.py        builds the report text
 │   │   ├── snapshot.py      a report's key figures, kept as separate values
+│   │   ├── formats.py       other layouts of a report: one-pager and slides
 │   │   ├── tool.py          the tool the chat agent calls
 │   │   └── demo.py          runs the workflow from the terminal
 │   └── sources/             one file per outside service
@@ -1048,8 +1070,13 @@ market-research-assistant/
   exchange rate, also for a figure about another year, so it is a rough
   guide. Ranges and texts with several numbers are not converted. About
   thirty countries have a currency in the table.
-- The converted amount is on the Snapshot only. The report text and the
-  downloads keep the original figures alone.
+- The converted amount is on the Snapshot, the one-pager and the slides.
+  The full report text and its downloads keep the original figures alone.
+- The one-pager and the slides repeat what the research found, mistakes
+  included, and are not rewritten for an investor: the wording is the
+  report's own. A slide line longer than 180 characters is cut.
+- The slides have a fixed layout and order. Very long reports can still
+  make a crowded slide; the PowerPoint file can be edited afterwards.
 - The three suggestions under the chat are the same for every
   conversation.
 - The heading font is fetched from Google Fonts by the visitor's browser.

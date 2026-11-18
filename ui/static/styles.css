@@ -1026,3 +1026,38 @@ a.gw-source:hover .gw-source-title { text-decoration: underline; }
 }
 .st-key-snapshot_actions { margin-right: 3.2rem; }
 .st-key-snapshot_ask_row button { color: var(--peach-text); font-weight: 600; padding-left: 0.2rem; }
+
+/* The investor one-pager: the report on one sheet of "paper". */
+[data-testid="stMainBlockContainer"]:has([class*="st-key-one_pager_"]) { max-width: 74rem; }
+[class*="st-key-one_pager_"] {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.4rem 1.7rem 1.2rem;
+    box-shadow: 0 2px 10px rgba(20, 40, 40, 0.12);
+}
+[class*="st-key-one_pager_"] h2 { font-size: 0.98rem; font-weight: 650; padding: 0.7rem 0 0.15rem; }
+[class*="st-key-one_pager_"] li, [class*="st-key-one_pager_"] p { font-size: 0.92rem; }
+[class*="st-key-one_pager_"] a { color: var(--peach-text); }
+
+/* The pitch deck: slides as wide-screen cards, two to a row. */
+[data-testid="stMainBlockContainer"]:has(.gw-slides) { max-width: 74rem; }
+.gw-slides { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.9rem; }
+.gw-slide {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #fff;
+    border-radius: 10px;
+    padding: 1rem 1.2rem 1.4rem;
+    box-shadow: 0 2px 8px rgba(20, 40, 40, 0.12);
+    display: flex;
+    flex-direction: column;
+}
+.gw-slide-first { background: var(--peach); justify-content: center; }
+.gw-slide-title { font-family: "Space Grotesk", "Source Sans", sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 0.4rem; }
+.gw-slide-first .gw-slide-title { font-size: 1.35rem; }
+.gw-slide-lines { margin: 0; padding-left: 1.05rem; font-size: 0.74rem; line-height: 1.45; }
+.gw-slide-first .gw-slide-lines { list-style: none; padding-left: 0; color: #56656a; }
+.gw-slide-plain .gw-slide-lines { list-style: none; padding-left: 0; }
+.gw-slide-bars { display: flex; align-items: flex-end; gap: 0.3rem; height: 3.6rem; margin-top: auto;
+                 border-bottom: 1px solid rgba(31, 42, 46, 0.18); }
+.gw-slide-number { position: absolute; right: 0.8rem; bottom: 0.45rem; font-size: 0.66rem; color: #8a979b; }
