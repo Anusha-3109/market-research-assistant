@@ -3,7 +3,7 @@
 A report is one text. To show its figures at a glance (the Snapshot view),
 the values behind the text are kept next to it: the market figures, the
 competitors with their size and one price, the demand trend, and the
-opportunities from the SWOT.
+four parts of the SWOT.
 
 Everything here is plain data (text, numbers, lists), so it can be saved
 with the conversation. Nothing is worked out or estimated: a value that the
@@ -92,8 +92,11 @@ def build_snapshot(final: dict) -> dict:
         # Everyone who was looked at: those kept and those dropped.
         "candidates": confirmed + len(final.get("rejected") or []),
         "trend": _trend(final),
+        # The four parts of the SWOT, up to four lines each. A snapshot saved
+        # before all four were kept has fewer of these.
+        "strengths": list(swot.strengths[:OPPORTUNITIES_SHOWN]) if swot else [],
+        "weaknesses": list(swot.weaknesses[:OPPORTUNITIES_SHOWN]) if swot else [],
         "opportunities": list(swot.opportunities[:OPPORTUNITIES_SHOWN]) if swot else [],
-        # The risks, for the one-page layout of the report (formats.py).
         "threats": list(swot.threats[:OPPORTUNITIES_SHOWN]) if swot else [],
     }
 

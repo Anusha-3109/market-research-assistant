@@ -167,14 +167,14 @@ def test_a_few_points_are_one_bar_each():
 
 # --- on the page ---------------------------------------------------------------------------------
 
-def with_snapshot(page, tmp_path, snapshot=None, replies=None):  # noqa: F811
+def with_snapshot(page, tmp_path, snapshot=None, replies=None, report=REPORT):  # noqa: F811
     """The page opened at a conversation that holds a report with a
     snapshot."""
     runtime = make_runtime(tmp_path, replies or [])
     wants = AIMessage("", tool_calls=[{"name": "create_market_report", "id": "r1",
                                        "args": {"product": "oat milk", "country": "Germany"}}])
     details = {"problems": [], "log": [], "snapshot": snapshot or build_snapshot(final_state())}
-    result = ToolMessage(REPORT, tool_call_id="r1", name="create_market_report", artifact=details)
+    result = ToolMessage(report, tool_call_id="r1", name="create_market_report", artifact=details)
     runtime.agent.update_state({"configurable": {"thread_id": "snap"}}, {"messages": [
         {"role": "user", "content": "A report on oat milk in Germany"}, wants, result]},
         as_node="tools")

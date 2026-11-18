@@ -1061,3 +1061,14 @@ a.gw-source:hover .gw-source-title { text-decoration: underline; }
 .gw-slide-bars { display: flex; align-items: flex-end; gap: 0.3rem; height: 3.6rem; margin-top: auto;
                  border-bottom: 1px solid rgba(31, 42, 46, 0.18); }
 .gw-slide-number { position: absolute; right: 0.8rem; bottom: 0.45rem; font-size: 0.66rem; color: #8a979b; }
+
+/* The Snapshot's line about its sources, and its tabs. */
+.gw-snap-from { font-size: 0.86rem; color: #56656a; margin: -0.5rem 0 0.2rem; }
+.st-key-snapshot_tabs [role="tablist"] { gap: 1.9rem; }
+.st-key-snapshot_tabs [data-testid="stTab"] p { color: #56656a; font-size: 0.95rem; }
+.st-key-snapshot_tabs [data-testid="stTab"]:hover p,
+.st-key-snapshot_tabs [data-testid="stTab"][aria-selected="true"] p { color: var(--peach-text); }
+.st-key-snapshot_tabs [data-testid="stTab"][aria-selected="true"] p { font-weight: 600; }
+.st-key-snapshot_tabs .react-aria-SelectionIndicator { background: var(--coral) !important; height: 3px; }
+.st-key-snapshot_tabs [data-testid="stTabPanel"] { padding-top: 1rem; }
+.gw-snap-swot { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.9rem; }

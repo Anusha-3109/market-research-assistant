@@ -204,9 +204,21 @@ conversation has **Ask**; one that holds a report also has **Report**, and
 
 | View | What it shows |
 |---|---|
-| Snapshot | The report's key figures as cards, each with where and when it applies and a link to its source; how many competitors were confirmed; the search interest as a bar chart; the opportunities from the SWOT; and a table of the competitors with what they offer, their size and one price. A conversation whose newest answer is a report opens here |
+| Snapshot | The report's key figures at a glance, in five tabs (see below), under a line that says how many sources the report cites. A conversation whose newest answer is a report opens here |
 | Ask | The conversation as one chat. Every question is a bubble on the right, followed by the steps taken and the full answer with its numbered sources. Under each answer are its cost, its sources (folded away) and the downloads. A report is one line here, with an "Open report" button. Three suggestions for a next question sit under the chat, and the question box stays at the bottom of the window |
 | Report | Each section of the report as a card with a status counted from its own text: how many values were "not found", or how many sources it cites. Beside the cards a box lists the contents, says what the report cost, and holds the downloads and "Save to reports folder" |
+
+The Snapshot's tabs:
+
+| Tab | What it shows |
+|---|---|
+| Overview | The key figures as cards, each with where and when it applies and a link to its source, and how many competitors were confirmed |
+| Competitors | A table of the confirmed competitors: what they offer and their size or financials |
+| Pricing | One price for each competitor, or "not found" |
+| Trends | The search interest as a bar chart, with its direction |
+| SWOT | Strengths, weaknesses, opportunities and risks, one box each |
+
+A tab with nothing to show says so in one sentence.
 
 While the agent is working, the chat shows the new question with each step
 as it happens, a placeholder where the answer will be, the pages found so
@@ -763,7 +775,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-848 tests, none of which use the internet or cost anything: outside
+860 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -796,6 +808,7 @@ services and the model are replaced with fakes.
 | `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
 | `test_formats.py` | The Format picker and the investor one-pager: what it holds, what it leaves out, and its downloads |
 | `test_slides.py` | The pitch deck: which slides, in which order, the PowerPoint file reopened and checked, and the page |
+| `test_snapshot_tabs.py` | The Snapshot's tabs: their order, what each one holds and leaves out, the sources line, and what an empty tab says |
 | `test_snapshot.py` | The Snapshot view: which figures are kept with a report, the competitor rows, the chart's bars, and the page |
 | `test_views.py` | The sidebar of an open conversation: the conversation picker, the links to the views, and conversations that share a title |
 | `test_currency.py` | Converting a figure to the country's currency: reading amounts in English and German number styles, the rounding, the wording, a rate service that fails |
@@ -1059,6 +1072,9 @@ market-research-assistant/
 
 - A report written before the Snapshot view existed has no saved figures,
   so it has no Snapshot. The figures cannot be rebuilt afterwards.
+- A Snapshot saved before all four parts of the SWOT were kept shows only
+  the parts it has, usually the opportunities alone.
+- There is no tab about customers: the report does no customer research.
 - The Snapshot shows what the research found, without correcting it. A
   competitor matched to the wrong company, or a price for the wrong
   product, stands out more there than in the report text.
