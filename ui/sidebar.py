@@ -3,20 +3,16 @@
 import streamlit as st
 
 from agent.config import (
-    ANSWER_LENGTH,
-    ANSWER_STYLE,
     APP_NAME,
     APP_TAGLINE,
     LENGTH_CHOICES,
     MODEL_CHOICES,
-    MODEL_NAME,
     PROFILE_KEYS,
-    REVIEW_COMPETITORS,
     STYLE_CHOICES,
-    TEMPERATURE,
 )
+from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
-from ui.assets import brand
+from ui.assets import brand, fill
 
 # How many conversations are listed before the rest fold away.
 RECENT_SHOWN = 5
@@ -25,30 +21,57 @@ RECENT_SHOWN = 5
 NEW = "new"
 FORGET = "forget"
 GUIDE = "guide"
+SIGN_OUT = "sign out"
+
+
+# Each setting has a widget in the settings panel. The widget's value is
+# kept by Streamlit under "set_" plus the setting's name.
+
+def prepare_settings(saved: dict | None = None) -> None:
+    """Put the settings in place before the widgets are drawn.
+
+    A setting nobody has touched gets its default. With `saved` (the
+    settings of the account that has just signed in), those are put in
+    instead.
+    """
+    for name, default in SETTING_DEFAULTS.items():
+        st.session_state.setdefault(f"set_{name}", default)
+    for name, value in (saved or {}).items():
+        st.session_state[f"set_{name}"] = value
+
+
+def chosen_settings() -> dict:
+    """What the settings panel shows now, by the names used when settings
+    are saved (see agent/memory.py)."""
+    return {name: st.session_state.get(f"set_{name}", default)
+            for name, default in SETTING_DEFAULTS.items()}
 
 
 def current_settings() -> dict:
-    """The settings chosen in the sidebar, or the defaults before the user
-    has touched them. Read at the top of the page, before the agent is
-    fetched, so a change takes effect on the same click."""
-    state = st.session_state
+    """The settings as the agent needs them. Read at the top of the page,
+    before the agent is fetched, so a change takes effect on the same
+    click."""
+    chosen = chosen_settings()
     return {
-        "model_name": state.get("set_model", MODEL_NAME),
-        "temperature": state.get("set_temperature", TEMPERATURE),
-        "review_competitors": state.get("set_review", REVIEW_COMPETITORS),
-        "answer_style": state.get("set_style", ANSWER_STYLE),
+        "model_name": chosen["model"],
+        "temperature": chosen["temperature"],
+        "review_competitors": chosen["review"],
+        "answer_style": chosen["style"],
         # The slider shows a word; the agent is given the number behind it.
-        "max_answer_tokens": LENGTH_CHOICES.get(state.get("set_length", ANSWER_LENGTH)),
+        "max_answer_tokens": LENGTH_CHOICES.get(chosen["length"]),
     }
 
 
 def render_sidebar(conversations: list[Conversation], current: str,
-                   profile: dict[str, str], waiting: bool) -> str | None:
-    """Show the sidebar. Returns NEW, FORGET or GUIDE if the user asked for
-    that, the thread id of a conversation they picked, or None.
+                   profile: dict[str, str], waiting: bool,
+                   signed_in_as: str | None = None) -> str | None:
+    """Show the sidebar. Returns NEW, FORGET, GUIDE or SIGN_OUT if the user
+    asked for that, the thread id of a conversation they picked, or None.
 
     Args:
         profile: What is remembered about the user.
+        signed_in_as: The name of the account that is signed in. None when
+            the app runs without accounts.
         waiting: True while the agent is stopped for an approval. Settings
             that would change how a paused report continues are locked.
     """
@@ -56,6 +79,14 @@ def render_sidebar(conversations: list[Conversation], current: str,
     with st.sidebar:
         st.html(brand(APP_NAME))
         st.caption(APP_TAGLINE)
+
+        if signed_in_as:
+            with st.container(key="account_panel"):
+                # The name was typed by a person: fill() shows it as text.
+                st.html(fill("account.html", person=signed_in_as))
+                if st.button("Sign out", icon=":material/logout:", key="sign_out",
+                             width="stretch"):
+                    action = SIGN_OUT
 
         if st.button("New conversation", icon=":material/add:", width="stretch",
                      key="new_conversation"):
@@ -111,21 +142,22 @@ def _memory_panel(profile: dict[str, str]) -> str | None:
 
 def _settings_panel(waiting: bool) -> None:
     """Developer settings, kept apart from the everyday experience in a
-    closed section. The values are read back with current_settings()."""
+    closed section. Each widget shows what prepare_settings() put in place,
+    and the values are read back with current_settings()."""
     with st.expander("Settings", icon=":material/settings:"):
         models = list(MODEL_CHOICES)
         st.selectbox(
-            "Model", models, index=models.index(MODEL_NAME), key="set_model",
+            "Model", models, key="set_model",
             format_func=lambda name: MODEL_CHOICES[name], disabled=waiting,
             help="The language model that answers and researches. All are "
                  "reached through OpenRouter.")
         st.slider(
-            "Temperature", 0.0, 1.0, TEMPERATURE, 0.1, key="set_temperature",
+            "Temperature", 0.0, 1.0, step=0.1, key="set_temperature",
             disabled=waiting,
             help="Lower gives more factual, repeatable answers. Higher gives "
                  "more varied wording. Research works best low.")
         st.select_slider(
-            "Maximum answer length", list(LENGTH_CHOICES), value=ANSWER_LENGTH,
+            "Maximum answer length", list(LENGTH_CHOICES),
             key="set_length", disabled=waiting,
             help="A hard limit on one chat answer: Short is about 180 words, "
                  "Medium about 450, Long about 900. An answer that reaches it "
@@ -137,13 +169,13 @@ def _settings_panel(waiting: bool) -> None:
         # and the line under the box describes the one that is chosen.
         all_styles = "\n\n".join(f"**{name}**: {line}" for name, line in STYLE_CHOICES.items())
         chosen = st.selectbox(
-            "Answer style", styles, index=styles.index(ANSWER_STYLE), key="set_style",
+            "Answer style", styles, key="set_style",
             disabled=waiting,
             help="How answers are worded. It never changes the facts, "
                  f"numbers or sources.\n\n{all_styles}")
         st.caption(STYLE_CHOICES[chosen])
         st.toggle(
-            "Review competitors before a report", value=REVIEW_COMPETITORS,
+            "Review competitors before a report",
             key="set_review", disabled=waiting,
             help="When on, a report pauses so you can approve or edit the "
                  "competitor list. Turn it off for a quicker report.")

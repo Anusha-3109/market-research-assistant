@@ -8,6 +8,8 @@ fall back to the plain rows of three built here.
 
 import streamlit as st
 
+from ui.assets import fill
+
 from agent.config import APP_NAME
 
 # (icon, title, example shown on the card, the same example as a full question)
@@ -42,13 +44,20 @@ OPEN_GUIDE = "__open_guide__"
 OPEN_PICKER = "__open_picker__:"
 
 
-def render_start_screen() -> str | None:
+def render_start_screen(greeting: tuple[str, str] | None = None) -> str | None:
     """Show the headline and the cards. Returns OPEN_PICKER plus the title
     of the example card that was clicked, OPEN_GUIDE if the wide card was
-    clicked, or None."""
+    clicked, or None.
+
+    greeting: the words and the name to greet a signed-in person with, for
+              example ("Welcome back", "Anna").
+    """
     chosen = None
 
     with st.container(key="hero"):
+        if greeting:
+            # The name was typed by a person: fill() shows it as text.
+            st.html(fill("hello.html", greeting=greeting[0], person=greeting[1]))
         st.title("Research **any market**.", anchor=False)
         st.markdown("Verified competitors, first-hand prices, every fact linked to its source.")
 

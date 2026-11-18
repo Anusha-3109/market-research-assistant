@@ -4,16 +4,19 @@ Nothing here imports Streamlit, so it can be tested without a browser and
 reused by any interface.
 
 - turn the saved messages of a conversation into simple blocks to display;
-- list the saved conversations with a title each.
+- list the saved conversations with a title each;
+- with accounts on, keep track of which account a conversation belongs to.
 """
 
 import uuid
 from dataclasses import dataclass, field
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.store.base import BaseStore
 
 from agent.citations import Source, number_citations, titles_in_results, without_references
 from agent.config import REPORT_HEADING
+from agent.memory import DEFAULT_USER, forget_profile, load_profile, save_preference
 from agent.report.tool import REPORT_TOOL_NAME
 from agent.usage import BACKGROUND_KEY, Usage, total, usage_of
 
@@ -234,6 +237,7 @@ def thread_ids(checkpointer) -> list[str]:
     belonging to the report workflow (which saves its own progress under a
     sub-name) are left out.
     """
+    checkpointer.setup()    # creates the table in a brand-new memory file
     rows = checkpointer.conn.execute(
         "SELECT thread_id, MAX(rowid) AS newest FROM checkpoints "
         "WHERE checkpoint_ns = '' GROUP BY thread_id ORDER BY newest DESC"
@@ -247,11 +251,73 @@ def load_messages(agent, thread_id: str) -> list:
     return list(state.values.get("messages", []))
 
 
-def list_conversations(agent, checkpointer) -> list[Conversation]:
-    """Saved conversations that have at least one user message, newest first."""
+def list_conversations(agent, checkpointer, store: BaseStore | None = None,
+                       user_id: str | None = None) -> list[Conversation]:
+    """Saved conversations that have at least one user message, newest first.
+
+    With a user id, only the conversations of that account are listed.
+    Without one (the app runs without accounts) all of them are.
+    """
+    ids = thread_ids(checkpointer)
+    if user_id is not None:
+        ids = [thread_id for thread_id in ids if owner_of(store, thread_id) == user_id]
     conversations = []
-    for thread_id in thread_ids(checkpointer)[:MAX_CONVERSATIONS]:
+    for thread_id in ids[:MAX_CONVERSATIONS]:
         title = title_from(load_messages(agent, thread_id))
         if title:
             conversations.append(Conversation(thread_id, title))
     return conversations
+
+
+# --- whose conversation is whose (accounts on) ------------------------------------------------
+#
+# A conversation is saved under its id alone, and the id is in the page
+# address. Without a record of the owner, anyone who had the address of a
+# conversation could read it. The owner is recorded in the long-term store
+# when the first question is asked.
+
+OWNERS = ("conversation_owners",)
+# Set once the first account has taken over what was there before accounts.
+ADOPTED = ("accounts_setup",)
+
+
+def owner_of(store: BaseStore, thread_id: str) -> str | None:
+    """The user id of the account a conversation belongs to, or None."""
+    item = store.get(OWNERS, thread_id)
+    return item.value["owner"] if item else None
+
+
+def claim_conversation(store: BaseStore, thread_id: str, user_id: str) -> None:
+    """Record that a conversation belongs to this account. A conversation
+    that already has an owner keeps it."""
+    if owner_of(store, thread_id) is None:
+        store.put(OWNERS, thread_id, {"owner": user_id})
+
+
+def may_open(agent, store: BaseStore, thread_id: str, user_id: str) -> bool:
+    """True if this account may see the conversation: it is their own, or
+    it is still empty. A conversation that has messages and no owner is
+    closed to everyone."""
+    owner = owner_of(store, thread_id)
+    if owner is not None:
+        return owner == user_id
+    return not load_messages(agent, thread_id)
+
+
+def adopt_existing(store: BaseStore, checkpointer, user_id: str) -> bool:
+    """Give what was saved before there were accounts to this account: the
+    conversations nobody owns and the remembered profile. Returns True if
+    it was done.
+
+    This happens once, for the first account that opens the app. A later
+    call does nothing, whoever makes it.
+    """
+    if store.get(ADOPTED, "done"):
+        return False
+    store.put(ADOPTED, "done", {"by": user_id})
+    for thread_id in thread_ids(checkpointer):
+        claim_conversation(store, thread_id, user_id)
+    for key, value in load_profile(store, DEFAULT_USER).items():
+        save_preference(store, user_id, key, value)
+    forget_profile(store, DEFAULT_USER)
+    return True

@@ -17,22 +17,37 @@ from agent.memory import (
     DEFAULT_USER,
     UserContext,
     backup_memory,
+    clean_settings,
     forget_profile,
     load_profile,
+    load_settings,
+    save_settings,
 )
 from agent.session import (
+    adopt_existing,
+    claim_conversation,
     list_conversations,
     load_messages,
+    may_open,
     new_thread_id,
     to_blocks,
     to_turns,
 )
 from ui.assets import LOGO
 from ui.guide import render_guide
-from ui.password import password_ok
 from ui.research import question_box_text, render_tabs, render_turn, run_live
-from ui.runtime import get_runtime
-from ui.sidebar import FORGET, GUIDE, NEW, current_settings, render_sidebar
+from ui.runtime import get_runtime, get_store
+from ui.sidebar import (
+    FORGET,
+    GUIDE,
+    NEW,
+    SIGN_OUT,
+    chosen_settings,
+    current_settings,
+    prepare_settings,
+    render_sidebar,
+)
+from ui.sign_in import accounts_are_on, current_account
 from ui.picker import BACK, open_picker, render_picker
 from ui.start import OPEN_GUIDE, OPEN_PICKER, render_start_screen
 from ui.styles import apply_styles
@@ -41,9 +56,26 @@ st.set_page_config(page_title=APP_NAME, page_icon=str(LOGO),
                    layout="centered", initial_sidebar_state="collapsed")
 apply_styles()
 
-# A deployed copy asks for a password before anything else happens.
-if not password_ok():
+# A deployed copy asks the visitor to sign in before anything else happens.
+# On your own computer there are no accounts and one user.
+account = current_account() if accounts_are_on() else None
+if accounts_are_on() and account is None:
     st.stop()
+user_id = account.user_id if account else DEFAULT_USER
+
+# --- the settings ----------------------------------------------------------------------
+# An account's settings are put in place once, right after signing in, and
+# saved again whenever one is changed.
+if account and not st.session_state.get("settings_restored"):
+    prepare_settings(load_settings(get_store(), user_id))
+    st.session_state["settings_restored"] = True
+else:
+    prepare_settings()
+if account:
+    chosen = clean_settings(chosen_settings())
+    if chosen != load_settings(get_store(), user_id):
+        save_settings(get_store(), user_id, chosen)
+        backup_memory()
 
 # --- the agent -------------------------------------------------------------------------
 # The settings chosen in the sidebar decide which agent is used. They also
@@ -61,7 +93,12 @@ except MissingKeyError as error:
     )
     st.stop()
 
-context = UserContext(user_id=DEFAULT_USER, **settings)
+context = UserContext(user_id=user_id, **settings)
+
+# What was saved before there were accounts goes to the first account that
+# opens the app. This is done once.
+if account and adopt_existing(runtime.store, runtime.checkpointer, user_id):
+    backup_memory()
 
 # --- which conversation -------------------------------------------------------------------
 # The id is kept in the page address so that a refresh, or a bookmarked
@@ -69,6 +106,12 @@ context = UserContext(user_id=DEFAULT_USER, **settings)
 if "c" not in st.query_params:
     st.query_params["c"] = new_thread_id()
 thread_id = st.query_params["c"]
+
+# The address of a conversation is not a key to it: a conversation that
+# belongs to another account is not opened. An empty one is opened instead.
+if account and not may_open(runtime.agent, runtime.store, thread_id, user_id):
+    st.query_params["c"] = new_thread_id()
+    st.rerun()
 
 # Is the agent stopped, waiting for an approval? This is read from the
 # saved state, so the form comes back after a refresh or a restart.
@@ -87,13 +130,21 @@ def open_guide(for_thread: str) -> None:
 
 
 action = render_sidebar(
-    list_conversations(runtime.agent, runtime.checkpointer), thread_id,
-    profile=load_profile(runtime.store, DEFAULT_USER), waiting=waiting is not None)
-if action == NEW:
+    list_conversations(runtime.agent, runtime.checkpointer, store=runtime.store,
+                       user_id=user_id if account else None), thread_id,
+    profile=load_profile(runtime.store, user_id), waiting=waiting is not None,
+    signed_in_as=account.name if account else None)
+if action == SIGN_OUT:
+    # Everything this browser session held goes: who was signed in, their
+    # settings, and the address of the conversation that was open.
+    st.session_state.clear()
+    st.query_params.clear()
+    st.rerun()
+elif action == NEW:
     st.query_params["c"] = new_thread_id()
     st.rerun()
 elif action == FORGET:
-    forget_profile(runtime.store, DEFAULT_USER)
+    forget_profile(runtime.store, user_id)
     backup_memory()
     st.toast("Everything remembered about you was deleted.", icon=":material/check:")
     st.rerun()
@@ -165,7 +216,8 @@ if not turns:
                 st.rerun()
             question = chosen
         else:
-            chosen = render_start_screen()
+            hello = "Welcome" if st.session_state.get("account_is_new") else "Welcome back"
+            chosen = render_start_screen(greeting=(hello, account.name) if account else None)
             if chosen == OPEN_GUIDE:
                 open_guide(thread_id)
                 st.rerun()
@@ -216,6 +268,9 @@ if answer is not None:
     backup_memory()
     st.rerun()
 elif question and not waiting:
+    if account:
+        # The conversation belongs to whoever asks its first question.
+        claim_conversation(runtime.store, thread_id, user_id)
     view.empty()
     with live.container():
         run_live(runtime.agent, thread_id, context, title=question,

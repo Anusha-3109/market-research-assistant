@@ -77,7 +77,8 @@ agent with tools can decide what to look up next.
 | Download | Any answer as a Markdown file or a PDF |
 | Stop | A run can be stopped; what was found so far is kept and the conversation continues |
 | Resilience | Every data source has a free backup, so one outage does not stop a report. If the model leaves out a required field, the question is asked again instead of losing the report |
-| Deployed | Runs on Google Cloud Run behind a password, and redeploys itself after the tests pass |
+| Accounts | On a deployed copy each person signs in to their own account, with their own conversations, remembered profile, settings and saved reports |
+| Deployed | Runs on Google Cloud Run behind a sign-in screen, and redeploys itself after the tests pass |
 
 The assistant does **not** give investment or financial advice, invent or
 estimate numbers, use paid databases, or answer questions unrelated to
@@ -165,7 +166,7 @@ On a narrow window the cards sit in rows of three.
 
 The Markavi logo, a dark tile with a rising line, appears next to the
 name in the sidebar, on the "Learn how Markavi works" card, on the
-password screen of the deployed copy, and as the icon of the browser tab.
+sign-in screen of the deployed copy, and as the icon of the browser tab.
 
 ### Ask for a report
 
@@ -569,6 +570,29 @@ The last point is an instruction, and an instruction can be forgotten: in
 test runs the Friendly style left out the source link in about one answer in
 thirty. So it is also checked by code, see the next decision.
 
+**Accounts, without a new service.** A deployed copy asks each visitor to
+sign in. Accounts are kept in the same store as the agent's long-term
+memory, so they are saved and copied to the bucket with it; no database or
+sign-in service was added.
+
+| Rule | How it is kept |
+|---|---|
+| A password is never stored | Only a salted hash is stored, made with scrypt from Python's standard library. Two people with the same password have different hashes |
+| Strangers cannot create accounts | Creating one needs an invite code, which is the `APP_PASSWORD` setting. Without it anyone with the link could spend the API credit |
+| Guessing is slow | After five wrong tries in a row on a username, or on the invite code, further tries must wait a minute. The count is kept in the store, so a new browser window does not reset it |
+| The screen does not reveal who has an account | An unknown username and a wrong password give the same message and take the same time |
+| The address of a conversation is not a key to it | Each conversation records the account that asked its first question. Another account that opens its address gets an empty conversation |
+| Nothing is created before sign-in | The agent, and with it the API keys, is only reached after someone has signed in |
+
+Each account has its own conversations, remembered profile, settings and
+folder of saved reports. The first account to open the app takes over what
+was saved before there were accounts; this happens once.
+
+Without `APP_PASSWORD`, as on your own computer, there are no accounts: the
+app opens directly for one user, as before. The rules are in
+`agent/accounts.py` (accounts) and `agent/session.py` (whose conversation
+is whose).
+
 **The cost shown is the cost charged.** The model service, OpenRouter,
 returns with every call the tokens it read and wrote and what the call cost
 in US dollars. The app adds those up and shows them; it does not multiply
@@ -639,7 +663,7 @@ to the stylesheet as a CSS variable and drawn from there.
 
 **The name is set once.** `APP_NAME` in `agent/config.py` is the only
 place the app's name is written; the page title, the sidebar, the guide
-and the password screen all read it from there.
+and the sign-in screen all read it from there.
 
 **Download and save are separate.** A download goes to the user's own
 computer and needs no approval. Saving writes on the machine running the
@@ -695,9 +719,11 @@ sources as plain functions, so the tests replace them with fakes.
 - **Privacy**: only four fixed kinds of fact can be remembered; names,
   contact details and finances are not saved; `data/` and `.env` are
   excluded from Git.
-- **A deployed copy**: a password screen comes before anything else, the
-  keys live in Secret Manager and never in the image, and the app runs as
-  an account that can reach only its own secrets and bucket.
+- **A deployed copy**: a sign-in screen comes before anything else,
+  passwords are stored only as salted hashes, each account sees only its
+  own conversations and profile, the keys live in Secret Manager and never
+  in the image, and the app runs as a service account that can reach only
+  its own secrets and bucket.
 - **Boundaries**: investment advice and off-topic requests are declined.
 
 ## Tests
@@ -706,7 +732,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-587 tests, none of which use the internet or cost anything: outside
+662 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -727,7 +753,12 @@ services and the model are replaced with fakes.
 | `test_citations.py` | Numbered citations, the source list, the Official mark, questions paired with answers |
 | `test_pdf_export.py` | The PDF: valid file, working links, safe handling of text from the web |
 | `test_assets.py` | Loading the HTML, CSS and JavaScript files; escaping of values put into templates |
-| `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore, the password screen |
+| `test_deploy.py` | A deployed copy: where data is stored, the copy of the memory file and its restore |
+| `test_accounts.py` | Accounts: creating one, signing in, what is stored, what is refused, the wait after five wrong tries, the invite code |
+| `test_sign_in.py` | The sign-in screen: nothing is shown or created before sign-in, wrong passwords and invite codes, a new account is signed in and copied at once |
+| `test_ownership.py` | Whose conversation is whose: claiming, the list, opening by address, the first account taking over earlier data, the reports folder |
+| `test_two_accounts.py` | Two accounts on one copy: neither sees the other's conversations or profile, and the agent is told only the asking account's profile |
+| `test_account_settings.py` | Settings kept per account, the greeting by name, signing out, and that the next person on the same browser gets nothing from the one before |
 | `test_usage.py` | Token usage and cost: a chat answer, a report across its review pause, a cancelled report, a repeated call, the background call, a call with no reported cost, the wording, the page |
 | `test_answer_length.py` | The maximum answer length: the limit reaches the model, a cut-off answer says so, a cut-off step is repeated, reports are never cut, the slider on the page |
 | `test_source_check.py` | The source check: a missing link is put back, an answer that has one is left alone, and addresses inside web text are never used |
@@ -745,12 +776,12 @@ conversations, and the sidebar panels.
 ## Deployment
 
 Markavi runs on **Google Cloud Run**:
-<https://markavi-1037824678664.europe-west1.run.app>. It asks for a
-password before anything else is shown, so that a stranger with the link
-cannot spend the API credit. Ask the author for the password.
+<https://markavi-1037824678664.europe-west1.run.app>. It asks you to
+sign in before anything else is shown. Creating an account needs an invite
+code, so that a stranger with the link cannot spend the API credit. Ask
+the author for the code.
 
-Everyone who signs in shares one memory and one list of conversations: the
-app has a single user (see [Known limitations](#known-limitations)).
+Each account has its own conversations, remembered profile and settings.
 
 ### How it is set up
 
@@ -769,7 +800,7 @@ Both are empty on your own computer, where nothing changes.
 
 | Setting | What it does |
 |---|---|
-| `APP_PASSWORD` | Puts the password screen in front of the app |
+| `APP_PASSWORD` | Turns accounts on: the sign-in screen comes before the app, and this value is the invite code needed to create an account |
 | `DATA_DIR` | The folder that survives restarts. Saved reports are written straight into it. The memory file is handled differently, see below |
 
 ### Why the memory file is copied instead of stored in the bucket
@@ -808,7 +839,7 @@ file is stored anywhere, and Google Cloud accepts only this repository's
 one service and nothing else. Copies of the repository, such as the course
 submission, run the tests but skip the deploy.
 
-Each deploy restarts the service, so visitors enter the password again.
+Each deploy restarts the service, so visitors sign in again.
 Their conversations come back from the bucket.
 
 ### Run the image yourself
@@ -860,13 +891,14 @@ market-research-assistant/
 │   ├── research.py          the research view: answer, steps, sources, live progress
 │   ├── approvals.py         the two approval forms
 │   ├── sidebar.py           conversations, memory, settings, help
-│   ├── password.py          the password screen of a deployed copy
+│   ├── sign_in.py           the sign-in screen of a deployed copy
 │   └── runtime.py           creates the agent once
 ├── agent/
 │   ├── agent.py             builds the chat agent and its middleware
 │   ├── prompts.py           the system prompt
 │   ├── tools.py             the single-question tools
-│   ├── memory.py            checkpointer, store, user profile
+│   ├── memory.py            checkpointer, store, user profile, saved settings
+│   ├── accounts.py          user accounts: creating one, signing in
 │   ├── memory_tools.py      remember and forget tools
 │   ├── approval.py          the two approval points
 │   ├── guards.py            input check and plain-language errors
@@ -949,8 +981,17 @@ market-research-assistant/
 
 **The deployed copy**
 
-- There is one user. Everyone who knows the password shares the same
-  conversations and the same remembered profile.
+- Signing in lasts for one browser session. A refresh of the page signs
+  you out.
+- There is no way to change or reset a password, or to delete an account,
+  from the app.
+- Everyone who has the invite code can create any number of accounts, and
+  all accounts spend the same API credit. There is no limit per account.
+- The author of the app, who can read the bucket, can read every
+  account's conversations. They are separated from each other, not
+  encrypted.
+- Wrong tries are counted per username, so someone who knows a username
+  can make its owner wait a minute by guessing five times.
 - The first visit after a quiet period takes several seconds, while the
   service starts.
 - A deploy, or the service shutting down while idle, signs everyone out.
@@ -1004,8 +1045,9 @@ market-research-assistant/
 - All models are reached through OpenRouter, which is a single point of
   failure: if it is down, or the credit runs out, no model answers.
 - Backup sources give thinner results than the main ones.
-- There is one user. Everything is stored under one profile, and anyone
-  who opens the app sees the same conversations.
+- Without an invite code set there is one user: everything is stored
+  under one profile, and anyone who opens the app sees the same
+  conversations.
 - Conversations are never shortened, so a very long one costs more per
   turn.
 - The address check for the page reader does not defend against a domain
@@ -1016,13 +1058,12 @@ market-research-assistant/
 ## What I would improve
 
 1. Switch on tracing with LangSmith.
-2. Remember settings between visits.
+2. Let a person change their password and delete their account.
 3. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.
 4. Read prices from pages that need JavaScript, with a headless browser.
 5. Add a second model provider key to remove the OpenRouter dependency.
 6. Give the single-question path the same competitor verification as the
    workflow.
-7. Add user accounts, so several people can use one installation with
-   separate conversations and profiles.
+7. Keep a person signed in across a refresh, with a signed cookie.
 8. Summarise long conversations to control cost.

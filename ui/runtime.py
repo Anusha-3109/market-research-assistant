@@ -33,6 +33,12 @@ def _agent(model_name: str, temperature: float):
                        checkpointer=checkpointer, store=store)
 
 
+def get_store():
+    """The long-term store alone. The sign-in screen uses it for the
+    accounts. Opening it needs no API key and creates no agent."""
+    return _memory()[1]
+
+
 def get_runtime(model_name: str = MODEL_NAME, temperature: float = TEMPERATURE) -> Runtime:
     """Return the agent for these settings, with the shared memory. Raises
     MissingKeyError if an API key is not set."""

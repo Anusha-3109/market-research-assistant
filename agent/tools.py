@@ -23,7 +23,7 @@ from agent.config import (
 )
 from agent.countries import find_country
 from agent.fallback import try_sources
-from agent.memory import UserContext
+from agent.memory import DEFAULT_USER, UserContext
 from agent.sources import (
     SourceError,
     metasearch,
@@ -329,6 +329,12 @@ def save_latest_report(title: str, messages: list, folder: Path) -> str:
     return f"Report saved to reports/{path.name}"
 
 
+def reports_folder(base: Path, user_id: str) -> Path:
+    """Where this user's reports are saved. Each account has a folder of
+    its own; without accounts, reports go straight into the base folder."""
+    return base if user_id == DEFAULT_USER else base / user_id
+
+
 @tool
 def save_report(title: str, runtime: ToolRuntime[UserContext]) -> str:
     """Save the most recent market research report in this conversation to
@@ -343,7 +349,9 @@ def save_report(title: str, runtime: ToolRuntime[UserContext]) -> str:
     # The report is read from the conversation state rather than passed in
     # by the model. Retyping a long report as a tool argument costs tokens
     # and was seen to corrupt characters such as the euro sign and umlauts.
-    return save_latest_report(title, runtime.state["messages"], REPORTS_DIR)
+    user_id = getattr(runtime.context, "user_id", None) or DEFAULT_USER
+    return save_latest_report(title, runtime.state["messages"],
+                              reports_folder(REPORTS_DIR, user_id))
 
 
 TOOLS = [

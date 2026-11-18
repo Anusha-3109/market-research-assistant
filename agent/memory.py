@@ -32,7 +32,20 @@ from langgraph.store.sqlite import SqliteStore
 from pydantic import BaseModel, Field
 
 from agent import usage
-from agent.config import MEMORY_BACKUP, MEMORY_DB, PROFILE_KEYS, PROFILE_VALUE_MAX_CHARS
+from agent.config import (
+    ANSWER_LENGTH,
+    ANSWER_STYLE,
+    LENGTH_CHOICES,
+    MEMORY_BACKUP,
+    MEMORY_DB,
+    MODEL_CHOICES,
+    MODEL_NAME,
+    PROFILE_KEYS,
+    PROFILE_VALUE_MAX_CHARS,
+    REVIEW_COMPETITORS,
+    STYLE_CHOICES,
+    TEMPERATURE,
+)
 
 DEFAULT_USER = "default-user"
 
@@ -197,6 +210,48 @@ def forget_profile(store: BaseStore, user_id: str) -> str:
         return "There was nothing saved to forget."
     store.delete(_namespace(user_id), "profile")
     return "All saved preferences were deleted."
+
+
+# --- the settings of an account ---------------------------------------------------------
+#
+# With accounts on, what a person chose in the settings panel is kept next
+# to their profile and is there again at their next sign-in.
+
+SETTING_DEFAULTS = {"model": MODEL_NAME, "temperature": TEMPERATURE, "length": ANSWER_LENGTH,
+                    "style": ANSWER_STYLE, "review": REVIEW_COMPETITORS}
+
+
+def _valid_setting(name: str, value) -> bool:
+    if name == "model":
+        return value in MODEL_CHOICES
+    if name == "temperature":
+        # bool is a kind of number in Python, and is not a temperature.
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value <= 1
+    if name == "length":
+        return value in LENGTH_CHOICES
+    if name == "style":
+        return value in STYLE_CHOICES
+    return isinstance(value, bool)          # review
+
+
+def clean_settings(values: dict) -> dict:
+    """A complete set of settings. A value that is missing, or is not one
+    of the choices the app offers (a model that was since removed, say),
+    is replaced by the default."""
+    settings = {name: values[name] if name in values and _valid_setting(name, values[name])
+                else default for name, default in SETTING_DEFAULTS.items()}
+    settings["temperature"] = round(float(settings["temperature"]), 1)
+    return settings
+
+
+def load_settings(store: BaseStore, user_id: str) -> dict:
+    """The settings saved for this user, or the defaults."""
+    item = store.get(_namespace(user_id), "settings")
+    return clean_settings(dict(item.value) if item else {})
+
+
+def save_settings(store: BaseStore, user_id: str, settings: dict) -> None:
+    store.put(_namespace(user_id), "settings", clean_settings(settings))
 
 
 class ProfileFacts(BaseModel):

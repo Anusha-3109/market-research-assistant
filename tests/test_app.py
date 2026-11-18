@@ -41,7 +41,7 @@ def save_report(title: str) -> str:
     return f"Report saved as {title}"
 
 
-def make_runtime(tmp_path, replies: list, model=None) -> Runtime:
+def make_runtime(tmp_path, replies: list, model=None, store=None) -> Runtime:
     """A fake agent with real, temporary memory.
 
     It answers with the given replies, in order. A test that needs to see
@@ -51,7 +51,7 @@ def make_runtime(tmp_path, replies: list, model=None) -> Runtime:
 
     checkpointer = SqliteSaver(sqlite3.connect(tmp_path / "memory.db", check_same_thread=False),
                                serde=memory.checkpoint_serializer())
-    store = InMemoryStore()
+    store = store or InMemoryStore()
     agent = assemble_agent(model or ScriptedModel(messages=iter(replies)), [],
                            tools=[save_report], checkpointer=checkpointer, store=store)
     return Runtime(agent=agent, checkpointer=checkpointer, store=store)
