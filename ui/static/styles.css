@@ -1198,3 +1198,15 @@ body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant
 [class*="st-key-why_panel_"] { background: #fff8f4; border-color: #f3c9b6; }
 [class*="st-key-why_panel_"] [data-testid="stButtonGroup"] button[aria-pressed="true"] {
     background: var(--coral); border-color: var(--coral); color: var(--coral-text); font-weight: 600; }
+/* The Feedback tab of the Admin page. */
+.st-key-admin_learn_card, .st-key-admin_reasons, .st-key-admin_by_setting,
+.st-key-admin_latest_down { background: #fff; border-radius: 14px; }
+.gw-down { border-top: 1px solid #f0ebe7; padding: 0.5rem 0; font-size: 0.86rem; }
+.gw-down:first-child { border-top: 0; }
+.gw-down-meta { color: #6b7a7f; font-size: 0.76rem; }
+.gw-down-body { margin-top: 0.25rem; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.gw-down-pill { background: var(--peach); color: var(--peach-text); border-radius: 999px;
+                padding: 0.05rem 0.55rem; font-size: 0.74rem; }
+.gw-down-comment { color: #1f2a2e; margin-left: 0.2rem; }
+/* A figure card whose value is words (such as a reason) rather than a number. */
+.gw-kpi-value.gw-kpi-words { font-size: 1.15rem; line-height: 1.3; }

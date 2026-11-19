@@ -52,7 +52,7 @@ from agent.feedback import tips_for_prompt
 from agent.language import answer_instruction
 from agent.styles import style_for_prompt
 from agent.tracing import trace_labels
-from agent.app_settings import custom_prompt
+from agent.app_settings import custom_prompt, load_app_settings
 from agent.tools import TOOLS
 
 # The chat agent's tools: the report workflow, the single-question tools
@@ -87,10 +87,11 @@ def prompt_with_profile(request: ModelRequest) -> str:
     if store is None:
         return prompt + how_to_write
     user_id = getattr(request.runtime.context, "user_id", None) or DEFAULT_USER
-    # What this account's ratings taught (agent/feedback.py). It comes
-    # before the style, so a style chosen in the settings has the last word.
-    return (prompt + profile_for_prompt(load_profile(store, user_id))
-            + tips_for_prompt(store, user_id) + how_to_write)
+    # What this account's ratings taught (agent/feedback.py), unless the
+    # Admin page turned learning off. It comes before the style, so a style
+    # chosen in the settings has the last word.
+    tips = tips_for_prompt(store, user_id) if load_app_settings(store)["learn"] else ""
+    return prompt + profile_for_prompt(load_profile(store, user_id)) + tips + how_to_write
 
 
 @wrap_model_call

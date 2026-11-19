@@ -2,7 +2,7 @@
 
 The model, temperature, answer length, answer style and competitor review
 apply to every account, and so do the system prompt and the tools the
-agent may use. They are kept once, in the long-term store under
+agent may use, and whether the agent learns from the ratings. They are kept once, in the long-term store under
 ("app",) "settings". The language stays a choice of each account.
 """
 
@@ -32,6 +32,8 @@ def load_app_settings(store) -> dict:
     known = set(tool_names())
     settings["disabled_tools"] = [name for name in saved.get("disabled_tools", [])
                                   if isinstance(name, str) and name in known]
+    # "Learn from feedback": the tips from ratings in the prompt (agent/feedback.py).
+    settings["learn"] = saved.get("learn", True) is not False
     return settings
 
 

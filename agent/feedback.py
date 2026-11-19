@@ -122,3 +122,33 @@ def ratings(store, user_id: str | None, since: datetime | None = None) -> list[d
     if since is not None:
         lines = [line for line in lines if datetime.fromisoformat(line["at"]) >= since]
     return sorted(lines, key=lambda line: line["at"])
+
+
+def feedback_summary(lines: list[dict], answered: int, latest: int = 5) -> dict:
+    """The figures the Feedback tab of the Admin page shows. `answered` is
+    how many answers were written in the same time, from the usage log."""
+    ups = sum(1 for line in lines if line["rating"] == UP)
+    downs = [line for line in lines if line["rating"] == DOWN]
+    counts = {reason: sum(reason in line.get("reasons", []) for line in downs) for reason in REASONS}
+    reasons = dict(sorted(((reason, count) for reason, count in counts.items() if count),
+                          key=lambda item: -item[1]))
+    groups: dict[tuple[str, str], list[int]] = {}
+    for line in lines:
+        groups.setdefault((line["model"], line["style"]), []).append(line["rating"])
+    by_setting = sorted(({"model": model, "style": style, "ratings": len(given),
+                          "helpful": sum(given) / len(given)}
+                         for (model, style), given in groups.items()),
+                        key=lambda row: -row["ratings"])
+    return {
+        "ratings": len(lines),
+        "up": ups,
+        "down": len(downs),
+        "helpful": ups / len(lines) if lines else None,
+        "with_comment": sum(1 for line in downs if line.get("comment")),
+        "reasons": reasons,
+        "top_reason": next(iter(reasons), None),
+        "answered": answered,
+        "rated_share": min(len(lines) / answered, 1.0) if answered else None,
+        "by_setting": by_setting,
+        "latest_down": sorted(downs, key=lambda line: line["at"], reverse=True)[:latest],
+    }

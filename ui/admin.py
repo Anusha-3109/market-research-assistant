@@ -16,6 +16,7 @@ from agent.config import LENGTH_CHOICES, MODEL_CHOICES, STYLE_CHOICES, THEME_CHO
 from agent.prompts import SYSTEM_PROMPT
 from agent.usage import format_cost
 from agent.usage_log import ANSWERED, events
+from ui.admin_feedback import helpful_card, render_feedback_tab, week_figures
 from ui.dashboard import CORAL, PEACH, figure_cards
 from ui.how_it_works import render_how_it_works
 from ui.texts import current_language, t
@@ -101,7 +102,8 @@ def render_admin(store) -> None:
         head.title(t("admin.title"), anchor=False)
         badge.html(f'<div class="gw-admin-pill">{t("admin.only")}</div>')
         st.caption(t("admin.subtitle"))
-        settings_tab, docs_tab = st.tabs([t("admin.tab_settings"), t("admin.tab_docs")])
+        settings_tab, feedback_tab, docs_tab = st.tabs(
+            [t("admin.tab_settings"), t("admin.tab_feedback"), t("admin.tab_docs")])
 
         with settings_tab:
             now = datetime.now(timezone.utc)
@@ -117,7 +119,7 @@ def render_admin(store) -> None:
                 (t("admin.answers_today"), str(len(answered_today)),
                  t("admin.avg_tokens", count=f"{sum(tokens) // len(tokens):,}") if tokens
                  else t("admin.no_answers")),
-                (t("admin.helpful"), "—", t("admin.no_ratings")),
+                helpful_card(week_figures(store)),
                 (t("admin.active"), str(active),
                  t("admin.active_note", count=accounts) if accounts else t("admin.active_local")),
             ])
@@ -158,6 +160,9 @@ def render_admin(store) -> None:
                     left.markdown(f"`{name}`  \n:gray[{t(f'admin.tool.{name}')}]")
                     right.toggle(name, key=f"tool_{name}", label_visibility="collapsed",
                                  on_change=_save_tools, args=(store,))
+
+        with feedback_tab:
+            render_feedback_tab(store)
 
         with docs_tab:
             render_how_it_works()

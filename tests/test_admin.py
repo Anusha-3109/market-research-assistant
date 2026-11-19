@@ -81,7 +81,7 @@ def test_the_admin_page_has_its_cards_settings_prompt_and_tools(page, tmp_path):
     app = open_admin(page(runtime=make_runtime(tmp_path, [], store=store)))
 
     assert "Admin" in [t.value for t in app.title]
-    assert [tab.label for tab in app.tabs] == ["Developer settings", "Documentation"]
+    assert [tab.label for tab in app.tabs] == ["Developer settings", "Feedback", "Documentation"]
     shown = "\n".join(e.proto.body for e in app.get("html") if "gw-kpi" in e.proto.body)
     for label in ("Cost today", "Answers today", "Helpful", "Active accounts"):
         assert label in shown, label

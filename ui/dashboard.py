@@ -28,10 +28,16 @@ def tokens_text(count: int) -> str:
     return str(count)
 
 
-def figure_cards(cards: list[tuple[str, str, str]]) -> None:
-    """A row of figure cards: (label, value, small line under it)."""
-    st.html(fill("kpis.html", cards=join(fill("kpi.html", label=label, value=value, note=note)
-                                         for label, value, note in cards)))
+def figure_cards(cards: list[tuple]) -> None:
+    """A row of figure cards: (label, value, small line under it). A value
+    that is words rather than a number adds a fourth item, WORDS, so it is
+    drawn smaller and fits its card."""
+    st.html(fill("kpis.html", cards=join(fill("kpi.html", label=card[0], value=card[1], note=card[2],
+                                              size=card[3] if len(card) > 3 else "")
+                                         for card in cards)))
+
+
+WORDS = "gw-kpi-words"
 
 
 def _chart_card(title: str, key: str, chart, table: pd.DataFrame, note: str = "") -> None:
