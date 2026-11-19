@@ -11,8 +11,9 @@ from agent.memory import SETTING_DEFAULTS, clean_settings
 NAMESPACE = ("app",)
 KEY = "settings"
 # The settings of agent/memory.py that the Admin page sets for everyone.
-# The language and the theme stay choices of each account.
-SHARED = [name for name in SETTING_DEFAULTS if name not in ("language", "theme")]
+# The language stays a choice of each account; Light / Dark is set here
+# for everyone, like the rest.
+SHARED = [name for name in SETTING_DEFAULTS if name != "language"]
 
 
 def tool_names() -> list[str]:

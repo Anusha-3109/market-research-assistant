@@ -204,8 +204,8 @@ The links at the top of the sidebar open the pages:
 | Dashboard | Requests, answered share, typical wait, tokens and cost, with a chart per day for each, the tool calls, the guard and errors. A range of 7, 30 or 90 days, or a year. Each account sees its own use |
 | Admin | Developer settings for the whole app, the system prompt, a switch for each tool, and what the app cost. Its **Documentation** tab explains how it works: the flow from question to answer as a Mermaid chart, the tools and their fallbacks, the report workflow, where the data comes from, and the safety checks. Only admins see it: everyone on your own computer, and the accounts named in `ADMIN_USERNAMES` on a deployed copy |
 
-At the top right, **EN / DE** changes the language and **Light / Dark** the
-look. Both are kept with your account.
+At the top right, **EN / DE** changes the language; it is kept with your
+account. **Light / Dark** is on the Admin page and applies to everyone.
 
 On a deployed copy, the round badge with your initial is at the bottom of
 the sidebar, under Help. Click it to see who is signed in and to **Sign out**.

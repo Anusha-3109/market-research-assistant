@@ -88,7 +88,7 @@ agent with tools can decide what to look up next.
 | Tracing | With a LangSmith key, every run is recorded step by step for debugging |
 | Pages | Links at the top of the sidebar to Research, a **Dashboard** (requests, wait, tokens, cost and tool calls per day) and **Admin** |
 | Admin page | Developer settings for the whole app: model, temperature, answer length and style, competitor review, the system prompt, and a switch for each tool. Its Documentation tab explains how it works (the flow as a Mermaid chart, the tools and data sources). Only admins see it |
-| Light and dark | A Light / Dark switch beside EN / DE, saved with the account |
+| Light and dark | A Light / Dark choice on the Admin page, for the whole app |
 | Deployed | Runs on Google Cloud Run behind a sign-in screen, and redeploys itself after the tests pass |
 
 The assistant does **not** give investment or financial advice, invent or

@@ -12,7 +12,7 @@ import streamlit as st
 
 from agent import memory
 from agent.app_settings import SHARED, load_app_settings, save_app_settings, tool_names
-from agent.config import LENGTH_CHOICES, MODEL_CHOICES, STYLE_CHOICES
+from agent.config import LENGTH_CHOICES, MODEL_CHOICES, STYLE_CHOICES, THEME_CHOICES
 from agent.prompts import SYSTEM_PROMPT
 from agent.usage import format_cost
 from agent.usage_log import ANSWERED, events
@@ -23,7 +23,12 @@ from ui.texts import current_language, t
 
 def _save_settings(store) -> None:
     """Runs when a setting is changed, before the page is drawn again."""
-    save_app_settings(store, {name: st.session_state[f"set_{name}"] for name in SHARED})
+    values = {name: st.session_state[f"set_{name}"] for name in SHARED}
+    if values.get("theme") is None:
+        # The chosen Light or Dark was clicked again, which unmarks it: keep it.
+        values["theme"] = load_app_settings(store)["theme"]
+        st.session_state["set_theme"] = values["theme"]
+    save_app_settings(store, values)
     memory.backup_memory()
 
 
@@ -66,6 +71,8 @@ def render_settings(store) -> None:
                           help=f"{t('settings.style_help')}\n\n{all_styles}", **save)
     st.caption(t(f"style.about.{chosen}"))
     st.toggle(t("settings.review"), key="set_review", help=t("settings.review_help"), **save)
+    st.segmented_control(t("theme.label"), list(THEME_CHOICES), key="set_theme",
+                         format_func=lambda name: t(f"theme.{name}"), help=t("theme.help"), **save)
 
 
 def _cost_chart(lines: list[dict], today) -> None:

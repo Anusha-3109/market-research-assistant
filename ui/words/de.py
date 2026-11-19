@@ -452,4 +452,5 @@ TEXTS = {
     "theme.light": ":material/light_mode: Hell",
     "theme.dark": ":material/dark_mode: Dunkel",
     "account.signed_in_line": "Angemeldet als {username}",
+    "theme.help": "Hell oder dunkel, für alle Konten.",
 }

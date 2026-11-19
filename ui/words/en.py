@@ -449,8 +449,9 @@ TEXTS = {
     "admin.tool.forget_preferences": "Deletes the saved profile when the user asks",
 
     # --- the Light | Dark switch ---
-    "theme.label": "Theme",
+    "theme.label": "Look",
     "theme.light": ":material/light_mode: Light",
     "theme.dark": ":material/dark_mode: Dark",
     "account.signed_in_line": "Signed in as {username}",
+    "theme.help": "Light or dark, for every account.",
 }

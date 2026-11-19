@@ -43,7 +43,7 @@ services and the model are replaced with fakes.
 | `test_pages.py` | The page links, and How it works in the Admin page's Documentation tab, also in German |
 | `test_usage_log.py` | The usage log, its figures per day, what the app writes to it, and the Dashboard page |
 | `test_admin.py` | The Admin page: app-wide settings, the system prompt, the tool switches, and who may open it |
-| `test_theme.py` | The Light / Dark switch, kept per account |
+| `test_theme.py` | Light / Dark on the Admin page, for every account |
 | `test_language_start.py` | German on the start screen, pickers, guide, approval forms and sign-in; German country names |
 | `test_assistant.py` | The assistant: what the model is sent, the panel in every view, that its questions stay out of the conversation, the cost, and a failure explained |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
