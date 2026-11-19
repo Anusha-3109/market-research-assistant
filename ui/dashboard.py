@@ -11,6 +11,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from agent.feedback import UP, ratings
 from agent.usage import format_cost
 from agent.usage_log import ANSWERED, ERROR, TURNED_AWAY, events, per_day, summary
 from ui.assets import fill, join
@@ -66,6 +67,16 @@ def _bars(frame: pd.DataFrame, value: str, colour_by: str | None, colours: dict,
     return chart.properties(height=200)
 
 
+def _helpful(store, user_id: str | None, since: datetime) -> tuple[str, str, str]:
+    """The share of this account's rated answers that got a thumbs up."""
+    given = ratings(store, user_id, since=since)
+    if not given:
+        return t("dash.helpful"), "—", t("admin.no_ratings")
+    ups = sum(1 for line in given if line["rating"] == UP)
+    return (t("dash.helpful"), f"{ups / len(given):.0%}",
+            t("dash.helpful_note", up=ups, count=len(given)))
+
+
 def render_dashboard(store, user_id: str | None) -> None:
     with st.container(key="dashboard_page"):
         head, picker = st.columns([3, 2], vertical_alignment="center")
@@ -97,6 +108,7 @@ def render_dashboard(store, user_id: str | None) -> None:
             (t("dash.wait"), f"{wait:.1f} s" if wait is not None else "—", t("dash.wait_note")),
             (t("dash.tokens"), tokens_text(figures["tokens"]), t("dash.tokens_note")),
             (t("dash.cost"), format_cost(figures["cost"]), t("dash.cost_note")),
+            _helpful(store, user_id, now - timedelta(days=days)),
         ])
 
         rows = per_day(lines, now.date(), days)

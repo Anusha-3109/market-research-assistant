@@ -401,6 +401,8 @@ TEXTS = {
     "dash.tokens_note": "read and written",
     "dash.cost": "Cost",
     "dash.cost_note": "as reported by OpenRouter, in US dollars",
+    "dash.helpful": "Helpful",
+    "dash.helpful_note": "{up} of {count} ratings 👍",
     "dash.show_table": "Show table",
     "dash.requests_per_day": "Requests per day",
     "dash.time_to_answer": "Time to answer",

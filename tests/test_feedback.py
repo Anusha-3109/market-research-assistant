@@ -219,3 +219,31 @@ def test_the_reasons_are_named_in_german(page):  # noqa: F811
     thumbs(app, 0).set_value(DOWN).run()
 
     assert why(app, 0).options[:3] == ["Falsche oder veraltete Fakten", "Quellen fehlen", "Zu lang"]
+
+
+# --- the Dashboard ---------------------------------------------------------------------------------
+
+def test_the_dashboard_shows_how_helpful_the_answers_were_in_the_range(page, tmp_path):  # noqa: F811
+    from datetime import timedelta
+
+    from agent.memory import DEFAULT_USER
+    from tests.test_usage_log import cards, open_dashboard
+
+    store = InMemoryStore()
+    now = datetime.now(timezone.utc)
+    rate(store, DEFAULT_USER, "t1", 0, UP, question="Q", settings=SETTINGS, when=now)
+    rate(store, DEFAULT_USER, "t2", 0, DOWN, question="Q", settings=SETTINGS, when=now)
+    rate(store, DEFAULT_USER, "t3", 0, DOWN, question="Q", settings=SETTINGS,
+         when=now - timedelta(days=60))                       # before the 30 days shown
+
+    shown = cards(open_dashboard(page, tmp_path, store))
+
+    assert "Helpful" in shown and ">50%<" in shown and "1 of 2 ratings" in shown
+
+
+def test_the_dashboard_says_when_nothing_was_rated(page, tmp_path):  # noqa: F811
+    from tests.test_usage_log import cards, open_dashboard
+
+    shown = cards(open_dashboard(page, tmp_path, InMemoryStore()))
+
+    assert "Helpful" in shown and "No ratings yet" in shown
