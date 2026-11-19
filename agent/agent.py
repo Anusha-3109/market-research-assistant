@@ -51,11 +51,21 @@ from agent.source_check import check_answer
 from agent.language import answer_instruction
 from agent.styles import style_for_prompt
 from agent.tracing import trace_labels
+from agent.app_settings import custom_prompt
 from agent.tools import TOOLS
 
 # The chat agent's tools: the report workflow, the single-question tools
 # and the memory tools.
 ALL_TOOLS = [create_market_report] + TOOLS + MEMORY_TOOLS
+
+
+def enabled_tools(disabled=()) -> list:
+    """The tools the agent may use: all of them except those switched off on
+    the Admin page. forget_preferences follows remember_preference."""
+    off = set(disabled)
+    if "remember_preference" in off:
+        off.add("forget_preferences")
+    return [tool for tool in ALL_TOOLS if tool.name not in off]
 
 
 @dynamic_prompt
@@ -65,7 +75,8 @@ def prompt_with_profile(request: ModelRequest) -> str:
     It adds what is saved about the user, read fresh from the store each
     time, so a preference saved a moment ago is already visible.
     """
-    prompt = build_system_prompt()
+    # The prompt set on the Admin page, or the built-in one.
+    prompt = custom_prompt(request.runtime.store) or build_system_prompt()
     # The answer style comes last, so the model reads it after the saved
     # profile and knows it overrides a remembered style.
     how_to_write = style_for_prompt(getattr(request.runtime.context, "answer_style", None))
@@ -234,7 +245,7 @@ def assemble_agent(model, fallback_models: list, tools: list,
 def build_agent(model_name: str = MODEL_NAME,
                 fallback_names: list[str] | None = None,
                 checkpointer=None, store=None,
-                temperature: float = TEMPERATURE):
+                temperature: float = TEMPERATURE, disabled_tools=()):
     """Create the market research agent with its real models and tools.
 
     Without a checkpointer the agent has no memory between calls; pass the
@@ -247,7 +258,7 @@ def build_agent(model_name: str = MODEL_NAME,
     return assemble_agent(
         model=make_model(model_name, temperature),
         fallback_models=[make_model(name) for name in fallback_names],
-        tools=ALL_TOOLS,
+        tools=enabled_tools(disabled_tools),
         checkpointer=checkpointer,
         store=store,
         # Facts are only captured when there is a store to save them in.

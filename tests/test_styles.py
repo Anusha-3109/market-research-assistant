@@ -261,7 +261,15 @@ def open_app(page, tmp_path, replies: list | None = None):
 
 
 def style_setting(app):
-    return next(box for box in app.sidebar.selectbox if box.label == "Answer style")
+    """The setting on the Admin page; the page is opened first."""
+    if not [box for box in app.selectbox if box.key == "set_style"]:
+        next(b for b in app.button if b.key == "page_admin").click().run()
+    return next(box for box in app.selectbox if box.label == "Answer style")
+
+
+def back(app):
+    next(b for b in app.button if b.key == "page_research").click().run()
+    return app
 
 
 def test_the_settings_offer_four_styles_with_balanced_chosen(page, tmp_path):
@@ -275,12 +283,13 @@ def test_the_settings_offer_four_styles_with_balanced_chosen(page, tmp_path):
 
 
 def sidebar_notes(app) -> list[str]:
-    """The small grey lines in the sidebar."""
-    return [note.value for note in app.sidebar.caption]
+    """The small grey lines on the page (the settings are on the Admin page)."""
+    return [note.value for note in app.caption]
 
 
 def test_a_small_line_under_the_box_describes_the_chosen_style(page, tmp_path):
     app, _ = open_app(page, tmp_path)
+    style_setting(app)
     assert "The assistant's normal way of writing" in sidebar_notes(app)
 
     style_setting(app).set_value("Formal").run()
@@ -306,7 +315,7 @@ def test_a_style_picked_in_the_settings_reaches_the_model_with_the_next_question
     app, model = open_app(page, tmp_path)
 
     style_setting(app).set_value("Concise").run()
-    app.chat_input[0].set_value("How big is the oat milk market?").run()
+    back(app).chat_input[0].set_value("How big is the oat milk market?").run()
 
     assert not app.exception
     assert 'The user chose the "Concise" answer style' in model.told()
@@ -320,14 +329,7 @@ def test_without_touching_the_setting_the_model_hears_no_style(page, tmp_path):
     assert "answer style" not in model.told()
 
 
-def test_the_style_cannot_be_changed_while_an_approval_form_is_waiting(page, tmp_path):
-    save_call = AIMessage("", tool_calls=[{"name": "save_report", "id": "s1",
-                                           "args": {"title": "Meal kits Germany"}}])
-    app, _ = open_app(page, tmp_path, [save_call, AIMessage("Saved.")])
 
-    app.chat_input[0].set_value("Save this report.").run()
-
-    assert style_setting(app).disabled
 
 
 # --- seam 4: sources survive every style -------------------------------------------------------

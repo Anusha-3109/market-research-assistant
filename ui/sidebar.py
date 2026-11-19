@@ -188,7 +188,6 @@ def render_sidebar(conversations: list[Conversation], current: str,
 
         # The foot: two plain rows.
         with st.container(key="sidebar_foot"):
-            _settings_panel(waiting)
             action = _help_panel() or action
     return action
 
@@ -218,47 +217,6 @@ def _memory_panel(profile: dict[str, str]) -> str | None:
                  help=t("memory.forget_help")):
         return FORGET
     return None
-
-
-def _settings_panel(waiting: bool) -> None:
-    """Developer settings, kept apart from the everyday experience in a
-    closed section. Each widget shows what prepare_settings() put in place,
-    and the values are read back with current_settings()."""
-    # A choice is shown by its name in the chosen language. What is kept,
-    # saved and given to the agent is the choice itself ("Concise"), which
-    # is the same in every language.
-    # (The language is read once here: the functions that name a choice
-    # are also called after the page is drawn, when it can no longer be asked.)
-    language = current_language()
-    with st.expander(t("settings.title"), icon=":material/settings:"):
-        models = list(MODEL_CHOICES)
-        st.selectbox(
-            t("settings.model"), models, key="set_model",
-            format_func=lambda name: MODEL_CHOICES[name], disabled=waiting,
-            help=t("settings.model_help"))
-        st.slider(
-            t("settings.temperature"), 0.0, 1.0, step=0.1, key="set_temperature",
-            disabled=waiting, help=t("settings.temperature_help"))
-        st.select_slider(
-            t("settings.length"), list(LENGTH_CHOICES),
-            format_func=lambda name: t(f"length.{name}", language=language),
-            key="set_length", disabled=waiting, help=t("settings.length_help"))
-        styles = list(STYLE_CHOICES)
-        # The box shows the name only: with its description added, the text
-        # was cut off in the narrow sidebar. The help text lists all four,
-        # and the line under the box describes the one that is chosen.
-        all_styles = "\n\n".join(f"**{t(f'style.{name}')}**: {t(f'style.about.{name}')}"
-                                 for name in styles)
-        chosen = st.selectbox(
-            t("settings.style"), styles, key="set_style",
-            format_func=lambda name: t(f"style.{name}", language=language), disabled=waiting,
-            help=f"{t('settings.style_help')}\n\n{all_styles}")
-        st.caption(t(f"style.about.{chosen}"))
-        st.toggle(
-            t("settings.review"), key="set_review", disabled=waiting,
-            help=t("settings.review_help"))
-        if waiting:
-            st.caption(t("settings.locked"))
 
 
 def _help_panel() -> str | None:

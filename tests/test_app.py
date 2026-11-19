@@ -69,6 +69,10 @@ def page(tmp_path):
         patcher = patch("ui.runtime.get_runtime", lambda *args, **kwargs: runtime)
         patcher.start()
         patches.append(patcher)
+        # The settings are read from the same store as everything else.
+        store_patcher = patch("ui.runtime.get_store", lambda: runtime.store)
+        store_patcher.start()
+        patches.append(store_patcher)
         app = AppTest.from_file(APP, default_timeout=30).run()
         app.runtime = runtime
         return app
@@ -266,13 +270,15 @@ def test_with_nothing_remembered_there_is_no_forget_button(page):
 
 def test_the_settings_offer_three_models_temperature_and_the_review_switch(page):
     app = page()
+    button(app, "page_admin").click().run()
 
-    model = app.sidebar.selectbox[0]
+    model = next(box for box in app.selectbox if box.key == "set_model")
     assert model.label == "Model"
     assert len(model.options) == 3
-    assert app.sidebar.slider[0].label == "Temperature"
-    assert app.sidebar.toggle[0].label == "Review competitors before a report"
-    assert app.sidebar.toggle[0].value is True
+    assert next(s for s in app.slider if s.key == "set_temperature").label == "Temperature"
+    review = next(s for s in app.toggle if s.key == "set_review")
+    assert review.label == "Review competitors before a report"
+    assert review.value is True
 
 
 def test_help_can_open_the_guide(page):
@@ -356,14 +362,6 @@ def test_pressing_dont_save_writes_nothing(page):
 
     assert SAVED == []
     assert "All right, not saved." in texts(app)
-
-
-def test_settings_are_locked_while_an_approval_is_waiting(page):
-    app = page([SAVE_CALL, AIMessage("Saved.")])
-    app.chat_input[0].set_value("Save this report.").run()
-
-    assert next(box for box in app.sidebar.selectbox if box.label == "Model").disabled
-    assert app.sidebar.toggle[0].disabled
 
 
 # --- setup problems ---------------------------------------------------------------------------------

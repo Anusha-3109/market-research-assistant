@@ -168,7 +168,15 @@ def open_app(page, tmp_path, replies: list | None = None):
 
 
 def length_setting(app):
-    return next(s for s in app.sidebar.select_slider if s.label == "Maximum answer length")
+    """The setting on the Admin page; the page is opened first."""
+    if not [s for s in app.select_slider if s.key == "set_length"]:
+        next(b for b in app.button if b.key == "page_admin").click().run()
+    return next(s for s in app.select_slider if s.label == "Maximum answer length")
+
+
+def back(app):
+    next(b for b in app.button if b.key == "page_research").click().run()
+    return app
 
 
 def test_the_settings_offer_four_lengths_with_no_limit_chosen(page, tmp_path):
@@ -184,7 +192,7 @@ def test_a_length_picked_in_the_settings_limits_the_next_answer(page, tmp_path):
     app, model = open_app(page, tmp_path)
 
     length_setting(app).set_value("Short").run()
-    app.chat_input[0].set_value("How big is the oat milk market?").run()
+    back(app).chat_input[0].set_value("How big is the oat milk market?").run()
 
     assert not app.exception
     assert model.settings[-1]["max_tokens"] == 250
@@ -196,17 +204,7 @@ def test_each_position_of_the_slider_has_its_own_limit(page, tmp_path):
     limits = {}
     for position in ("Medium", "Long", "No limit"):
         length_setting(app).set_value(position).run()
-        app.chat_input[0].set_value(f"A question at {position}").run()
+        back(app).chat_input[0].set_value(f"A question at {position}").run()
         limits[position] = model.settings[-1].get("max_tokens")
 
     assert limits == {"Medium": 600, "Long": 1200, "No limit": None}
-
-
-def test_the_length_cannot_be_changed_while_an_approval_form_is_waiting(page, tmp_path):
-    save_call = AIMessage("", tool_calls=[{"name": "save_report", "id": "s1",
-                                           "args": {"title": "Meal kits Germany"}}])
-    app, _ = open_app(page, tmp_path, [save_call, AIMessage("Saved.")])
-
-    app.chat_input[0].set_value("Save this report.").run()
-
-    assert length_setting(app).disabled

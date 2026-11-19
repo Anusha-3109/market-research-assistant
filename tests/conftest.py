@@ -13,6 +13,18 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def no_real_memory_file():
+    """No test may open the developer's own memory file. The app reads its
+    settings from the store before anything else; a test that needs a store
+    of its own puts one in place over this one."""
+    from langgraph.store.memory import InMemoryStore
+
+    store = InMemoryStore()
+    with patch("ui.runtime.get_store", lambda: store):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def no_exchange_rates():
     """No test may use the internet. A report's figures would otherwise be
     converted with a real exchange rate. Tests about conversion pass a

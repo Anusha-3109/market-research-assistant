@@ -11,6 +11,7 @@ lives in the page address (?c=...), so a refresh shows the same chat.
 import streamlit as st
 
 from agent import usage_log
+from agent.app_settings import SHARED, load_app_settings
 from agent.agent import pending_pause, settle_stopped_turn
 from agent.config import APP_NAME, MAX_QUESTION_CHARS, MissingKeyError
 from agent.guards import check_question
@@ -44,7 +45,8 @@ from ui.how_it_works import render_how_it_works
 from ui.language import render_language_switch
 from ui.page_sidebar import render_page_sidebar
 from ui.dashboard import render_dashboard
-from ui.pages import DASHBOARD, HOW, RESEARCH, current_page
+from ui.admin import render_admin
+from ui.pages import ADMIN, DASHBOARD, HOW, RESEARCH, current_page
 from ui.texts import t
 from ui.research import (
     question_box_text,
@@ -98,13 +100,20 @@ if account:
     if chosen != load_settings(get_store(), user_id):
         save_settings(get_store(), user_id, chosen)
         backup_memory()
+# The model settings, the system prompt and the tools are set on the Admin
+# page for every account (agent/app_settings.py). They are read on every
+# run, so a change there reaches everyone with their next click.
+app_settings = load_app_settings(get_store())
+for name in SHARED:
+    st.session_state[f"set_{name}"] = app_settings[name]
 
 # --- the agent -------------------------------------------------------------------------
 # The settings chosen in the sidebar decide which agent is used. They also
 # travel with every request, so the report workflow follows them too.
 settings = current_settings()
 try:
-    runtime = get_runtime(settings["model_name"], settings["temperature"])
+    runtime = get_runtime(settings["model_name"], settings["temperature"],
+                          disabled_tools=tuple(app_settings["disabled_tools"]))
 except MissingKeyError as error:
     st.title(APP_NAME, anchor=False)
     st.error(str(error), title="Setup needed")
@@ -133,6 +142,8 @@ if open_page != RESEARCH:
         st.rerun()
     if open_page == HOW:
         render_how_it_works()
+    elif open_page == ADMIN:
+        render_admin(runtime.store)
     elif open_page == DASHBOARD:
         # Each account sees its own use; without accounts, all of it.
         render_dashboard(runtime.store, user_id if account else None)

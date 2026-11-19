@@ -4,6 +4,8 @@ settings are kept, they are greeted by name, and they can sign out.
 The page is run without a browser. Anna and Ben are made-up people.
 """
 
+from unittest.mock import patch
+
 import pytest
 from langchain_core.messages import AIMessage
 from langgraph.store.memory import InMemoryStore
@@ -19,11 +21,12 @@ DEFAULTS = {"model": "openai/gpt-4.1-mini", "temperature": 0.2, "length": "No li
 
 
 def choose(app, **choices):
-    """Change settings in the sidebar, one after the other, as a person
+    """Change settings on the Admin page, one after the other, as a person
     would."""
+    next(b for b in app.button if b.key == "page_admin").click().run()
     for name, value in choices.items():
-        widget = next(w for w in list(app.sidebar.selectbox) + list(app.sidebar.select_slider)
-                      + list(app.sidebar.slider) + list(app.sidebar.toggle)
+        widget = next(w for w in list(app.selectbox) + list(app.select_slider)
+                      + list(app.slider) + list(app.toggle)
                       if w.key == f"set_{name}")
         widget.set_value(value).run()
     return app
@@ -80,9 +83,11 @@ def test_a_stored_value_that_is_not_a_valid_choice_falls_back_to_the_default(nam
 
 # --- settings on the page ----------------------------------------------------------------------
 
-def test_settings_chosen_by_an_account_are_there_at_its_next_sign_in(site):  # noqa: F811
+def test_settings_chosen_on_the_admin_page_are_there_at_the_next_sign_in(site):  # noqa: F811
     two_accounts(site)
-    choose(visit_as(site, "anna"), style="Friendly", length="Short", temperature=0.7, review=False)
+    with patch("agent.config.ADMIN_USERNAMES", {"anna"}):
+        choose(visit_as(site, "anna"), style="Friendly", length="Short", temperature=0.7,
+               review=False)
 
     again = visit_as(site, "anna")
 
@@ -91,19 +96,21 @@ def test_settings_chosen_by_an_account_are_there_at_its_next_sign_in(site):  # n
         ["Friendly", "Short", 0.7, False]
 
 
-def test_one_accounts_settings_do_not_reach_another_account(site):  # noqa: F811
+def test_settings_the_admin_chooses_reach_every_account(site):  # noqa: F811
     two_accounts(site)
-    choose(visit_as(site, "anna"), style="Friendly", length="Short")
+    with patch("agent.config.ADMIN_USERNAMES", {"anna"}):
+        choose(visit_as(site, "anna"), style="Friendly", length="Short")
 
     ben = visit_as(site, "ben")
 
-    assert [shown(ben, name) for name in ("style", "length")] == ["Balanced", "No limit"]
+    assert [shown(ben, name) for name in ("style", "length")] == ["Friendly", "Short"]
 
 
 def test_the_agent_follows_the_settings_that_came_back(site):  # noqa: F811
     model = ListeningModel(messages=iter([AIMessage("ok")]))
     two_accounts(site, model=model)
-    choose(visit_as(site, "anna"), style="Friendly")
+    with patch("agent.config.ADMIN_USERNAMES", {"anna"}):
+        choose(visit_as(site, "anna"), style="Friendly")
 
     ask(visit_as(site, "anna"), "How big is the oat milk market?")
 
@@ -114,10 +121,10 @@ def test_changing_a_setting_writes_the_copy_for_the_cloud(site):  # noqa: F811
     from unittest.mock import patch
 
     two_accounts(site)
-    app = visit_as(site, "anna")
-
-    with patch("agent.memory.backup_memory") as copy_made:
-        choose(app, style="Friendly")
+    with patch("agent.config.ADMIN_USERNAMES", {"anna"}):
+        app = visit_as(site, "anna")
+        with patch("agent.memory.backup_memory") as copy_made:
+            choose(app, style="Friendly")
 
     copy_made.assert_called()
 
@@ -211,8 +218,7 @@ def test_the_sidebar_no_longer_says_who_is_signed_in(site):  # noqa: F811
 
     assert not any("Signed in as" in text or "Sign out" in text for text in sidebar)
     assert (position(sidebar, "New conversation") < position(sidebar, "What I remember")
-            < position(sidebar, "Forget me") < position(sidebar, "Settings")
-            < position(sidebar, "Help"))
+            < position(sidebar, "Forget me") < position(sidebar, "Help"))
 
 
 def test_signing_out_brings_back_the_sign_in_screen(site):  # noqa: F811
@@ -230,7 +236,8 @@ def test_signing_out_brings_back_the_sign_in_screen(site):  # noqa: F811
 def test_the_next_person_on_the_same_browser_gets_nothing_from_the_one_before(site):  # noqa: F811
     two_accounts(site, replies=[AIMessage("An answer for Anna.")])
     app = visit_as(site, "anna")
-    choose(app, style="Friendly")
+    switch_language = next(c for c in app.segmented_control if c.key == "language_switch")
+    switch_language.set_value("de").run()
     ask(app, "Anna's question about oat milk")
     button(app, "sign_out").click().run()
 
@@ -238,7 +245,7 @@ def test_the_next_person_on_the_same_browser_gets_nothing_from_the_one_before(si
 
     assert app.title[0].value == START_TITLE          # not Anna's conversation
     assert listed(app) == []
-    assert shown(app, "style") == "Balanced"
+    assert shown(app, "language") == "en"              # Anna's own choice stays hers
     assert "Welcome back, Ben" in html_on(app.main)
 
 

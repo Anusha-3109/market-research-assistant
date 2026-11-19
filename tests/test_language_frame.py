@@ -51,7 +51,7 @@ def test_the_sidebar_is_in_german(page):  # noqa: F811
     app = german(page())
 
     assert button(app, "new_conversation").label == "Neue Unterhaltung"
-    assert [e.label for e in app.sidebar.expander] == ["Einstellungen", "Hilfe"]
+    assert [e.label for e in app.sidebar.expander] == ["Hilfe"]
     captions = [c.value for c in app.sidebar.caption]
     assert "Marktforschung vor dem Start" in captions
     assert "Unterhaltungen" in captions and "Was ich mir merke" in captions
@@ -66,25 +66,27 @@ def test_the_views_have_german_names(page, tmp_path):  # noqa: F811
 
 def test_a_setting_is_named_in_german_but_keeps_its_value(page):  # noqa: F811
     app = german(page())
+    button(app, "page_admin").click().run()
 
-    style = next(box for box in app.sidebar.selectbox if box.key == "set_style")
+    style = next(box for box in app.selectbox if box.key == "set_style")
     assert style.label == "Antwortstil"
     assert style.options == ["Ausgewogen", "Förmlich", "Freundlich", "Knapp"]
     assert style.value == "Balanced"                       # what is saved and sent to the agent
-    length = next(s for s in app.sidebar.select_slider if s.key == "set_length")
+    length = next(s for s in app.select_slider if s.key == "set_length")
     assert length.options == ["Kurz", "Mittel", "Lang", "Keine Grenze"]
     assert length.value == "No limit"
 
 
 def test_choosing_a_style_in_german_saves_the_same_value_as_in_english(page):  # noqa: F811
     app = german(page())
+    button(app, "page_admin").click().run()
 
-    next(box for box in app.sidebar.selectbox if box.key == "set_style").set_value("Concise").run()
+    next(box for box in app.selectbox if box.key == "set_style").set_value("Concise").run()
 
     assert not app.exception
     assert app.session_state["set_style"] == "Concise"
     assert "Die kürzeste nützliche Antwort, ohne Einleitung und Schlusswort" in \
-        [c.value for c in app.sidebar.caption]
+        [c.value for c in app.caption]
 
 
 # --- the Snapshot --------------------------------------------------------------------------------

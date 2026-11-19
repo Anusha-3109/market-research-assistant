@@ -1185,3 +1185,9 @@ body:has(.st-key-account_badge) [data-testid="stLayoutWrapper"]:has(> .st-key-la
 .gw-kpi-note { font-size: 0.75rem; color: #8a979b; margin-top: 0.1rem; }
 [class*="st-key-card_"], .st-key-dashboard_research, .st-key-dashboard_tools,
 .st-key-dashboard_guard, .st-key-dashboard_errors { background: #fff; border-radius: 14px; }
+
+/* --- The Admin page --------------------------------------------------------- */
+.gw-admin-pill { justify-self: end; margin-left: auto; width: fit-content; font-size: 0.78rem; font-weight: 600;
+                 color: var(--peach-text); background: var(--peach); border-radius: 999px; padding: 0.3rem 0.8rem; }
+.st-key-admin_cost, .st-key-admin_models, .st-key-admin_prompt_card, .st-key-admin_tools { background: #fff; border-radius: 14px; }
+.st-key-admin_prompt textarea { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; }
