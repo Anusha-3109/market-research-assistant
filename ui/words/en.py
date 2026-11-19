@@ -297,7 +297,6 @@ TEXTS = {
     # --- pages: links and How it works ---
     "page.research": "Research",
     "page.dashboard": "Dashboard",
-    "page.how": "How it works",
     "page.admin": "Admin",
     "how.title": "How it works",
     "how.subtitle": "What happens to your question, where the data comes from, and how Markavi keeps figures and prices honest.",

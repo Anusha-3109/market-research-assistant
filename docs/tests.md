@@ -40,7 +40,7 @@ services and the model are replaced with fakes.
 | `test_language_views.py` | German in the Ask and Report views; a report format keeps its value |
 | `test_language_agent.py` | What the models are told with German chosen, a report's fixed wording in German, and the German one-pager and slides |
 | `test_tracing.py` | Tracing: on only with a key, a project per copy, what a trace is labelled with, and that tests never trace |
-| `test_pages.py` | The page links and the How it works page, also in German |
+| `test_pages.py` | The page links, and How it works in the Admin page's Documentation tab, also in German |
 | `test_usage_log.py` | The usage log, its figures per day, what the app writes to it, and the Dashboard page |
 | `test_admin.py` | The Admin page: app-wide settings, the system prompt, the tool switches, and who may open it |
 | `test_theme.py` | The Light / Dark switch, kept per account |

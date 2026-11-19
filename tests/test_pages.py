@@ -1,5 +1,5 @@
-"""Tests for the pages of the app: links in the sidebar, and the "How it
-works" page.
+"""Tests for the pages of the app: links in the sidebar, and "How it works"
+in the Admin page's Documentation tab.
 
 Research is the app as it was; the other pages are opened from the links
 at the top of the sidebar. The Admin link is shown only to an admin.
@@ -34,7 +34,7 @@ def markdown(app) -> str:
 def test_the_sidebar_links_to_the_pages_and_research_is_open_at_first(page):  # noqa: F811
     app = page()
 
-    assert page_links(app) == ["Research", "Dashboard", "How it works", "Admin"]
+    assert page_links(app) == ["Research", "Dashboard", "Admin"]       # no "How it works"
     assert button(app, "page_research").proto.type == "secondary"       # the open one is marked
 
 
@@ -46,7 +46,7 @@ def test_a_visitor_who_is_not_an_admin_has_no_admin_link(page):  # noqa: F811
 
 
 def test_back_to_research_shows_the_start_screen_again(page):  # noqa: F811
-    app = open_page(page(), "how")
+    app = open_page(page(), "admin")
 
     open_page(app, "research")
 
@@ -55,9 +55,10 @@ def test_back_to_research_shows_the_start_screen_again(page):  # noqa: F811
 
 # --- How it works --------------------------------------------------------------------------------
 
-def test_how_it_works_has_the_flow_the_tools_and_the_data_sources(page):  # noqa: F811
-    app = open_page(page(), "how")
+def test_how_it_works_is_in_the_documentation_tab_of_the_admin_page(page):  # noqa: F811
+    app = open_page(page(), "admin")
 
+    assert "Documentation" in [tab.label for tab in app.tabs]
     assert "How it works" in [t.value for t in app.title]
     assert "flowchart LR" in html(app)                                  # drawn by Mermaid
     shown = markdown(app)
@@ -69,7 +70,7 @@ def test_how_it_works_has_the_flow_the_tools_and_the_data_sources(page):  # noqa
 
 
 def test_how_it_works_follows_the_language(page):  # noqa: F811
-    app = open_page(page(), "how")
+    app = open_page(page(), "admin")
 
     switch(app).set_value("de").run()
 

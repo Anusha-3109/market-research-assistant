@@ -41,12 +41,11 @@ from ui.account_badge import render_account_badge
 from ui.assistant import render_assistant
 from ui.assets import LOGO
 from ui.guide import render_guide
-from ui.how_it_works import render_how_it_works
 from ui.language import render_language_switch
 from ui.page_sidebar import render_page_sidebar
 from ui.dashboard import render_dashboard
 from ui.admin import render_admin
-from ui.pages import ADMIN, DASHBOARD, HOW, RESEARCH, current_page
+from ui.pages import ADMIN, DASHBOARD, RESEARCH, current_page
 from ui.texts import t
 from ui.research import (
     question_box_text,
@@ -131,8 +130,9 @@ context = UserContext(user_id=user_id, **settings)
 render_language_switch()
 
 # --- the other pages -------------------------------------------------------------------------
-# Dashboard, How it works and Admin are drawn in place of the research
-# pages; the links at the top of the sidebar open them.
+# Dashboard and Admin are drawn in place of the research pages; the links
+# at the top of the sidebar open them. How it works is in Admin's
+# Documentation tab.
 open_page = current_page(account)
 if open_page != RESEARCH:
     render_page_sidebar(open_page, account)
@@ -140,9 +140,7 @@ if open_page != RESEARCH:
         st.session_state.clear()
         st.query_params.clear()
         st.rerun()
-    if open_page == HOW:
-        render_how_it_works()
-    elif open_page == ADMIN:
+    if open_page == ADMIN:
         render_admin(runtime.store)
     elif open_page == DASHBOARD:
         # Each account sees its own use; without accounts, all of it.

@@ -16,7 +16,7 @@ from tests.test_two_accounts import ANNA, two_accounts, visit_as
 
 
 def theme_switch(app):
-    return next(control for control in app.segmented_control if control.key == "theme_switch")
+    return next(control for control in app.segmented_control if (control.key or "").startswith("theme_switch"))
 
 
 def dark_style(app) -> bool:

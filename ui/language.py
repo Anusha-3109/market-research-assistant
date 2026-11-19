@@ -12,18 +12,22 @@ from agent.config import LANGUAGE_CHOICES, THEME, THEME_CHOICES
 from ui.texts import current_language, t
 
 
-def _chosen() -> None:
+def _chosen(key: str) -> None:
     """Take over what was clicked. Clicking the chosen language again
     would switch both off; the language is then left as it was."""
-    clicked = st.session_state.get("language_switch")
+    clicked = st.session_state.get(key)
     if clicked in LANGUAGE_CHOICES:
         st.session_state["set_language"] = clicked
+    else:
+        st.session_state[key] = current_language()      # keep it marked
 
 
-def _theme_chosen() -> None:
-    clicked = st.session_state.get("theme_switch")
+def _theme_chosen(key: str) -> None:
+    clicked = st.session_state.get(key)
     if clicked in THEME_CHOICES:
         st.session_state["set_theme"] = clicked
+    else:
+        st.session_state[key] = current_theme()         # keep it marked
 
 
 def current_theme() -> str:
@@ -45,17 +49,20 @@ DARK = """<style class="gw-dark">
 
 def render_language_switch() -> None:
     """EN | DE and Light | Dark, side by side at the top right."""
-    # Each switch shows what is in use, whatever was clicked last.
-    st.session_state["language_switch"] = current_language()
-    st.session_state["theme_switch"] = current_theme()
+    # Each switch is drawn afresh, starting on what is in use, whenever that
+    # changes: its key carries the value. A switch that is kept and only told
+    # its new value kept showing the old one in the browser, for example the
+    # sign-in screen's English after an account's German came back.
+    language, theme = current_language(), current_theme()
+    language_key, theme_key = f"language_switch_{language}", f"theme_switch_{theme}"
     with st.container(key="language_box", horizontal=True, gap="small"):
         st.segmented_control(
-            t("language.label"), list(LANGUAGE_CHOICES), format_func=str.upper,
-            key="language_switch", label_visibility="collapsed", help=t("language.help"),
-            on_change=_chosen)
+            t("language.label"), list(LANGUAGE_CHOICES), format_func=str.upper, default=language,
+            key=language_key, label_visibility="collapsed", help=t("language.help"),
+            on_change=_chosen, args=(language_key,))
         st.segmented_control(
             t("theme.label"), list(THEME_CHOICES),
-            format_func=lambda name: t(f"theme.{name}"),
-            key="theme_switch", label_visibility="collapsed", on_change=_theme_chosen)
-    if current_theme() == "dark":
+            format_func=lambda name: t(f"theme.{name}"), default=theme,
+            key=theme_key, label_visibility="collapsed", on_change=_theme_chosen, args=(theme_key,))
+    if theme == "dark":
         st.html(DARK)

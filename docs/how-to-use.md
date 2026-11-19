@@ -202,8 +202,7 @@ The links at the top of the sidebar open the pages:
 |---|---|
 | Research | The app itself: the start screen and your conversations |
 | Dashboard | Requests, answered share, typical wait, tokens and cost, with a chart per day for each, the tool calls, the guard and errors. A range of 7, 30 or 90 days, or a year. Each account sees its own use |
-| How it works | The flow from question to answer as a Mermaid chart, the tools and their fallbacks, the report workflow, where the data comes from, and the safety checks |
-| Admin | Developer settings for the whole app, the system prompt, a switch for each tool, and what the app cost. Only admins see it: everyone on your own computer, and the accounts named in `ADMIN_USERNAMES` on a deployed copy |
+| Admin | Developer settings for the whole app, the system prompt, a switch for each tool, and what the app cost. Its **Documentation** tab explains how it works: the flow from question to answer as a Mermaid chart, the tools and their fallbacks, the report workflow, where the data comes from, and the safety checks. Only admins see it: everyone on your own computer, and the accounts named in `ADMIN_USERNAMES` on a deployed copy |
 
 At the top right, **EN / DE** changes the language and **Light / Dark** the
 look. Both are kept with your account.

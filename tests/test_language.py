@@ -24,7 +24,7 @@ def blanks(text: str) -> set[str]:
 
 
 def switch(app):
-    return next(control for control in app.segmented_control if control.key == "language_switch")
+    return next(control for control in app.segmented_control if (control.key or "").startswith("language_switch"))
 
 
 # --- the two lists of words ----------------------------------------------------------------------

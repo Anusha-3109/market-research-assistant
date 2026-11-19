@@ -19,7 +19,7 @@ MARKET-RESEARCH-ASSISTANT
 │   ├── Pages
 │   │   ├── pages.py, page_sidebar.py   the page links in the sidebar
 │   │   ├── dashboard.py         the Dashboard page
-│   │   ├── how_it_works.py      the How it works page and its Mermaid chart
+│   │   ├── how_it_works.py      How it works (Admin → Documentation) and its Mermaid chart
 │   │   └── admin.py             the Admin page
 │   ├── On every screen
 │   │   ├── sidebar.py           conversations, memory, settings, help

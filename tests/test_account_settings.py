@@ -237,7 +237,7 @@ def test_signing_out_brings_back_the_sign_in_screen(site):  # noqa: F811
 def test_the_next_person_on_the_same_browser_gets_nothing_from_the_one_before(site):  # noqa: F811
     two_accounts(site, replies=[AIMessage("An answer for Anna.")])
     app = visit_as(site, "anna")
-    switch_language = next(c for c in app.segmented_control if c.key == "language_switch")
+    switch_language = next(c for c in app.segmented_control if (c.key or "").startswith("language_switch"))
     switch_language.set_value("de").run()
     ask(app, "Anna's question about oat milk")
     button(app, "sign_out").click().run()

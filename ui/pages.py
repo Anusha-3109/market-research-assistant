@@ -1,8 +1,9 @@
 """The pages of the app and the links to them at the top of the sidebar.
 
 Research is the app itself: the start screen and the conversations. The
-other pages (Dashboard, How it works, Admin) are opened with a link and
-drawn in place of it. Which page is open lives in the browser session.
+other pages (Dashboard, Admin) are opened with a link and drawn in place of
+it. How it works is on the Admin page, in its Documentation tab. Which page
+is open lives in the browser session.
 """
 
 import streamlit as st
@@ -10,10 +11,10 @@ import streamlit as st
 from agent import config
 from ui.texts import t
 
-RESEARCH, DASHBOARD, HOW, ADMIN = "research", "dashboard", "how", "admin"
-PAGES = [RESEARCH, DASHBOARD, HOW, ADMIN]
+RESEARCH, DASHBOARD, ADMIN = "research", "dashboard", "admin"
+PAGES = [RESEARCH, DASHBOARD, ADMIN]
 ICONS = {RESEARCH: ":material/chat_bubble:", DASHBOARD: ":material/bar_chart:",
-         HOW: ":material/travel_explore:", ADMIN: ":material/shield_person:"}
+         ADMIN: ":material/shield_person:"}
 
 
 def is_admin(account) -> bool:

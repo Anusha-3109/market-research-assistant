@@ -86,8 +86,8 @@ agent with tools can decide what to look up next.
 | Accounts | On a deployed copy each person signs in to their own account, with their own conversations, remembered profile, settings and saved reports |
 | Cost shown | Every answer and report shows what its model calls cost, as reported by the model service |
 | Tracing | With a LangSmith key, every run is recorded step by step for debugging |
-| Pages | Links at the top of the sidebar to Research, a **Dashboard** (requests, wait, tokens, cost and tool calls per day), **How it works** (the flow as a Mermaid chart, the tools and data sources) and **Admin** |
-| Admin page | Developer settings for the whole app: model, temperature, answer length and style, competitor review, the system prompt, and a switch for each tool. Only admins see it |
+| Pages | Links at the top of the sidebar to Research, a **Dashboard** (requests, wait, tokens, cost and tool calls per day) and **Admin** |
+| Admin page | Developer settings for the whole app: model, temperature, answer length and style, competitor review, the system prompt, and a switch for each tool. Its Documentation tab explains how it works (the flow as a Mermaid chart, the tools and data sources). Only admins see it |
 | Light and dark | A Light / Dark switch beside EN / DE, saved with the account |
 | Deployed | Runs on Google Cloud Run behind a sign-in screen, and redeploys itself after the tests pass |
 
@@ -418,7 +418,8 @@ Every file, with what it is for, is in
 - Dark mode turns the page's colours around with a style rule, because
   Streamlit cannot change its theme while it runs. Some colours look
   slightly different from a theme made for dark.
-- The Mermaid chart on How it works is drawn by a library loaded from a CDN.
+- How it works is in the Admin page's Documentation tab, so only admins see
+  it. Its Mermaid chart is drawn by a library loaded from a CDN.
   Without internet access the chart stays empty; the steps under it still
   explain the flow.
 - The settings on the Admin page apply to everyone at once. The lock that
