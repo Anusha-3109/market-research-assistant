@@ -76,6 +76,7 @@ agent with tools can decide what to look up next.
 | Numbered sources | Every link in an answer becomes a number such as [1]; the source list shows each page's title and site, and marks a company's own site as Official |
 | Download | Any answer as a Markdown file or a PDF |
 | Report formats | A report as the full text, as an investor one-pager, or as pitch deck slides with a PowerPoint download |
+| Language | An EN / DE switch at the top right; the choice is saved with the account. German covers the sidebar, the Snapshot and the assistant panel so far |
 | Assistant | A small chat at the bottom right of every view for a quick question in between, answered from the open report |
 | Stop | A run can be stopped; what was found so far is kept and the conversation continues |
 | Resilience | Every data source has a free backup, so one outage does not stop a report. If the model leaves out a required field, the question is asked again instead of losing the report |
@@ -792,7 +793,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-882 tests, none of which use the internet or cost anything: outside
+912 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -821,6 +822,8 @@ services and the model are replaced with fakes.
 | `test_account_changes.py` | Changing the password and the email address, and the link for a forgotten password: one use, 30 minutes, three per hour, never stored as it is |
 | `test_mailer.py` | The email: whether it can be sent, the link, the message, an encrypted connection before the password, a mail server that fails |
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
+| `test_language.py` | The language switch: both word lists are complete, the choice is saved with the account, and the account menu follows it |
+| `test_language_frame.py` | German in the sidebar, the settings, the Snapshot and the assistant panel; settings keep their saved values |
 | `test_assistant.py` | The assistant: what the model is sent, the panel in every view, that its questions stay out of the conversation, the cost, and a failure explained |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
 | `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
@@ -1116,6 +1119,17 @@ market-research-assistant/
 - The three suggestions under the chat are the same for every
   conversation.
 - The heading font is fetched from Google Fonts by the visitor's browser.
+
+**The language switch**
+
+- German is not finished. The sidebar, settings, help, view names, the
+  Snapshot and the assistant panel are translated. The Ask and Report
+  views, the start screen, the sign-in pages and the agent's answers and
+  reports are still in English.
+- What the research found is never translated: a figure keeps its
+  source's wording, and "not found" stays as it was saved.
+- A language picked on the sign-in screen is replaced by the account's
+  saved language after signing in.
 
 **The assistant**
 

@@ -1,0 +1,116 @@
+"""The app's own words in English.
+
+Each text has a name. A blank such as {count} is filled in when the text is
+used. Every name here must also be in de.py (a test checks this).
+"""
+
+TEXTS = {
+    # The language switch at the top right.
+    "language.label": "Language",
+    "language.help": "The language of the app",
+
+    # The menu behind the round badge at the top right.
+    "account.signed_in_as": "Signed in as",
+    "account.sign_out": "Sign out",
+    # --- the sidebar -------------------------------------------------------
+    "sidebar.tagline": "Market research before you launch",
+    "sidebar.new_conversation": "New conversation",
+    "sidebar.conversation": "Conversation",
+    "sidebar.conversations": "Conversations",
+    "sidebar.none_yet": "None yet. Ask a question to start one.",
+    "sidebar.older": "{count} older",
+
+    # The views of a conversation.
+    "view.snapshot": "Snapshot",
+    "view.ask": "Ask",
+    "view.report": "Report",
+
+    # What is remembered about the user.
+    "memory.title": "What I remember",
+    "memory.nothing": "Nothing yet. Tell me your country, industry or idea and I will remember it for next time.",
+    "memory.forget": "Forget me",
+    "memory.forget_help": "Deletes everything remembered about you. Your conversations are kept.",
+    "profile.region": "Region",
+    "profile.industry": "Industry",
+    "profile.business_idea": "Business idea",
+    "profile.report_style": "Report style",
+
+    # The settings panel.
+    "settings.title": "Settings",
+    "settings.model": "Model",
+    "settings.model_help": "The language model that answers and researches. All are reached through OpenRouter.",
+    "settings.temperature": "Temperature",
+    "settings.temperature_help": "Lower gives more factual, repeatable answers. Higher gives more varied wording. Research works best low.",
+    "settings.length": "Maximum answer length",
+    "settings.length_help": "A hard limit on one chat answer: Short is about 180 words, Medium about 450, Long about 900. An answer that reaches it is cut off and says so. Reports are never cut. To ask for brief wording instead, use the Concise answer style.",
+    "settings.style": "Answer style",
+    "settings.style_help": "How answers are worded. It never changes the facts, numbers or sources.",
+    "settings.review": "Review competitors before a report",
+    "settings.review_help": "When on, a report pauses so you can approve or edit the competitor list. Turn it off for a quicker report.",
+    "settings.locked": "Settings are locked while the assistant is waiting for your decision.",
+    "length.Short": "Short",
+    "length.Medium": "Medium",
+    "length.Long": "Long",
+    "length.No limit": "No limit",
+    "style.Balanced": "Balanced",
+    "style.Formal": "Formal",
+    "style.Friendly": "Friendly",
+    "style.Concise": "Concise",
+    "style.about.Balanced": "The assistant's normal way of writing",
+    "style.about.Formal": "Professional wording, for a document you hand to others",
+    "style.about.Friendly": "Warm and plain, with business terms explained",
+    "style.about.Concise": "The shortest useful answer, without introductions or closing remarks",
+
+    # The help panel.
+    "help.title": "Help",
+    "help.body": "**Ask for a report** by naming a product and a country, for example *healthy meal delivery in Germany*.\n\n**Ask a single question** about prices, competitors, news, demand or a company.\n\n**It will not** give investment advice or invent numbers. What it cannot find is reported as \"not found\".\n\n**Reports** can be downloaded, or saved to the reports folder after you approve.",
+    "help.how": "How it works",
+
+    # --- the Snapshot view ---------------------------------------------------
+    "snapshot.open_report": "Open report",
+    "snapshot.ask": "Ask a follow-up",
+    "snapshot.from_one": "Snapshot generated from {count} source",
+    "snapshot.from_many": "Snapshot generated from {count} sources",
+    "snapshot.tab.overview": "Overview",
+    "snapshot.tab.competitors": "Competitors",
+    "snapshot.tab.pricing": "Pricing",
+    "snapshot.tab.trends": "Trends",
+    "snapshot.tab.swot": "SWOT",
+    "snapshot.confirmed": "Competitors confirmed",
+    "snapshot.of_candidates_one": "of {count} candidate",
+    "snapshot.of_candidates_many": "of {count} candidates",
+    "snapshot.source": "source",
+    "snapshot.col.competitor": "Competitor",
+    "snapshot.col.offer": "What they offer",
+    "snapshot.col.size": "Size or financials",
+    "snapshot.col.price": "A price",
+    "snapshot.no_competitors": "No competitors were confirmed for this report.",
+    "snapshot.no_prices": "No competitors were confirmed, so there are no prices.",
+    "snapshot.trend": "Search interest",
+    "snapshot.trend_for": "Search interest for \"{term}\"",
+    "snapshot.no_trend": "No demand trend was measured for this report.",
+    "snapshot.measured": "measured",
+    "snapshot.caution": " (few searches, so treat this with caution)",
+    "snapshot.swot": "SWOT",
+    "snapshot.no_swot": "The report has no SWOT section.",
+    "swot.strengths": "Strengths",
+    "swot.weaknesses": "Weaknesses",
+    "swot.opportunities": "Opportunities",
+    "swot.threats": "Risks",
+
+    # --- the assistant at the bottom right ------------------------------------
+    "assistant.name": "Assistant",
+    "assistant.open_help": "Ask the assistant",
+    "assistant.title": "Assistant · {title}",
+    "assistant.scope_report": "Only about this conversation",
+    "assistant.scope_general": "Quick questions, without a web search",
+    "assistant.new_chat": "New chat",
+    "assistant.minimise": "Minimise",
+    "assistant.empty_report": "Ask about the report that is open: what a term means, what it says about a competitor, what to check next.",
+    "assistant.empty_general": "Ask how the app works or what a term means. For research, use the question box of a conversation.",
+    "assistant.box_report": "Ask something about this report…",
+    "assistant.box_general": "Ask a quick question…",
+    "assistant.cost": "This chat: {cost}",
+    "assistant.not_added": "Not added to the conversation",
+    "assistant.thinking": "Thinking…",
+}

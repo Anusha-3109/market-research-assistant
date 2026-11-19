@@ -1137,3 +1137,28 @@ body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant
     background: var(--avatar) center / contain no-repeat;
 }
 .gw-answer-name { font-size: 0.88rem; font-weight: 600; color: #1c1c1a; }
+
+/* --- The language switch ---------------------------------------------------
+   EN | DE at the top right, to the left of the account badge. Like the badge
+   it is taken out of the page's flow. */
+[data-testid="stLayoutWrapper"]:has(> .st-key-language_box) {
+    position: fixed; top: 0.85rem; right: 1.1rem; width: auto; z-index: 1000;
+}
+/* Streamlit's own bar lies across the top of the page, over the corner. The
+   switch and the badge are lifted above it, or it would take their clicks. */
+[data-testid="stLayoutWrapper"]:has(> .st-key-language_box),
+[data-testid="stLayoutWrapper"]:has(> .st-key-account_badge) { z-index: 999995; }
+body:has(.st-key-account_badge) [data-testid="stLayoutWrapper"]:has(> .st-key-language_box) { right: 4.4rem; }
+.st-key-language_box [data-testid="stButtonGroup"] {
+    background: #fff; border-radius: 10px; padding: 3px; gap: 0;
+    box-shadow: 0 1px 4px rgba(20, 40, 40, 0.14);
+}
+.st-key-language_box [data-testid="stButtonGroup"] button {
+    border: 0; border-radius: 8px; min-height: 0; padding: 0.28rem 0.6rem;
+    font-size: 0.74rem; font-weight: 700; color: #56656a; background: transparent;
+}
+.st-key-language_box [data-testid="stButtonGroup"] button[kind$="Active"],
+.st-key-language_box [data-testid="stButtonGroup"] button[aria-checked="true"],
+.st-key-language_box [data-testid="stButtonGroup"] button[aria-pressed="true"] {
+    background: var(--coral); color: var(--coral-text);
+}

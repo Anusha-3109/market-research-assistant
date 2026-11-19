@@ -15,7 +15,7 @@ from tests.test_styles import ListeningModel
 from tests.test_two_accounts import ANNA, BEN, ask, listed, two_accounts, visit_as
 
 DEFAULTS = {"model": "openai/gpt-4.1-mini", "temperature": 0.2, "length": "No limit",
-            "style": "Balanced", "review": True}
+            "style": "Balanced", "review": True, "language": "en"}
 
 
 def choose(app, **choices):
@@ -45,7 +45,7 @@ def test_the_defaults_are_what_the_app_ships_with():
 
     assert DEFAULTS == {"model": config.MODEL_NAME, "temperature": config.TEMPERATURE,
                         "length": config.ANSWER_LENGTH, "style": config.ANSWER_STYLE,
-                        "review": config.REVIEW_COMPETITORS}
+                        "review": config.REVIEW_COMPETITORS, "language": config.LANGUAGE}
 
 
 def test_a_new_account_has_the_default_settings():
@@ -55,7 +55,7 @@ def test_a_new_account_has_the_default_settings():
 def test_saved_settings_come_back_for_that_account_only():
     store = InMemoryStore()
     chosen = {"model": "openai/gpt-4.1-mini", "temperature": 0.7, "length": "Short",
-              "style": "Friendly", "review": False}
+              "style": "Friendly", "review": False, "language": "de"}
 
     memory.save_settings(store, ANNA, chosen)
 

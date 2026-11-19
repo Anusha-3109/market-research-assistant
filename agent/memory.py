@@ -38,6 +38,8 @@ from agent.config import (
     LENGTH_CHOICES,
     MEMORY_BACKUP,
     MEMORY_DB,
+    LANGUAGE,
+    LANGUAGE_CHOICES,
     MODEL_CHOICES,
     MODEL_NAME,
     PROFILE_KEYS,
@@ -218,7 +220,8 @@ def forget_profile(store: BaseStore, user_id: str) -> str:
 # to their profile and is there again at their next sign-in.
 
 SETTING_DEFAULTS = {"model": MODEL_NAME, "temperature": TEMPERATURE, "length": ANSWER_LENGTH,
-                    "style": ANSWER_STYLE, "review": REVIEW_COMPETITORS}
+                    "style": ANSWER_STYLE, "review": REVIEW_COMPETITORS,
+                    "language": LANGUAGE}
 
 
 def _valid_setting(name: str, value) -> bool:
@@ -231,6 +234,8 @@ def _valid_setting(name: str, value) -> bool:
         return value in LENGTH_CHOICES
     if name == "style":
         return value in STYLE_CHOICES
+    if name == "language":
+        return value in LANGUAGE_CHOICES
     return isinstance(value, bool)          # review
 
 

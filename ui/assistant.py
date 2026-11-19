@@ -14,6 +14,7 @@ from agent.guards import check_question, friendly_error
 from agent.side_assistant import ask
 from agent.usage import Usage
 from ui.assets import AVATAR, fill
+from ui.texts import t
 
 TITLE_MAX_CHARS = 34
 
@@ -46,7 +47,7 @@ def render_assistant(thread_id: str, title: str, context: str, get_model) -> Non
         with st.container(key="assistant_launcher"):
             # Drawn as the robot's face alone (styles.css); pointing at it
             # says what it is.
-            st.button("Assistant", key="assistant_open", help="Ask the assistant",
+            st.button(t("assistant.name"), key="assistant_open", help=t("assistant.open_help"),
                       on_click=_open)
         return
 
@@ -55,31 +56,30 @@ def render_assistant(thread_id: str, title: str, context: str, get_model) -> Non
         with st.container(key="assistant_head", horizontal=True, vertical_alignment="center"):
             shown = title if len(title) <= TITLE_MAX_CHARS else title[:TITLE_MAX_CHARS].rstrip() + "…"
             st.html(fill("helper_head.html",
-                         title=f"Assistant · {shown}" if shown else "Assistant",
-                         scope="Only about this conversation" if context
-                         else "Quick questions, without a web search"))
-            st.button("New chat", key="assistant_new", type="tertiary", on_click=_new_chat,
-                      args=(thread_id,))
-            st.button("", icon=":material/remove:", key="assistant_close", help="Minimise",
+                         title=t("assistant.title", title=shown) if shown
+                         else t("assistant.name"),
+                         scope=t("assistant.scope_report") if context
+                         else t("assistant.scope_general")))
+            st.button(t("assistant.new_chat"), key="assistant_new", type="tertiary",
+                      on_click=_new_chat, args=(thread_id,))
+            st.button("", icon=":material/remove:", key="assistant_close",
+                      help=t("assistant.minimise"),
                       on_click=_close)
 
         thread = st.container(key="assistant_messages")
         with thread:
             if not chat["messages"]:
                 st.html(fill("helper_empty.html",
-                             text="Ask about the report that is open: what a term means, "
-                                  "what it says about a competitor, what to check next."
-                             if context else
-                             "Ask how the app works or what a term means. For research, "
-                             "use the question box of a conversation."))
+                             text=t("assistant.empty_report") if context
+                             else t("assistant.empty_general")))
             for number, message in enumerate(chat["messages"]):
                 _message(number, message)
 
         question = st.chat_input(
-            "Ask something about this report…" if context else "Ask a quick question…",
+            t("assistant.box_report") if context else t("assistant.box_general"),
             key="assistant_question", max_chars=MAX_QUESTION_CHARS)
         cost = usage.cost_text(chat["used"])
-        st.caption(f"This chat: {cost}" if cost else "Not added to the conversation")
+        st.caption(t("assistant.cost", cost=cost) if cost else t("assistant.not_added"))
 
     if not question:
         return
@@ -91,7 +91,7 @@ def render_assistant(thread_id: str, title: str, context: str, get_model) -> Non
     asked = {"role": "user", "text": question.strip()}
     with thread:
         _message(len(chat["messages"]), asked)
-        with st.spinner("Thinking…"):
+        with st.spinner(t("assistant.thinking")):
             try:
                 text, used = ask(get_model(), asked["text"], chat["messages"], context)
             except Exception as error:  # noqa: BLE001  (any failure is explained, not raised)

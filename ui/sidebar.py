@@ -4,7 +4,6 @@ import streamlit as st
 
 from agent.config import (
     APP_NAME,
-    APP_TAGLINE,
     LENGTH_CHOICES,
     MODEL_CHOICES,
     PROFILE_KEYS,
@@ -13,6 +12,7 @@ from agent.config import (
 from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
 from ui.assets import brand
+from ui.texts import current_language, t
 
 # How many conversations are listed before the rest fold away.
 RECENT_SHOWN = 5
@@ -63,7 +63,6 @@ def current_settings() -> dict:
 
 # The views of an open conversation, in the order of their links.
 SNAPSHOT, ASK, REPORT = "snapshot", "ask", "report"
-VIEW_NAMES = {SNAPSHOT: "Snapshot", ASK: "Ask", REPORT: "Report"}
 VIEW_ICONS = {SNAPSHOT: ":material/dashboard:", ASK: ":material/chat_bubble:",
               REPORT: ":material/description:"}
 
@@ -114,8 +113,13 @@ def _conversation_picker(conversations: list[Conversation], current: str, title:
     # The box always shows the conversation that is open. Without this line
     # it would keep showing one picked earlier after "New conversation".
     st.session_state["pick_conversation"] = current
-    st.selectbox("Conversation", list(entries), key="pick_conversation",
-                 format_func=entries.get, on_change=_note_picked, width="stretch")
+    # The word above the box is written as a line of its own. As the box's
+    # own label it stayed in the old language in the browser after the
+    # language was switched.
+    st.caption(t("sidebar.conversation"))
+    st.selectbox(t("sidebar.conversation"), list(entries), key="pick_conversation",
+                 format_func=entries.get, on_change=_note_picked, width="stretch",
+                 label_visibility="collapsed")
     picked = st.session_state.pop("picked_conversation", None)
     return picked if picked and picked != current else None
 
@@ -147,10 +151,10 @@ def render_sidebar(conversations: list[Conversation], current: str,
         # "The three parts of the sidebar").
         with st.container(key="sidebar_head"):
             st.html(brand(APP_NAME))
-            st.caption(APP_TAGLINE)
+            st.caption(t("sidebar.tagline"))
 
         with st.container(key="sidebar_top"):
-            if st.button("New conversation", icon=":material/add:", width="stretch",
+            if st.button(t("sidebar.new_conversation"), icon=":material/add:", width="stretch",
                          key="new_conversation"):
                 action = NEW
 
@@ -159,20 +163,20 @@ def render_sidebar(conversations: list[Conversation], current: str,
                 shown = shown_view or current_view(current, views)
                 with st.container(key="view_links"):
                     for name in views:
-                        st.button(VIEW_NAMES[name], key=f"view_{name}", icon=VIEW_ICONS[name],
+                        st.button(t(f"view.{name}"), key=f"view_{name}", icon=VIEW_ICONS[name],
                                   type="secondary" if name == shown else "tertiary",
                                   width="stretch", on_click=_choose_view, args=(current, name))
             else:
-                st.caption("Conversations")
+                st.caption(t("sidebar.conversations"))
                 if not conversations:
-                    st.caption("None yet. Ask a question to start one.")
+                    st.caption(t("sidebar.none_yet"))
                 # The newest few are always visible; the rest fold away so
                 # the panels below are not pushed off the screen.
                 for conversation in conversations[:RECENT_SHOWN]:
                     action = _conversation_button(conversation, current) or action
                 older = conversations[RECENT_SHOWN:]
                 if older:
-                    with st.expander(f"{len(older)} older", type="compact"):
+                    with st.expander(t("sidebar.older", count=len(older)), type="compact"):
                         for conversation in older:
                             action = _conversation_button(conversation, current) or action
 
@@ -197,19 +201,17 @@ def _conversation_button(conversation: Conversation, current: str) -> str | None
 
 def _memory_panel(profile: dict[str, str]) -> str | None:
     """What the assistant remembers about the user, with a way to clear it."""
-    st.caption("What I remember")
+    st.caption(t("memory.title"))
     if not profile:
-        st.caption("Nothing yet. Tell me your country, industry or idea and "
-                   "I will remember it for next time.")
+        st.caption(t("memory.nothing"))
         return None
 
     with st.container(key="memory_panel"):
         for key in PROFILE_KEYS:
             if key in profile:
-                st.markdown(f":gray[{key.replace('_', ' ').capitalize()}]  \n{profile[key]}")
-    if st.button("Forget me", icon=":material/delete:", key="forget_me",
-                 help="Deletes everything remembered about you. "
-                      "Your conversations are kept."):
+                st.markdown(f":gray[{t(f'profile.{key}')}]  \n{profile[key]}")
+    if st.button(t("memory.forget"), icon=":material/delete:", key="forget_me",
+                 help=t("memory.forget_help")):
         return FORGET
     return None
 
@@ -218,58 +220,46 @@ def _settings_panel(waiting: bool) -> None:
     """Developer settings, kept apart from the everyday experience in a
     closed section. Each widget shows what prepare_settings() put in place,
     and the values are read back with current_settings()."""
-    with st.expander("Settings", icon=":material/settings:"):
+    # A choice is shown by its name in the chosen language. What is kept,
+    # saved and given to the agent is the choice itself ("Concise"), which
+    # is the same in every language.
+    # (The language is read once here: the functions that name a choice
+    # are also called after the page is drawn, when it can no longer be asked.)
+    language = current_language()
+    with st.expander(t("settings.title"), icon=":material/settings:"):
         models = list(MODEL_CHOICES)
         st.selectbox(
-            "Model", models, key="set_model",
+            t("settings.model"), models, key="set_model",
             format_func=lambda name: MODEL_CHOICES[name], disabled=waiting,
-            help="The language model that answers and researches. All are "
-                 "reached through OpenRouter.")
+            help=t("settings.model_help"))
         st.slider(
-            "Temperature", 0.0, 1.0, step=0.1, key="set_temperature",
-            disabled=waiting,
-            help="Lower gives more factual, repeatable answers. Higher gives "
-                 "more varied wording. Research works best low.")
+            t("settings.temperature"), 0.0, 1.0, step=0.1, key="set_temperature",
+            disabled=waiting, help=t("settings.temperature_help"))
         st.select_slider(
-            "Maximum answer length", list(LENGTH_CHOICES),
-            key="set_length", disabled=waiting,
-            help="A hard limit on one chat answer: Short is about 180 words, "
-                 "Medium about 450, Long about 900. An answer that reaches it "
-                 "is cut off and says so. Reports are never cut. To ask for "
-                 "brief wording instead, use the Concise answer style.")
+            t("settings.length"), list(LENGTH_CHOICES),
+            format_func=lambda name: t(f"length.{name}", language=language),
+            key="set_length", disabled=waiting, help=t("settings.length_help"))
         styles = list(STYLE_CHOICES)
         # The box shows the name only: with its description added, the text
         # was cut off in the narrow sidebar. The help text lists all four,
         # and the line under the box describes the one that is chosen.
-        all_styles = "\n\n".join(f"**{name}**: {line}" for name, line in STYLE_CHOICES.items())
+        all_styles = "\n\n".join(f"**{t(f'style.{name}')}**: {t(f'style.about.{name}')}"
+                                 for name in styles)
         chosen = st.selectbox(
-            "Answer style", styles, key="set_style",
-            disabled=waiting,
-            help="How answers are worded. It never changes the facts, "
-                 f"numbers or sources.\n\n{all_styles}")
-        st.caption(STYLE_CHOICES[chosen])
+            t("settings.style"), styles, key="set_style",
+            format_func=lambda name: t(f"style.{name}", language=language), disabled=waiting,
+            help=f"{t('settings.style_help')}\n\n{all_styles}")
+        st.caption(t(f"style.about.{chosen}"))
         st.toggle(
-            "Review competitors before a report",
-            key="set_review", disabled=waiting,
-            help="When on, a report pauses so you can approve or edit the "
-                 "competitor list. Turn it off for a quicker report.")
+            t("settings.review"), key="set_review", disabled=waiting,
+            help=t("settings.review_help"))
         if waiting:
-            st.caption("Settings are locked while the assistant is waiting "
-                       "for your decision.")
+            st.caption(t("settings.locked"))
 
 
 def _help_panel() -> str | None:
-    with st.expander("Help", icon=":material/help:"):
-        st.markdown(
-            "**Ask for a report** by naming a product and a country, for "
-            "example *healthy meal delivery in Germany*.\n\n"
-            "**Ask a single question** about prices, competitors, news, "
-            "demand or a company.\n\n"
-            "**It will not** give investment advice or invent numbers. What "
-            "it cannot find is reported as \"not found\".\n\n"
-            "**Reports** can be downloaded, or saved to the reports folder "
-            "after you approve."
-        )
-        if st.button("How it works", icon=":material/travel_explore:", key="help_guide"):
+    with st.expander(t("help.title"), icon=":material/help:"):
+        st.markdown(t("help.body"))
+        if st.button(t("help.how"), icon=":material/travel_explore:", key="help_guide"):
             return GUIDE
     return None

@@ -39,6 +39,7 @@ from ui.account_badge import render_account_badge
 from ui.assistant import render_assistant
 from ui.assets import LOGO
 from ui.guide import render_guide
+from ui.language import render_language_switch
 from ui.research import (
     question_box_text,
     render_ask_view,
@@ -73,6 +74,8 @@ apply_styles()
 # On your own computer there are no accounts and one user.
 account = current_account() if accounts_are_on() else None
 if accounts_are_on() and account is None:
+    # The sign-in screen has the language switch too.
+    render_language_switch()
     st.stop()
 user_id = account.user_id if account else DEFAULT_USER
 
@@ -107,6 +110,10 @@ except MissingKeyError as error:
     st.stop()
 
 context = UserContext(user_id=user_id, **settings)
+
+# The language switch, at the top right. It is drawn after the account's
+# settings are in place, so it shows the language that account chose.
+render_language_switch()
 
 # What was saved before there were accounts goes to the first account that
 # opens the app. This is done once.

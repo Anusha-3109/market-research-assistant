@@ -45,6 +45,7 @@ from agent.tools import safe_filename
 from agent import usage
 from agent.usage import Usage
 from ui.approvals import render_pause
+from ui.texts import counted, t
 from ui.assets import Html, fill, join, load, script_tag
 
 SAVE_QUESTION = "Save this report."
@@ -385,10 +386,9 @@ def _is_web_address(url: str) -> bool:
     return url.startswith(("https://", "http://"))
 
 
-SNAPSHOT_TABS = ["Overview", "Competitors", "Pricing", "Trends", "SWOT"]
-# The boxes of the SWOT tab: the heading shown, and where the lines are kept.
-SWOT_PARTS = [("Strengths", "strengths"), ("Weaknesses", "weaknesses"),
-              ("Opportunities", "opportunities"), ("Risks", "threats")]
+SNAPSHOT_TABS = ["overview", "competitors", "pricing", "trends", "swot"]
+# The boxes of the SWOT tab, by the names their lines are kept under.
+SWOT_PARTS = ["strengths", "weaknesses", "opportunities", "threats"]
 
 
 def render_snapshot_view(turns: list[Turn], thread_id: str) -> Outcome:
@@ -405,44 +405,48 @@ def render_snapshot_view(turns: list[Turn], thread_id: str) -> Outcome:
     title = report_title(block.report)
 
     head, action = st.columns([4, 1], vertical_alignment="bottom")
-    head.html(fill("ask_head.html", kicker="Snapshot", title=title[:1].upper() + title[1:]))
+    head.html(fill("ask_head.html", kicker=t("view.snapshot"),
+                   title=title[:1].upper() + title[1:]))
     with action.container(key="snapshot_actions"):
-        st.button("Open report", icon=":material/description:", key="snapshot_report",
+        st.button(t("snapshot.open_report"), icon=":material/description:", key="snapshot_report",
                   type="primary", width="stretch", on_click=_open_view,
                   args=(thread_id, "report"))
 
     if block.sources:
-        st.html(fill("snap_from.html", sources=plural(len(block.sources), "source")))
+        st.html(fill("snap_from.html", text=counted("snapshot.from", len(block.sources))))
 
     with st.container(key="snapshot_tabs"):
-        overview, competitors, pricing, trends, swot = st.tabs(SNAPSHOT_TABS)
+        overview, competitors, pricing, trends, swot = st.tabs(
+            [t(f"snapshot.tab.{name}") for name in SNAPSHOT_TABS])
     rows = snapshot["competitors"]
     with overview:
         _figure_tiles(snapshot)
     with competitors:
         if rows:
-            st.html(fill("snap_table.html", rows=join(
+            st.html(fill("snap_table.html", competitor=t("snapshot.col.competitor"),
+                         offer=t("snapshot.col.offer"), size=t("snapshot.col.size"), rows=join(
                 fill("snap_row.html", company=row["name"], offer=row["offer"], size=row["size"])
                 for row in rows)))
         else:
-            st.html(fill("snap_empty.html", head="Competitors",
-                         text="No competitors were confirmed for this report."))
+            st.html(fill("snap_empty.html", head=t("snapshot.tab.competitors"),
+                         text=t("snapshot.no_competitors")))
     with pricing:
         if rows:
             # What was not found is said, not left out.
-            st.html(fill("snap_prices.html", rows=join(
+            st.html(fill("snap_prices.html", competitor=t("snapshot.col.competitor"),
+                         price=t("snapshot.col.price"), rows=join(
                 fill("snap_price_row.html", company=row["name"], price=row["price"])
                 for row in rows)))
         else:
-            st.html(fill("snap_empty.html", head="Pricing",
-                         text="No competitors were confirmed, so there are no prices."))
+            st.html(fill("snap_empty.html", head=t("snapshot.tab.pricing"),
+                         text=t("snapshot.no_prices")))
     with trends:
         _trend_chart(snapshot["trend"])
     with swot:
         _swot_boxes(snapshot)
 
     with st.container(key="snapshot_ask_row"):
-        st.button("Ask a follow-up", icon=":material/chat_bubble:", key="snapshot_ask",
+        st.button(t("snapshot.ask"), icon=":material/chat_bubble:", key="snapshot_ask",
                   type="tertiary", on_click=_open_view, args=(thread_id, "ask"))
     st.html(script_tag("start_at_top.js"), unsafe_allow_javascript=True)
     return Outcome()
@@ -452,15 +456,15 @@ def _figure_tiles(snapshot: dict) -> None:
     """The key figures as cards, and how many competitors were confirmed."""
     tiles = [fill("snap_tile.html", label=figure["label"], value=figure["value"],
                   note=figure["note"],
-                  source=fill("snap_source.html", url=figure["url"])
+                  source=fill("snap_source.html", url=figure["url"], word=t("snapshot.source"))
                   if _is_web_address(figure["url"]) else Html(""),
                   # A snapshot saved before conversion existed has no such value.
                   converted=fill("snap_converted.html", text=figure["converted"])
                   if figure.get("converted") else Html(""))
              for figure in snapshot["figures"]]
-    tiles.append(fill("snap_tile.html", label="Competitors confirmed",
+    tiles.append(fill("snap_tile.html", label=t("snapshot.confirmed"),
                       value=snapshot["confirmed"],
-                      note=f"of {plural(snapshot['candidates'], 'candidate')}", source=Html(""),
+                      note=counted("snapshot.of_candidates", snapshot["candidates"]), source=Html(""),
                       converted=Html("")))
     st.html(fill("snap_tiles.html", tiles=join(tiles)))
 
@@ -469,13 +473,13 @@ def _swot_boxes(snapshot: dict) -> None:
     """The SWOT as up to four boxes. A part that was not kept, or that is
     empty, gets no box: a snapshot saved before all four parts were kept
     shows the parts it has."""
-    boxes = [fill("snap_list.html", head=head, items=join(
+    boxes = [fill("snap_list.html", head=t(f"swot.{part}"), items=join(
                  fill("snap_item.html", text=text) for text in snapshot.get(part) or []))
-             for head, part in SWOT_PARTS if snapshot.get(part)]
+             for part in SWOT_PARTS if snapshot.get(part)]
     if boxes:
         st.html(fill("snap_swot.html", boxes=join(boxes)))
     else:
-        st.html(fill("snap_empty.html", head="SWOT", text="The report has no SWOT section."))
+        st.html(fill("snap_empty.html", head=t("snapshot.swot"), text=t("snapshot.no_swot")))
 
 
 def _trend_chart(trend: dict | None) -> None:
@@ -483,15 +487,14 @@ def _trend_chart(trend: dict | None) -> None:
     the peak stands out."""
     bars = trend_bars(trend["points"]) if trend else []
     if not bars:
-        st.html(fill("snap_empty.html", head="Search interest",
-                     text="No demand trend was measured for this report."))
+        st.html(fill("snap_empty.html", head=t("snapshot.trend"), text=t("snapshot.no_trend")))
         return
     top = max(value for _, value in bars) or 1
-    direction = trend["direction"] or "measured"
+    direction = trend["direction"] or t("snapshot.measured")
     if not trend["reliable"]:
-        direction += " (few searches, so treat this with caution)"
+        direction += t("snapshot.caution")
     st.html(fill(
-        "snap_chart.html", term=trend["term"], direction=direction,
+        "snap_chart.html", head=t("snapshot.trend_for", term=trend["term"]), direction=direction,
         first=bars[0][0], last=bars[-1][0],
         bars=join(fill("snap_bar.html", height=max(3, round(value / top * 100)),
                        high=Html(" gw-snap-bar-high") if value >= 0.85 * top else Html(""))

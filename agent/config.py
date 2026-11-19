@@ -42,6 +42,11 @@ MODEL_CHOICES = {
 # it says. The key is the style's name; the value is the hint shown next to
 # it. What each style tells the model is in agent/styles.py.
 ANSWER_STYLE = "Balanced"
+
+# The languages the app's own words exist in (ui/words), and the one a new
+# visitor starts with.
+LANGUAGE_CHOICES = ("en", "de")
+LANGUAGE = "en"
 STYLE_CHOICES = {
     "Balanced": "The assistant's normal way of writing",
     "Formal": "Professional wording, for a document you hand to others",
