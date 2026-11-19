@@ -266,9 +266,9 @@ reaches it stops there, and a line under it says it was cut off. A report is
 never cut; the limit applies to chat answers only.
 
 The model, the temperature, the answer style and the competitor review
-apply to the chat and to the report workflow. They are locked
-while the assistant is waiting for your decision, because changing them
-would change how a paused report continues.
+apply to the chat and to the report workflow. A change on the Admin page
+reaches everyone with their next click, also a report that is paused for
+the competitor review.
 
 **Help** summarises what the assistant can and cannot do, and opens the
 "How it works" guide.

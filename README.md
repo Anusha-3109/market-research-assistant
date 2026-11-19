@@ -312,9 +312,6 @@ Every file, with what it is for, is in
 
 ## Known limitations
 
-**Not built yet**
-
-
 **Token usage and cost**
 
 - Only model calls are counted. Web searches and page reading are billed by
@@ -323,7 +320,6 @@ Every file, with what it is for, is in
   so. The workflow's calls were not recorded then.
 - A run that was stopped shows what had been saved up to the stop. A model
   call that was in progress at that moment may be missing.
-- The elapsed time of an answer is not saved, but its cost is.
 
 **Feedback loop**
 
@@ -341,6 +337,8 @@ Every file, with what it is for, is in
   stored there too.
 - A rating that fails to reach LangSmith is not sent again; it is still
   saved in the app.
+- Each account can rate as often as it likes, so one active account can
+  tip the figures on the Admin page.
 
 **Maximum answer length**
 
@@ -435,8 +433,7 @@ Every file, with what it is for, is in
   translated, so a report written while English was chosen keeps its
   English statements under German headings.
 - In a German report the title keeps the product and country as they were
-  asked for, numbers keep their source's style, and the step lines above
-  an answer stay in English.
+  asked for, and numbers keep their source's style.
 - A language picked on the sign-in screen is replaced by the account's
   saved language after signing in.
 
@@ -479,8 +476,6 @@ Every file, with what it is for, is in
   scripts are replaced with "?".
 - Styling and other changes to files in `ui/` and `ui/static/` only take effect after the
   app is restarted.
-- Settings last for the browser session. They return to the defaults when
-  the page is opened again.
 - At the competitor review, some companies show "no website found yet".
   Their sites are usually found later, during the price research.
 
@@ -498,7 +493,8 @@ Every file, with what it is for, is in
 - A product name can occasionally be mistaken for a company. The competitor
   review exists partly to catch this.
 - Reports differ between runs: the competitors chosen and the wording vary.
-- Reports are in English only, so some local-language sources are missed.
+- The research searches in English, so some local-language sources are
+  missed.
 - Market-size figures come from public summaries of paid reports. They are
   estimates published by others, not verified statistics.
 
