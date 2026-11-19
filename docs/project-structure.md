@@ -16,11 +16,16 @@ MARKET-RESEARCH-ASSISTANT
 │   │   ├── guide.py             the "How it works" guide
 │   │   ├── research.py          the three views: Snapshot, Ask, Report
 │   │   └── sign_in.py           sign in, create an account, passwords
+│   ├── Pages
+│   │   ├── pages.py, page_sidebar.py   the page links in the sidebar
+│   │   ├── dashboard.py         the Dashboard page
+│   │   ├── how_it_works.py      the How it works page and its Mermaid chart
+│   │   └── admin.py             the Admin page
 │   ├── On every screen
 │   │   ├── sidebar.py           conversations, memory, settings, help
 │   │   ├── assistant.py         the floating assistant (robot icon)
 │   │   ├── account_badge.py     who is signed in, sign out
-│   │   ├── language.py          the EN | DE switch
+│   │   ├── language.py          the EN | DE and Light | Dark switches
 │   │   └── approvals.py         the two approval forms
 │   └── Look and words
 │       ├── static/              styles.css, HTML templates, scripts, logo, avatar
@@ -53,6 +58,8 @@ MARKET-RESEARCH-ASSISTANT
 │   │   └── ../fallback.py       tries the next source when one fails
 │   ├── Memory and accounts
 │   │   ├── memory.py            conversations, profile, saved settings
+│   │   ├── app_settings.py      the Admin page's settings, for every account
+│   │   ├── usage_log.py         one line per question, for the Dashboard
 │   │   ├── accounts.py, mailer.py   accounts and the password email
 │   │   └── session.py           questions and answers, for any interface
 │   ├── What comes out

@@ -28,6 +28,7 @@ All are empty on your own computer, where nothing changes.
 | Setting | What it does |
 |---|---|
 | `APP_PASSWORD` | Turns accounts on: the sign-in screen comes before the app, and this value is the invite code needed to create an account |
+| `ADMIN_USERNAMES` | The usernames that may open the Admin page, separated by commas, for example `abburi`. Without it nobody on a deployed copy can open it |
 | `SMTP_USER`, `SMTP_PASSWORD`, `APP_URL` | Switch on the "Forgot password?" link: the address email is sent from, the app password of that mail account, and the public address of the app for the link. Gmail is the default mail server; `SMTP_HOST` and `SMTP_PORT` change it |
 | `DATA_DIR` | The folder that survives restarts. Saved reports are written straight into it. The memory file is handled differently, see below |
 

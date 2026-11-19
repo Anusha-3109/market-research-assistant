@@ -86,6 +86,9 @@ agent with tools can decide what to look up next.
 | Accounts | On a deployed copy each person signs in to their own account, with their own conversations, remembered profile, settings and saved reports |
 | Cost shown | Every answer and report shows what its model calls cost, as reported by the model service |
 | Tracing | With a LangSmith key, every run is recorded step by step for debugging |
+| Pages | Links at the top of the sidebar to Research, a **Dashboard** (requests, wait, tokens, cost and tool calls per day), **How it works** (the flow as a Mermaid chart, the tools and data sources) and **Admin** |
+| Admin page | Developer settings for the whole app: model, temperature, answer length and style, competitor review, the system prompt, and a switch for each tool. Only admins see it |
+| Light and dark | A Light / Dark switch beside EN / DE, saved with the account |
 | Deployed | Runs on Google Cloud Run behind a sign-in screen, and redeploys itself after the tests pass |
 
 The assistant does **not** give investment or financial advice, invent or
@@ -233,7 +236,7 @@ The full list is in
 pytest
 ```
 
-949 tests, none of which use the internet or cost anything: the
+995 tests, none of which use the internet or cost anything: the
 model and the outside services are replaced with fakes. They run on every
 push, and the app is deployed only when they pass.
 
@@ -393,9 +396,8 @@ Every file, with what it is for, is in
 
 **The language switch**
 
-- With German chosen, the app's own words are German in the sidebar, the
-  three views and the assistant panel. The start screen, the pickers, the
-  guide and the sign-in pages are still in English.
+- With German chosen, every screen is German, apart from the step lines
+  above an answer and the password-reset email.
 - The chat agent, the assistant and the report workflow are told to write
   in German. That is an instruction to the model, not a check in code.
 - A saved report is never changed. Its fixed wording (headings, table
@@ -408,6 +410,19 @@ Every file, with what it is for, is in
   an answer stay in English.
 - A language picked on the sign-in screen is replaced by the account's
   saved language after signing in.
+
+**The pages**
+
+- The Dashboard and the Admin cards read a usage log that started when the
+  pages were added. Conversations from before then are not in the figures.
+- Dark mode turns the page's colours around with a style rule, because
+  Streamlit cannot change its theme while it runs. Some colours look
+  slightly different from a theme made for dark.
+- The Mermaid chart on How it works is drawn by a library loaded from a CDN.
+  Without internet access the chart stays empty; the steps under it still
+  explain the flow.
+- The settings on the Admin page apply to everyone at once. The lock that
+  kept them unchanged while an approval form was waiting is gone.
 
 **The assistant**
 
