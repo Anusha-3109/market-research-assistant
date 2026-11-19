@@ -133,6 +133,10 @@ REPORTS_DIR, MEMORY_DB, MEMORY_BACKUP = storage_paths(os.getenv("DATA_DIR", ""))
 # with the link cannot spend the API credit. Not set (as on your own
 # computer): the app opens directly, for one user.
 APP_PASSWORD = os.getenv("APP_PASSWORD", "").strip()
+# The accounts that may open the Admin page on a deployed copy, separated
+# by commas. On your own computer (no accounts) you are always the admin.
+ADMIN_USERNAMES = {name.strip().lower() for name in
+                   os.getenv("ADMIN_USERNAMES", "").split(",") if name.strip()}
 
 # Email, for the link sent when someone has forgotten their password (see
 # agent/mailer.py). Without SMTP_USER, SMTP_PASSWORD and APP_URL the app

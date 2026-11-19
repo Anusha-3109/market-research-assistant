@@ -13,6 +13,7 @@ from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
 from agent.tracing import tracing_is_on
 from ui.assets import brand
+from ui.pages import RESEARCH, render_page_links
 from ui.texts import current_language, t
 
 # How many conversations are listed before the rest fold away.
@@ -129,7 +130,7 @@ def _conversation_picker(conversations: list[Conversation], current: str, title:
 def render_sidebar(conversations: list[Conversation], current: str,
                    profile: dict[str, str], waiting: bool,
                    title: str = "", views: list[str] | None = None,
-                   shown_view: str | None = None) -> str | None:
+                   shown_view: str | None = None, account=None) -> str | None:
     """Show the sidebar. Returns NEW, FORGET or GUIDE if the user asked for
     that, the thread id of a conversation they picked, or None.
 
@@ -154,6 +155,7 @@ def render_sidebar(conversations: list[Conversation], current: str,
         with st.container(key="sidebar_head"):
             st.html(brand(APP_NAME))
             st.caption(t("sidebar.tagline"))
+            render_page_links(RESEARCH, account)
 
         with st.container(key="sidebar_top"):
             if st.button(t("sidebar.new_conversation"), icon=":material/add:", width="stretch",

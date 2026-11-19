@@ -1162,3 +1162,16 @@ body:has(.st-key-account_badge) [data-testid="stLayoutWrapper"]:has(> .st-key-la
 .st-key-language_box [data-testid="stButtonGroup"] button[aria-pressed="true"] {
     background: var(--coral); color: var(--coral-text);
 }
+
+/* --- The page links at the top of the sidebar ------------------------------ */
+.st-key-page_links { gap: 0.15rem; margin: 0.4rem 0 0.2rem; }
+.st-key-page_links button, .st-key-page_links button > div { justify-content: flex-start; }
+.st-key-page_links button[kind="secondary"] { background: var(--peach); color: var(--peach-text);
+                                               border-color: transparent; font-weight: 600; }
+/* The flow chart on "How it works". */
+.gw-flow { background: transparent; border: 0; text-align: center; margin: 0; }
+/* The pages other than Research use the full width, like the Snapshot view. */
+[data-testid="stMainBlockContainer"]:has(.st-key-how_flow),
+[data-testid="stMainBlockContainer"]:has(.st-key-dashboard_page),
+[data-testid="stMainBlockContainer"]:has(.st-key-admin_page) { max-width: 76rem; }
+.gw-flow svg { max-width: 100% !important; min-height: 260px; }

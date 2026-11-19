@@ -39,7 +39,10 @@ from ui.account_badge import render_account_badge
 from ui.assistant import render_assistant
 from ui.assets import LOGO
 from ui.guide import render_guide
+from ui.how_it_works import render_how_it_works
 from ui.language import render_language_switch
+from ui.page_sidebar import render_page_sidebar
+from ui.pages import HOW, RESEARCH, current_page
 from ui.texts import t
 from ui.research import (
     question_box_text,
@@ -116,6 +119,20 @@ context = UserContext(user_id=user_id, **settings)
 # settings are in place, so it shows the language that account chose.
 render_language_switch()
 
+# --- the other pages -------------------------------------------------------------------------
+# Dashboard, How it works and Admin are drawn in place of the research
+# pages; the links at the top of the sidebar open them.
+open_page = current_page(account)
+if open_page != RESEARCH:
+    render_page_sidebar(open_page, account)
+    if account and render_account_badge(account):
+        st.session_state.clear()
+        st.query_params.clear()
+        st.rerun()
+    if open_page == HOW:
+        render_how_it_works()
+    st.stop()
+
 # What was saved before there were accounts goes to the first account that
 # opens the app. This is done once.
 if account and adopt_existing(runtime.store, runtime.checkpointer, user_id):
@@ -176,7 +193,7 @@ action = render_sidebar(
                        user_id=user_id if account else None), thread_id,
     profile=load_profile(runtime.store, user_id), waiting=waiting is not None,
     title=short_title(turns[0].question) if turns else "", views=views,
-    shown_view=open_view)
+    shown_view=open_view, account=account)
 # The round badge at the top right says who is signed in.
 if account and render_account_badge(account):
     # Everything this browser session held goes: who was signed in, their
