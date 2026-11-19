@@ -447,4 +447,9 @@ TEXTS = {
     "admin.tool.save_report": "Speichert einen Bericht nach Bestätigung",
     "admin.tool.remember_preference": "Schreibt eine Notiz ins Gedächtnis, wenn gewünscht (mit Vergessen)",
     "admin.tool.forget_preferences": "Löscht das gespeicherte Profil auf Wunsch",
+
+    # --- the Light | Dark switch ---
+    "theme.label": "Darstellung",
+    "theme.light": ":material/light_mode: Hell",
+    "theme.dark": ":material/dark_mode: Dunkel",
 }

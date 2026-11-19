@@ -448,4 +448,9 @@ TEXTS = {
     "admin.tool.save_report": "Saves a report after approval",
     "admin.tool.remember_preference": "Writes a memory note when the user asks (with forget)",
     "admin.tool.forget_preferences": "Deletes the saved profile when the user asks",
+
+    # --- the Light | Dark switch ---
+    "theme.label": "Theme",
+    "theme.light": ":material/light_mode: Light",
+    "theme.dark": ":material/dark_mode: Dark",
 }

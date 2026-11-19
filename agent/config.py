@@ -53,6 +53,10 @@ ANSWER_STYLE = "Balanced"
 # visitor starts with.
 LANGUAGE_CHOICES = ("en", "de")
 LANGUAGE = "en"
+
+# Light or dark, chosen at the top right; kept with the account.
+THEME_CHOICES = ("light", "dark")
+THEME = "light"
 STYLE_CHOICES = {
     "Balanced": "The assistant's normal way of writing",
     "Formal": "Professional wording, for a document you hand to others",
