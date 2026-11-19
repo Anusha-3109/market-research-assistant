@@ -482,9 +482,14 @@ Every file, with what it is for, is in
 **Report quality**
 
 - Reports are accurate but sometimes sparse. A price that cannot be read
-  from the company's own site is reported as "not found"; an older
-  third-party figure is not substituted. HelloFresh's prices, for example,
-  load with JavaScript and cannot be read.
+  from the company's own site is reported as "not found", with the reason;
+  an older third-party figure is not substituted. HelloFresh's prices, for
+  example, load with JavaScript and cannot be read.
+- Brands sold in supermarkets (plant-based meat, drinks, snacks) almost
+  never show prices on their own site, so their prices are usually "not
+  found". Their prices are on the shops' pages, but those were tried and
+  could not be read: Auchan loads its prices with JavaScript, and
+  Carrefour and Monoprix block automated reading.
 - Small private companies have no public figures.
 - A demand trend is found in some runs and not others, because the search
   words the model proposes vary.
@@ -524,7 +529,9 @@ Every file, with what it is for, is in
 1. Let a person delete their account, and verify email addresses.
 2. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.
-3. Read prices from pages that need JavaScript, with a headless browser.
+3. Read prices from pages that need JavaScript, with a headless browser,
+   including supermarket pages for brands that do not sell on their own
+   site.
 4. Add a second model provider key to remove the OpenRouter dependency.
 5. Give the single-question path the same competitor verification as the
    workflow.

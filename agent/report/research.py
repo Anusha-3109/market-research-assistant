@@ -46,6 +46,11 @@ PRICE_PAGE_WORDS = {
     "products", "produkt", "produkte", "menu", "collections", "bestellen",
     "order",
 }
+# Why a brand's own website showed no price. Brands sold in supermarkets
+# and other shops usually show their products but not what they cost; the
+# shops' pages load their prices in a way that cannot be read.
+NO_PRICES_ON_SITE = ("its website shows no prices, which is usual for brands "
+                     "sold in shops")
 MAX_PRICE_PAGES = 3
 MAX_PRICES = 5
 MAX_MARKET_FIGURES = 6
@@ -144,7 +149,7 @@ def make_research_steps(deps: Deps) -> dict:
 
         if not opened_any:
             return [], "", "the company's website could not be read"
-        return [], "", "no prices are shown on the pages that were read"
+        return [], "", NO_PRICES_ON_SITE
 
     def research_competitor(task: dict) -> dict:
         """Steps 4 and 5, run once per competitor in parallel."""

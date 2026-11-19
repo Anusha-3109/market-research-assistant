@@ -67,6 +67,8 @@ PHRASES = {
          "die Website des Unternehmens konnte nicht gelesen werden"),
         ("no prices are shown on the pages that were read",
          "auf den gelesenen Seiten werden keine Preise gezeigt"),
+        ("its website shows no prices, which is usual for brands sold in shops",
+         "die Website zeigt keine Preise, wie es bei Marken aus dem Handel üblich ist"),
         # The labels of a company's figures (agent/sources).
         ("Revenue (last 12 months): ", "Umsatz (letzte 12 Monate): "),
         ("Revenue: ", "Umsatz: "),

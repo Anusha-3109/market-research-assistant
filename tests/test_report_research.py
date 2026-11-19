@@ -184,7 +184,7 @@ def test_no_prices_on_the_site_is_reported_as_not_found_with_the_reason():
 
     assert profile.prices == []
     assert profile.price_source == ""
-    assert profile.price_note == "no prices are shown on the pages that were read"
+    assert profile.price_note == research.NO_PRICES_ON_SITE
 
 
 def test_a_site_that_cannot_be_read_is_reported_as_such():

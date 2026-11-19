@@ -109,9 +109,11 @@ def test_each_competitor_keeps_its_offer_its_size_and_one_price():
 
     assert oatly == {"name": "Oatly", "offer": "Oat drinks in six varieties",
                      "size": "Revenue: 783 million USD; Employees: 1,500",
-                     "price": "2.49 EUR (Barista 1 l)", "site": "https://oatly.example"}
+                     "price": "2.49 EUR (Barista 1 l)", "price_note": "",
+                     "site": "https://oatly.example"}
     assert alpro["size"] == "not found"
     assert alpro["price"] == "not found"
+    assert alpro["price_note"] == "The shop page shows no prices."          # why
 
 
 def test_the_snapshot_counts_confirmed_competitors_and_all_candidates():

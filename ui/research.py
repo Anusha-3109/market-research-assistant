@@ -470,7 +470,12 @@ def render_snapshot_view(turns: list[Turn], thread_id: str) -> Outcome:
             st.html(fill("snap_prices.html", competitor=t("snapshot.col.competitor"),
                          price=t("snapshot.col.price"), rows=join(
                 fill("snap_price_row.html", company=row["name"],
-                     price=localize_phrase(row["price"], current_language()))
+                     price=localize_phrase(row["price"], current_language()),
+                     # Why no price was found; a snapshot saved before the
+                     # reason was kept has none.
+                     note=fill("snap_price_note.html",
+                               text=localize(row["price_note"], current_language()))
+                     if row.get("price_note") else Html(""))
                 for row in rows)))
         else:
             st.html(fill("snap_empty.html", head=t("snapshot.tab.pricing"),

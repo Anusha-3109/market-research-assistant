@@ -118,7 +118,7 @@ def test_what_the_research_found_is_not_translated(page, tmp_path):  # noqa: F81
     app = german(with_snapshot(page, tmp_path))
 
     assert "Oat milk market value" in shown_in(app, "Übersicht")          # the source's wording
-    assert "<td>Alpro</td><td>nicht gefunden</td>" in shown_in(app, "Preise")
+    assert "<td>Alpro</td><td>nicht gefunden<" in shown_in(app, "Preise")
 
 
 def test_an_empty_tab_says_so_in_german(page, tmp_path):  # noqa: F811

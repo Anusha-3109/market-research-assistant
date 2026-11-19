@@ -28,12 +28,17 @@ def series(values: list[float], note: str = "") -> TrendSeries:
     ("UK", "GB"),
     ("USA", "US"),
     ("South Korea", "KR"),
+    # German names, as the German pickers and answers write them.
+    ("Frankreich", "FR"),
+    ("Österreich", "AT"),
+    ("Schweiz", "CH"),
+    ("Vereinigtes Königreich", "GB"),
 ])
 def test_find_country_understands_common_ways_to_write_a_country(typed, code):
     assert find_country(typed).alpha_2 == code
 
 
-@pytest.mark.parametrize("typed", ["Atlantis", "", "Europe"])
+@pytest.mark.parametrize("typed", ["Atlantis", "", "Europe", "Europa"])
 def test_find_country_returns_none_for_something_that_is_not_a_country(typed):
     assert find_country(typed) is None
 

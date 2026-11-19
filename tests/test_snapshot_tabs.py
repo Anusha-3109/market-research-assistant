@@ -79,7 +79,8 @@ def test_the_pricing_tab_has_one_price_each_and_says_what_was_not_found(page, tm
     pricing = shown_in(with_snapshot(page, tmp_path), "Pricing")
 
     assert "<td>Oatly</td><td>2.49 EUR (Barista 1 l)</td>" in pricing
-    assert "<td>Alpro</td><td>not found</td>" in pricing
+    assert "<td>Alpro</td><td>not found" in pricing
+    assert "The shop page shows no prices." in pricing                     # and why
     assert "Revenue" not in pricing
 
 
@@ -122,3 +123,24 @@ def test_a_tab_with_nothing_to_show_says_so(page, tmp_path):  # noqa: F811
     assert "No competitors were confirmed, so there are no prices." in shown_in(app, "Pricing")
     assert "No demand trend was measured for this report." in shown_in(app, "Trends")
     assert "The report has no SWOT section." in shown_in(app, "SWOT")
+
+
+def test_a_snapshot_saved_before_the_reason_was_kept_shows_not_found_alone(page, tmp_path):  # noqa: F811
+    old = build_snapshot(final_state())
+    for row in old["competitors"]:
+        del row["price_note"]
+
+    pricing = shown_in(with_snapshot(page, tmp_path, snapshot=old), "Pricing")
+
+    assert "<td>Alpro</td><td>not found</td>" in pricing
+
+
+def test_the_reason_is_in_german_too(page, tmp_path):  # noqa: F811
+    from tests.test_language import switch as language_switch
+    snapshot = build_snapshot(final_state())
+    snapshot["competitors"][1]["price_note"] = "no prices are shown on the pages that were read"
+    app = with_snapshot(page, tmp_path, snapshot=snapshot)
+
+    language_switch(app).set_value("de").run()
+
+    assert "auf den gelesenen Seiten werden keine Preise gezeigt" in shown_in(app, "Preise")

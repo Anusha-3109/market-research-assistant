@@ -62,6 +62,8 @@ def _competitors(final: dict) -> list[dict]:
             "offer": competitor.offer or NOT_FOUND,
             "size": _size(profile.figures) if profile else NOT_FOUND,
             "price": f"{first.price} ({first.product})" if first else NOT_FOUND,
+            # Why no price was found, shown under "not found".
+            "price_note": "" if first or profile is None else profile.price_note,
             "site": competitor.shop_url,
         })
     return rows

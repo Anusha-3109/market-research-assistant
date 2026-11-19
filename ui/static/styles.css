@@ -1215,3 +1215,6 @@ body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant
 .st-key-dashboard_page .gw-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 @media (max-width: 1200px) { .st-key-dashboard_page .gw-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .st-key-dashboard_page .gw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Why a competitor has no price, under "not found" in the Snapshot. */
+.gw-snap-price-note { display: block; margin-top: 0.15rem; font-size: 0.78rem; color: #6b7a7f; }
