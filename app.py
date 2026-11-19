@@ -10,6 +10,7 @@ lives in the page address (?c=...), so a refresh shows the same chat.
 
 import streamlit as st
 
+from agent import usage_log
 from agent.agent import pending_pause, settle_stopped_turn
 from agent.config import APP_NAME, MAX_QUESTION_CHARS, MissingKeyError
 from agent.guards import check_question
@@ -42,7 +43,8 @@ from ui.guide import render_guide
 from ui.how_it_works import render_how_it_works
 from ui.language import render_language_switch
 from ui.page_sidebar import render_page_sidebar
-from ui.pages import HOW, RESEARCH, current_page
+from ui.dashboard import render_dashboard
+from ui.pages import DASHBOARD, HOW, RESEARCH, current_page
 from ui.texts import t
 from ui.research import (
     question_box_text,
@@ -131,6 +133,9 @@ if open_page != RESEARCH:
         st.rerun()
     if open_page == HOW:
         render_how_it_works()
+    elif open_page == DASHBOARD:
+        # Each account sees its own use; without accounts, all of it.
+        render_dashboard(runtime.store, user_id if account else None)
     st.stop()
 
 # What was saved before there were accounts goes to the first account that
@@ -319,7 +324,8 @@ assistant_title = (report_title(reports[-1].report) if reports
 render_assistant(
     thread_id, title=assistant_title[:1].upper() + assistant_title[1:],
     context=(reports[-1].report if reports else answered[-1].text if answered else ""),
-    get_model=lambda: get_side_model(settings["model_name"]))
+    get_model=lambda: get_side_model(settings["model_name"]),
+    on_used=lambda used: usage_log.record(runtime.store, user_id, usage_log.ASSISTANT, usage=used))
 
 # A message that is empty or far too long is turned back here, before it
 # costs anything.
@@ -327,7 +333,27 @@ if question:
     problem = check_question(question)
     if problem:
         st.warning(problem)
+        usage_log.record(runtime.store, user_id, usage_log.TURNED_AWAY, thread=thread_id)
         question = None
+
+# Each finished answer, and each failure, leaves a line in the usage log
+# (agent/usage_log.py) for the Dashboard and Admin pages.
+def log_answer(ran: dict) -> None:
+    if pending_pause(runtime.agent, thread_id) is not None:
+        return                  # counted once the report is finished
+    newest = to_turns(to_blocks(load_messages(runtime.agent, thread_id)))
+    block = newest[-1].answer if newest else None
+    if block is None:
+        return
+    usage_log.record(runtime.store, user_id, usage_log.ANSWERED, seconds=ran["seconds"],
+                     usage=block.usage, tools=ran["tools"], report=bool(block.report),
+                     sources=len(block.sources), thread=thread_id)
+
+
+def log_error(tools: list[str], seconds: float, message: str) -> None:
+    usage_log.record(runtime.store, user_id, usage_log.ERROR, seconds=seconds, tools=tools,
+                     error=message, thread=thread_id)
+
 
 # Run the agent in the live view, then draw the page again from the saved
 # state: that shows the answer, or the next approval form.
@@ -335,9 +361,11 @@ if answer is not None:
     latest = turns[-1]
     view.empty()
     with live.container():
-        run_live(runtime.agent, thread_id, context, title=latest.question,
-                 turn_index=len(turns) - 1, answer=answer,
-                 earlier_steps=latest.answer.activity if latest.answer else [], turns=turns)
+        ran = run_live(runtime.agent, thread_id, context, title=latest.question,
+                       turn_index=len(turns) - 1, answer=answer,
+                       earlier_steps=latest.answer.activity if latest.answer else [], turns=turns,
+                       on_error=log_error)
+        log_answer(ran)
     # A deployed copy keeps a copy of the memory file after every answer.
     backup_memory()
     st.rerun()
@@ -347,8 +375,9 @@ elif question and not waiting:
         claim_conversation(runtime.store, thread_id, user_id)
     view.empty()
     with live.container():
-        run_live(runtime.agent, thread_id, context, title=question,
-                 turn_index=len(turns), question=question, turns=turns)
+        ran = run_live(runtime.agent, thread_id, context, title=question,
+                       turn_index=len(turns), question=question, turns=turns, on_error=log_error)
+        log_answer(ran)
     # A deployed copy keeps a copy of the memory file after every answer.
     backup_memory()
     st.rerun()

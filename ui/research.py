@@ -584,7 +584,8 @@ def _mark_stopped(thread_id: str) -> None:
 
 def run_live(agent, thread_id: str, context, title: str, turn_index: int,
              question: str | None = None, answer: dict | None = None,
-             earlier_steps: list[str] | None = None, turns: list[Turn] | None = None) -> None:
+             earlier_steps: list[str] | None = None, turns: list[Turn] | None = None,
+             on_error=None) -> dict:
     """Run the agent and show the research as it happens.
 
     Give `question` to start a new turn, or `answer` to continue after an
@@ -621,6 +622,9 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
                   on_click=_mark_stopped, args=(thread_id,))
 
     steps = [step.removeprefix("Workflow: ") for step in (earlier_steps or [])]
+    # The tools of this turn, also those before an approval pause.
+    used_tools = st.session_state.setdefault("turn_tools", {}).setdefault(
+        f"{thread_id}:{turn_index}", [])
     found: dict[str, str] = {}         # address -> title, in the order found
     started = time.monotonic()
 
@@ -652,6 +656,7 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
             elif isinstance(item, AIMessage):
                 steps += [describe_tool_call(call["name"], call["args"])
                           for call in item.tool_calls]
+                used_tools.extend(call["name"] for call in item.tool_calls)
             elif isinstance(item, ToolMessage):
                 # Pages found by a search appear in the source list at once.
                 for url, page_title in titles_in_results(str(item.content)).items():
@@ -660,9 +665,13 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
                 pass                    # the caller shows the form after redrawing
             redraw()
     except GraphRecursionError:
+        if on_error:
+            on_error(list(used_tools), time.monotonic() - started, t("live.step_limit", language="en"))
         st.error(t("live.step_limit"))
         stay_with_message()
     except Exception as error:          # model or network failure
+        if on_error:
+            on_error(list(used_tools), time.monotonic() - started, friendly_error(error))
         st.error(friendly_error(error), title=t("live.failed"))
         stay_with_message()
 
@@ -670,3 +679,5 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
     st.session_state.setdefault("elapsed", {})[f"{thread_id}:{turn_index}"] = (
         st.session_state.get("elapsed", {}).get(f"{thread_id}:{turn_index}", 0.0)
         + time.monotonic() - started)
+    return {"tools": list(used_tools),
+            "seconds": st.session_state["elapsed"][f"{thread_id}:{turn_index}"]}

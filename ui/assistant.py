@@ -35,7 +35,7 @@ def _new_chat(thread_id: str) -> None:
     _chats().pop(thread_id, None)
 
 
-def render_assistant(thread_id: str, title: str, context: str, get_model) -> None:
+def render_assistant(thread_id: str, title: str, context: str, get_model, on_used=None) -> None:
     """Draw the assistant: its button, or its panel when it is open.
 
     title:     the open conversation's title, or "" for an empty one.
@@ -99,6 +99,8 @@ def render_assistant(thread_id: str, title: str, context: str, get_model) -> Non
                 text, used = friendly_error(error), Usage()
     chat["messages"] += [asked, {"role": "assistant", "text": text}]
     chat["used"] = chat["used"] + used
+    if on_used and used.calls:
+        on_used(used)
     # Draw the page again, so the answer and the cost are in their places.
     st.rerun()
 

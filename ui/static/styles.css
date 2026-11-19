@@ -1175,3 +1175,13 @@ body:has(.st-key-account_badge) [data-testid="stLayoutWrapper"]:has(> .st-key-la
 [data-testid="stMainBlockContainer"]:has(.st-key-dashboard_page),
 [data-testid="stMainBlockContainer"]:has(.st-key-admin_page) { max-width: 76rem; }
 .gw-flow svg { max-width: 100% !important; min-height: 260px; }
+
+/* --- Figure cards on the Dashboard and Admin pages ------------------------- */
+.gw-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.9rem; margin: 0.4rem 0 0.9rem; }
+.gw-kpi { background: #fff; border-radius: 14px; padding: 0.95rem 1.1rem; border-top: 4px solid var(--coral);
+          box-shadow: 0 2px 10px rgba(20, 40, 40, 0.08); }
+.gw-kpi-label { font-size: 0.82rem; color: #56656a; }
+.gw-kpi-value { font-family: "Space Grotesk", "Source Sans", sans-serif; font-size: 1.85rem; font-weight: 700; margin-top: 0.35rem; }
+.gw-kpi-note { font-size: 0.75rem; color: #8a979b; margin-top: 0.1rem; }
+[class*="st-key-card_"], .st-key-dashboard_research, .st-key-dashboard_tools,
+.st-key-dashboard_guard, .st-key-dashboard_errors { background: #fff; border-radius: 14px; }
