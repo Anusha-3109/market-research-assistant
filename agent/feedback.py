@@ -60,6 +60,22 @@ def rate(store, user_id: str, thread: str, index: int, rating: int | None, quest
     })
 
 
+RUNS = "traces"
+
+
+def remember_run(store, user_id: str, thread: str, index: int, run_id: str) -> None:
+    """Keep the id of the run that wrote an answer, so its rating can be
+    sent to that run's trace. After an approval the answer is finished by
+    a second run, which then takes the place of the first."""
+    if store is not None:
+        store.put((RUNS, user_id), _key(thread, index), {"run_id": run_id})
+
+
+def run_of(store, user_id: str, thread: str, index: int) -> str | None:
+    item = store.get((RUNS, user_id), _key(thread, index)) if store is not None else None
+    return item.value["run_id"] if item else None
+
+
 def lessons(store, user_id: str) -> list[str]:
     """The reasons this account gave in at least REPEATS of its last RECENT
     ratings, in the order of REASONS. "Other" says nothing to act on, and

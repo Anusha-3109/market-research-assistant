@@ -53,6 +53,7 @@ from ui.research import (
     render_snapshot_view,
     run_live,
 )
+from agent.feedback import remember_run
 from ui.feedback import rater
 from ui.runtime import get_runtime, get_side_model, get_store
 from ui.sidebar import (
@@ -338,6 +339,8 @@ if question:
 # Each finished answer, and each failure, leaves a line in the usage log
 # (agent/usage_log.py) for the Dashboard and Admin pages.
 def log_answer(ran: dict) -> None:
+    # The run that wrote the answer, for sending its rating to LangSmith.
+    remember_run(runtime.store, user_id, thread_id, ran["index"], ran["run_id"])
     if pending_pause(runtime.agent, thread_id) is not None:
         return                  # counted once the report is finished
     newest = to_turns(to_blocks(load_messages(runtime.agent, thread_id)))

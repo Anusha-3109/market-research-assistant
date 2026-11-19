@@ -15,6 +15,7 @@ import itertools
 import re
 import time
 from dataclasses import dataclass
+from uuid import uuid4
 
 import streamlit as st
 from langchain_core.messages import AIMessage, ToolMessage
@@ -653,8 +654,11 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
         st.stop()
 
     redraw()
-    events = (stream_steps(agent, question, thread_id, context=context) if question
-              else resume_steps(agent, answer, thread_id, context=context))
+    # The run's id in LangSmith, so a rating of this answer can reach its
+    # trace (agent/trace_feedback.py).
+    run_id = str(uuid4())
+    events = (stream_steps(agent, question, thread_id, context=context, run_id=run_id) if question
+              else resume_steps(agent, answer, thread_id, context=context, run_id=run_id))
     try:
         for item in events:
             if isinstance(item, Progress):
@@ -686,4 +690,5 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
         st.session_state.get("elapsed", {}).get(f"{thread_id}:{turn_index}", 0.0)
         + time.monotonic() - started)
     return {"tools": list(used_tools),
-            "seconds": st.session_state["elapsed"][f"{thread_id}:{turn_index}"]}
+            "seconds": st.session_state["elapsed"][f"{thread_id}:{turn_index}"],
+            "run_id": run_id, "index": turn_index}

@@ -48,6 +48,8 @@ from agent.models import make_model
 from agent.prompts import build_system_prompt
 from agent.report.tool import create_market_report
 from agent.source_check import check_answer
+from uuid import UUID
+
 from agent.feedback import tips_for_prompt
 from agent.language import answer_instruction
 from agent.styles import style_for_prompt
@@ -271,10 +273,13 @@ def build_agent(model_name: str = MODEL_NAME,
     )
 
 
-def _run(agent, payload, thread_id: str, context: UserContext):
-    """Run the agent and yield what happens: each new message, a Progress
-    line while a long tool is working, and a Pause if the agent stops to
-    wait for the user."""
+def run_config(thread_id: str, context: UserContext, run_id: str | None = None) -> dict:
+    """The config of one run of the chat agent.
+
+    run_id: the id the run's trace gets in LangSmith. The page chooses it,
+    so a rating of the answer can later be sent to that trace
+    (agent/trace_feedback.py). Without it LangChain chooses one.
+    """
     config = {
         # How the run is named and labelled in a trace (agent/tracing.py).
         **trace_labels("Markavi chat", "chat", thread_id, context),
@@ -283,6 +288,16 @@ def _run(agent, payload, thread_id: str, context: UserContext):
         # final model step for the answer.
         "recursion_limit": MAX_TOOL_ROUNDS * 2 + 1,
     }
+    if run_id:
+        config["run_id"] = UUID(run_id)
+    return config
+
+
+def _run(agent, payload, thread_id: str, context: UserContext, run_id: str | None = None):
+    """Run the agent and yield what happens: each new message, a Progress
+    line while a long tool is working, and a Pause if the agent stops to
+    wait for the user."""
+    config = run_config(thread_id, context, run_id)
 
     # Two streams at once: "updates" carries each new message, "custom"
     # carries the progress lines a tool sends while it is still running.
@@ -307,7 +322,7 @@ def _run(agent, payload, thread_id: str, context: UserContext):
 
 
 def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USER,
-                 context: UserContext | None = None):
+                 context: UserContext | None = None, run_id: str | None = None):
     """Send one new message to a conversation and yield each new message as
     it happens: the model's tool requests, the tool results, the answer.
     If the agent stops for the user's approval, a Pause is yielded last.
@@ -322,13 +337,14 @@ def stream_steps(agent, message: str, thread_id: str, user_id: str = DEFAULT_USE
         user_id: Identifies whose saved profile to use.
         context: The user and their settings together; replaces user_id
             when given.
+        run_id: The id of the run's trace (see run_config).
     """
     payload = {"messages": [{"role": "user", "content": message}]}
-    yield from _run(agent, payload, thread_id, context or UserContext(user_id=user_id))
+    yield from _run(agent, payload, thread_id, context or UserContext(user_id=user_id), run_id)
 
 
 def resume_steps(agent, answer: dict, thread_id: str, user_id: str = DEFAULT_USER,
-                 context: UserContext | None = None):
+                 context: UserContext | None = None, run_id: str | None = None):
     """Continue a paused conversation with the user's answer.
 
     Command(resume=...) tells LangGraph to carry on from the saved state
@@ -338,7 +354,7 @@ def resume_steps(agent, answer: dict, thread_id: str, user_id: str = DEFAULT_USE
         answer: Built with review_answer() or save_answer() in approval.py.
     """
     yield from _run(agent, Command(resume=answer), thread_id,
-                    context or UserContext(user_id=user_id))
+                    context or UserContext(user_id=user_id), run_id)
 
 
 def pending_pause(agent, thread_id: str) -> Pause | None:

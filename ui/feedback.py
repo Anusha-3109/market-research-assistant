@@ -10,7 +10,8 @@ the views need not know about the store or the account.
 
 import streamlit as st
 
-from agent.feedback import DOWN, REASONS, explain, rate, rating_line
+from agent.feedback import DOWN, REASONS, explain, rate, rating_line, run_of
+from agent.trace_feedback import send_in_background
 from agent.session import Turn
 from ui.sidebar import chosen_settings
 from ui.texts import current_language, t
@@ -22,8 +23,10 @@ def _save(store, user_id: str, thread_id: str, index: int, turn: Turn, key: str)
     The settings saved are the ones chosen now: the answer was almost
     always written with them, as they rarely change between an answer and
     its rating."""
-    rate(store, user_id, thread_id, index, st.session_state.get(key), question=turn.question,
+    rating = st.session_state.get(key)
+    rate(store, user_id, thread_id, index, rating, question=turn.question,
          settings=chosen_settings(), report=bool(turn.answer and turn.answer.report))
+    send_in_background(run_of(store, user_id, thread_id, index), rating, [], "")
 
 
 def _send(store, user_id: str, thread_id: str, index: int) -> None:
@@ -31,6 +34,9 @@ def _send(store, user_id: str, thread_id: str, index: int) -> None:
     suffix = f"{thread_id}_{index}"
     explain(store, user_id, thread_id, index, st.session_state.get(f"why_{suffix}") or [],
             st.session_state.get(f"why_comment_{suffix}", ""))
+    line = rating_line(store, user_id, thread_id, index) or {}
+    send_in_background(run_of(store, user_id, thread_id, index), line.get("rating"),
+                       line.get("reasons", []), line.get("comment", ""))
     st.session_state[f"why_thanks_{suffix}"] = True
 
 
