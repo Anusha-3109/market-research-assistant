@@ -252,13 +252,15 @@ def steps_above_answer(activity: list[str]) -> None:
                                                  for step in steps)))
 
 
-def render_ask_view(turns: list[Turn], thread_id: str, waiting: Pause | None) -> Outcome:
+def render_ask_view(turns: list[Turn], thread_id: str, waiting: Pause | None,
+                    rate=None) -> Outcome:
     """Show a finished conversation as a chat: the bar, every question with
     its steps and its answer, then suggestions for a next question.
 
     If the agent is waiting for an approval, its form takes the place of
     the newest answer. The question box itself is drawn by the page, which
-    keeps it at the bottom of the window.
+    keeps it at the bottom of the window. `rate(index, turn)`, when given,
+    draws the thumbs under an answer (ui/feedback.py).
     """
     outcome = Outcome()
     outcome.new = render_bar(turns)
@@ -266,7 +268,7 @@ def render_ask_view(turns: list[Turn], thread_id: str, waiting: Pause | None) ->
     with st.container(key="ask_thread"):
         for index, turn in enumerate(turns):
             question_bubble(turn.question)
-            _answer(turn, index, thread_id, waiting if index == latest else None, outcome)
+            _answer(turn, index, thread_id, waiting if index == latest else None, outcome, rate)
 
     if waiting is None:
         with st.container(key="ask_suggestions", horizontal=True):
@@ -277,7 +279,7 @@ def render_ask_view(turns: list[Turn], thread_id: str, waiting: Pause | None) ->
 
 
 def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
-            outcome: Outcome) -> None:
+            outcome: Outcome, rate=None) -> None:
     """One answer in the chat, under its question."""
     block = turn.answer
     with panel("answer_panel"):
@@ -303,6 +305,8 @@ def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
     with st.container(key=f"page_foot_{next(_serial)}"):
         took_and_cost(len(block.activity), len(block.sources), elapsed, used=block.usage,
                       used_is_partial=block.usage_is_partial, waiting=False)
+        if rate is not None:
+            rate(index, turn)
         if not block.report:
             if block.sources:
                 with st.expander(counted("ask.sources", len(block.sources)), type="compact"):
@@ -310,7 +314,7 @@ def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
             downloads(turn, index)
 
 
-def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
+def render_report_view(turns: list[Turn], thread_id: str, rate=None) -> Outcome:
     """Show the newest report of a conversation: the Report view.
 
     On the left each section of the report is a card with its title and a
@@ -357,6 +361,8 @@ def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
             elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
             took_and_cost(len(block.activity), len(block.sources), elapsed, used=block.usage,
                           used_is_partial=block.usage_is_partial, waiting=False)
+            if rate is not None:
+                rate(index, turn)
             if deck is not None:
                 name = safe_filename(report_title(block.report)).removesuffix(".md")
                 st.download_button(

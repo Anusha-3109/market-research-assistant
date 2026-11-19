@@ -121,6 +121,7 @@ TEXTS = {
     "ask.new_help": "Eine neue Unterhaltung beginnen. Diese bleibt erhalten.",
     "ask.close_help": "Diese Unterhaltung schließen. Sie bleibt in der Liste.",
     "ask.no_answer": "Für diese Frage wurde keine Antwort geschrieben.",
+    "feedback.ask": "War das hilfreich?",
     "ask.open_report": "Bericht öffnen",
     "ask.ready": "Der Bericht ist fertig: {sources}.",
     "ask.ready_passed": "Der Bericht ist fertig: {sources}, Berichtsprüfung bestanden.",

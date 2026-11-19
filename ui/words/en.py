@@ -122,6 +122,7 @@ TEXTS = {
     "ask.new_help": "Start a new conversation. This one is kept.",
     "ask.close_help": "Close this conversation. It is kept in the list.",
     "ask.no_answer": "No answer was written for this question.",
+    "feedback.ask": "Was this helpful?",
     "ask.open_report": "Open report",
     "ask.ready": "The report is ready: {sources}.",
     "ask.ready_passed": "The report is ready: {sources}, report check passed.",

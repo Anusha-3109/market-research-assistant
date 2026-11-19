@@ -53,6 +53,7 @@ from ui.research import (
     render_snapshot_view,
     run_live,
 )
+from ui.feedback import rater
 from ui.runtime import get_runtime, get_side_model, get_store
 from ui.sidebar import (
     FORGET,
@@ -297,9 +298,10 @@ elif not question:
         if open_view == SNAPSHOT:
             outcome = render_snapshot_view(turns, thread_id)
         elif open_view == REPORT:
-            outcome = render_report_view(turns, thread_id)
+            outcome = render_report_view(turns, thread_id, rate=rater(runtime.store, user_id, thread_id))
         else:
-            outcome = render_ask_view(turns, thread_id, waiting)
+            outcome = render_ask_view(turns, thread_id, waiting,
+                                      rate=rater(runtime.store, user_id, thread_id))
     if outcome.new:
         st.query_params["c"] = new_thread_id()
         st.rerun()
