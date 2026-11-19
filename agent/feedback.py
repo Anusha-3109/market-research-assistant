@@ -8,6 +8,9 @@ removes it.
 Besides the rating, a line keeps what is needed to learn from it later:
 the question (cut short) and the settings the answer was written with.
 A thumbs down can also keep what could be better: reasons and a comment.
+
+The agent learns from the reasons: one that keeps coming up for an
+account adds a fixed tip to that account's system prompt (tips_for_prompt).
 """
 
 from datetime import datetime, timezone
@@ -19,6 +22,20 @@ QUESTION_LIMIT = 300
 COMMENT_LIMIT = 500
 # What could be better, picked with a thumbs down. Shown in this order.
 REASONS = ("wrong_facts", "missing_sources", "too_long", "too_short", "off_topic", "other")
+# Learning from the ratings: a reason given in at least REPEATS of the
+# account's last RECENT ratings adds its tip to that account's prompt.
+RECENT, REPEATS = 10, 2
+TIPS = {
+    "wrong_facts": "Check each figure and date against its source, prefer the newest data, "
+                   "and say which year a figure is from.",
+    "missing_sources": "Back every figure and claim with a linked source.",
+    "too_long": "Keep answers short: the direct answer first, then only the few points "
+                "that matter most.",
+    "too_short": "Give fuller answers: add the key figures and a short explanation, not only "
+                 "the headline.",
+    "off_topic": "Answer exactly the question asked; if it is unclear, ask one short question "
+                 "first.",
+}
 
 
 def _key(thread: str, index: int) -> str:
@@ -41,6 +58,33 @@ def rate(store, user_id: str, thread: str, index: int, rating: int | None, quest
         "model": settings.get("model", ""), "style": settings.get("style", ""),
         "length": settings.get("length", ""),
     })
+
+
+def lessons(store, user_id: str) -> list[str]:
+    """The reasons this account gave in at least REPEATS of its last RECENT
+    ratings, in the order of REASONS. "Other" says nothing to act on, and
+    "too long" with "too short" cancel each other out."""
+    recent = ratings(store, user_id)[-RECENT:]
+    counts = {reason: sum(reason in line.get("reasons", []) for line in recent) for reason in TIPS}
+    found = [reason for reason in TIPS if counts[reason] >= REPEATS]
+    if "too_long" in found and "too_short" in found:
+        found = [reason for reason in found if reason not in ("too_long", "too_short")]
+    return found
+
+
+def tips_for_prompt(store, user_id: str) -> str:
+    """The section added to this account's system prompt, or "".
+
+    Only the fixed sentences in TIPS are added. A comment the user typed is
+    never put in the prompt: it is the user's own text, and the prompt is
+    no place for instructions from outside."""
+    found = lessons(store, user_id) if store is not None else []
+    if not found:
+        return ""
+    return ("\n## Learned from this user's ratings\n"
+            "This user rated earlier answers down for the same reason more than once. "
+            "Keep to these unless they ask for something else:\n"
+            + "\n".join(f"- {TIPS[reason]}" for reason in found) + "\n")
 
 
 def rating_line(store, user_id: str, thread: str, index: int) -> dict | None:

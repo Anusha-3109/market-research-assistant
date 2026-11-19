@@ -48,6 +48,7 @@ from agent.models import make_model
 from agent.prompts import build_system_prompt
 from agent.report.tool import create_market_report
 from agent.source_check import check_answer
+from agent.feedback import tips_for_prompt
 from agent.language import answer_instruction
 from agent.styles import style_for_prompt
 from agent.tracing import trace_labels
@@ -86,7 +87,10 @@ def prompt_with_profile(request: ModelRequest) -> str:
     if store is None:
         return prompt + how_to_write
     user_id = getattr(request.runtime.context, "user_id", None) or DEFAULT_USER
-    return prompt + profile_for_prompt(load_profile(store, user_id)) + how_to_write
+    # What this account's ratings taught (agent/feedback.py). It comes
+    # before the style, so a style chosen in the settings has the last word.
+    return (prompt + profile_for_prompt(load_profile(store, user_id))
+            + tips_for_prompt(store, user_id) + how_to_write)
 
 
 @wrap_model_call
