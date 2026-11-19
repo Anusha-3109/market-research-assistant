@@ -349,6 +349,9 @@
 }
 [data-testid="stSidebarUserContent"] [data-testid="stLayoutWrapper"]:has(> .st-key-sidebar_foot) {
     flex: none;
+    /* Always at the bottom of the sidebar, on every page, also where there
+       is nothing in the middle part to push it down. */
+    margin-top: auto;
     /* With Settings open it can grow tall; it then scrolls inside itself
        and never takes the whole sidebar. */
     max-height: 70vh;

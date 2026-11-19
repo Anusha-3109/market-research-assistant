@@ -231,6 +231,10 @@ def test_the_badge_is_in_the_sidebar_of_the_other_pages_too(site):  # noqa: F811
     button(app, "page_dashboard").click().run()
 
     assert letter_on(badge(app)) == "A"
+    # The same three parts as on Research, so Help and the badge sit at the
+    # bottom of the sidebar on every page.
+    sidebar = in_order(app.sidebar)
+    assert position(sidebar, "Dashboard") < position(sidebar, "Help") < position(sidebar, "Signed in as")
     button(app, "sign_out").click().run()
     assert [tab.label for tab in app.tabs] == ["Sign in", "Create account"]
 
