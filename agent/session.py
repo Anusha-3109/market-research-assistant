@@ -301,13 +301,23 @@ def section_status(body: str) -> tuple[str, str] | None:
     research could not find, or else how many different sources the
     section cites. A section with neither has no status.
     """
-    missing = len(re.findall(r"not found", body, flags=re.IGNORECASE))
+    counted = section_counts(body)
+    if counted is None:
+        return None
+    kind, count = counted
+    if kind == "warn":
+        return f"{count} not found", "warn"
+    return (f"{count} source" if count == 1 else f"{count} sources"), "ok"
+
+
+def section_counts(body: str) -> tuple[str, int] | None:
+    """What section_status counts, as a number: ("warn", values not found)
+    or ("ok", sources cited). The section may be shown in German."""
+    missing = len(re.findall(r"not found|nicht gefunden", body, flags=re.IGNORECASE))
     if missing:
-        return f"{missing} not found", "warn"
+        return "warn", missing
     sources = len(set(_SOURCE_NUMBER.findall(body)))
-    if sources:
-        return (f"{sources} source" if sources == 1 else f"{sources} sources"), "ok"
-    return None
+    return ("ok", sources) if sources else None
 
 
 STEPS_WHILE_WORKING = 6

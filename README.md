@@ -76,7 +76,7 @@ agent with tools can decide what to look up next.
 | Numbered sources | Every link in an answer becomes a number such as [1]; the source list shows each page's title and site, and marks a company's own site as Official |
 | Download | Any answer as a Markdown file or a PDF |
 | Report formats | A report as the full text, as an investor one-pager, or as pitch deck slides with a PowerPoint download |
-| Language | An EN / DE switch at the top right; the choice is saved with the account. German covers the sidebar, the Snapshot and the assistant panel so far |
+| Language | An EN / DE switch at the top right, saved with the account. In German the views, the answers and the reports (also as one-pager, slides, Markdown and PDF) are in German |
 | Assistant | A small chat at the bottom right of every view for a quick question in between, answered from the open report |
 | Stop | A run can be stopped; what was found so far is kept and the conversation continues |
 | Resilience | Every data source has a free backup, so one outage does not stop a report. If the model leaves out a required field, the question is asked again instead of losing the report |
@@ -793,7 +793,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-912 tests, none of which use the internet or cost anything: outside
+937 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -824,6 +824,8 @@ services and the model are replaced with fakes.
 | `test_password_pages.py` | The screens: asking for a link, the page the link opens, the email field of a new account, changing the password or the email address from the sign-in page |
 | `test_language.py` | The language switch: both word lists are complete, the choice is saved with the account, and the account menu follows it |
 | `test_language_frame.py` | German in the sidebar, the settings, the Snapshot and the assistant panel; settings keep their saved values |
+| `test_language_views.py` | German in the Ask and Report views; a report format keeps its value |
+| `test_language_agent.py` | What the models are told with German chosen, a report's fixed wording in German, and the German one-pager and slides |
 | `test_assistant.py` | The assistant: what the model is sent, the panel in every view, that its questions stay out of the conversation, the cost, and a failure explained |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
 | `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
@@ -1122,12 +1124,19 @@ market-research-assistant/
 
 **The language switch**
 
-- German is not finished. The sidebar, settings, help, view names, the
-  Snapshot and the assistant panel are translated. The Ask and Report
-  views, the start screen, the sign-in pages and the agent's answers and
-  reports are still in English.
-- What the research found is never translated: a figure keeps its
-  source's wording, and "not found" stays as it was saved.
+- With German chosen, the app's own words are German in the sidebar, the
+  three views and the assistant panel. The start screen, the pickers, the
+  guide and the sign-in pages are still in English.
+- The chat agent, the assistant and the report workflow are told to write
+  in German. That is an instruction to the model, not a check in code.
+- A saved report is never changed. Its fixed wording (headings, table
+  heads, "not found", standard sentences) is replaced when it is shown or
+  downloaded (`agent/report/localize.py`). What the research found is not
+  translated, so a report written while English was chosen keeps its
+  English statements under German headings.
+- In a German report the title keeps the product and country as they were
+  asked for, numbers keep their source's style, and the step lines above
+  an answer stay in English.
 - A language picked on the sign-in screen is replaced by the account's
   saved language after signing in.
 

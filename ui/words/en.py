@@ -113,4 +113,58 @@ TEXTS = {
     "assistant.cost": "This chat: {cost}",
     "assistant.not_added": "Not added to the conversation",
     "assistant.thinking": "Thinking…",
+    # --- the Ask view ---------------------------------------------------------
+    "ask.questions_one": "{count} question",
+    "ask.questions_many": "{count} questions",
+    "ask.new": "New",
+    "ask.new_help": "Start a new conversation. This one is kept.",
+    "ask.close_help": "Close this conversation. It is kept in the list.",
+    "ask.no_answer": "No answer was written for this question.",
+    "ask.open_report": "Open report",
+    "ask.ready": "The report is ready: {sources}.",
+    "ask.ready_passed": "The report is ready: {sources}, report check passed.",
+    "ask.ready_points": "The report is ready: {sources}, the report check found {points} point(s).",
+    "ask.sources_one": "{count} source",
+    "ask.sources_many": "{count} sources",
+    "ask.suggest.0": "Who are the main competitors?",
+    "ask.suggest.1": "What do they charge?",
+    "ask.suggest.2": "Is demand rising?",
+    "ask.box_working": "Working on it. You can ask a follow-up when it is done.",
+    "ask.box_waiting": "Answer the question above to continue",
+    "ask.box_follow_up": "Ask a follow-up",
+    "ask.box_first": "Ask about a market",
+    "disclaimer": "Research summary from public sources, not investment advice.",
+
+    # The row under an answer: cost, steps, sources, tokens, time.
+    "cost.label": "LLM cost",
+    "cost.waiting": "Waiting for you",
+    "cost.steps_one": "{count} step",
+    "cost.steps_many": "{count} steps",
+    "cost.from_conversation": "Answered from this conversation, without a new search",
+    "cost.tokens": "{count} tokens",
+
+    # The list of sources.
+    "sources.title": "Sources",
+    "sources.none": "No pages were cited.",
+    "sources.official": "Official",
+
+    # While the agent is working.
+    "live.writing": ":shimmer[Writing the answer.] It appears here when it is ready.",
+    "live.researching": "Researching",
+    "live.stop": "Stop",
+    "live.back": "Back to the conversation",
+    "live.step_limit": "The assistant reached its step limit before finishing. Try a narrower question.",
+    "live.failed": "The assistant could not answer",
+
+    # --- the Report view -------------------------------------------------------
+    "report.format": "Format",
+    "report.format_help": "How the same findings are laid out. Changing it starts no new research.",
+    "format.Full market report": "Full market report",
+    "format.Investor one-pager": "Investor one-pager",
+    "format.Pitch deck slides": "Pitch deck slides",
+    "report.contents": "Contents",
+    "report.save": "Save to reports folder",
+    "report.check": "Report check",
+    "report.check_passed": "Report check passed",
+    "report.not_found": "{count} not found",
 }

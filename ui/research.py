@@ -32,7 +32,7 @@ from agent.session import (
     describe_tool_call,
     reply_summary,
     report_sections,
-    section_status,
+    section_counts,
     report_title,
     short_title,
     steps_for_thread,
@@ -45,7 +45,8 @@ from agent.tools import safe_filename
 from agent import usage
 from agent.usage import Usage
 from ui.approvals import render_pause
-from ui.texts import counted, t
+from agent.report.localize import localize, localize_phrase
+from ui.texts import counted, current_language, t
 from ui.assets import Html, fill, join, load, script_tag
 
 SAVE_QUESTION = "Save this report."
@@ -86,10 +87,10 @@ def question_box_text(resuming: bool, waiting: bool, has_turns: bool) -> str:
     has_turns: the conversation already has a question in it.
     """
     if resuming:
-        return "Working on it. You can ask a follow-up when it is done."
+        return t("ask.box_working")
     if waiting:
-        return "Answer the question above to continue"
-    return "Ask a follow-up" if has_turns else "Ask about a market"
+        return t("ask.box_waiting")
+    return t("ask.box_follow_up") if has_turns else t("ask.box_first")
 
 
 def format_seconds(seconds: float | None) -> str:
@@ -119,24 +120,24 @@ def source_row(source: Source) -> Html:
         url=source.url, title=source.title, number=source.number,
         domain=source.domain, letter=source.domain[:1].upper(),
         icon=fill("source_icon.html", domain=source.domain) if has_icon else Html(""),
-        badge=fill("source_badge.html") if source.official else Html(""),
+        badge=fill("source_badge.html", word=t("sources.official")) if source.official else Html(""),
     )
 
 
 def sources_html(sources: list[Source], empty: str) -> Html:
     if not sources:
-        return fill("sources_empty.html", message=empty)
+        return fill("sources_empty.html", title=t("sources.title"), message=empty)
     return fill(
-        "sources_panel.html",
+        "sources_panel.html", title=t("sources.title"),
         count=Html(f'<span class="gw-sources-count">{len(sources)}</span>'),
         rows=join(source_row(source) for source in sources),
     )
 
 
-def sources_panel(sources: list[Source], empty: str = "No pages were cited.") -> None:
+def sources_panel(sources: list[Source], empty: str | None = None) -> None:
     """The numbered list of pages the answer cites."""
     with panel("sources_panel"):
-        st.html(sources_html(sources, empty))
+        st.html(sources_html(sources, t("sources.none") if empty is None else empty))
 
 
 def sources_cited(block) -> bool:
@@ -178,15 +179,14 @@ def render_bar(turns: list[Turn]) -> bool:
     "New" and the cross both lead to an empty conversation; this one stays
     in the list in the sidebar.
     """
-    count = plural(len(turns), "question")
+    count = counted("ask.questions", len(turns))
     with st.container(key="conversation_bar", horizontal=True, vertical_alignment="center"):
         # The title was typed by a person: fill() shows it as text.
         st.html(fill("bar.html", title=short_title(turns[0].question, 60), count=count),
                 width="stretch")
-        new = st.button("New", key="bar_new", type="tertiary",
-                        help="Start a new conversation. This one is kept.")
+        new = st.button(t("ask.new"), key="bar_new", type="tertiary", help=t("ask.new_help"))
         close = st.button("", icon=":material/close:", key="bar_close", type="tertiary",
-                          help="Close this conversation. It is kept in the list.")
+                          help=t("ask.close_help"))
     return new or close
 
 
@@ -198,7 +198,8 @@ def downloads(turn: Turn, index: int, content: str | None = None, suffix: str = 
     suffix:  added to the file name for that layout, such as "one-pager".
     """
     block = turn.answer
-    content = content or block.report or block.text
+    # A report is downloaded in the language it is shown in.
+    content = content or localize(block.report, current_language()) or block.text
     name = safe_filename(report_title(block.report) if block.report else turn.question)
     if suffix:
         name = name.removesuffix(".md") + f"-{suffix}.md"
@@ -213,7 +214,7 @@ def downloads(turn: Turn, index: int, content: str | None = None, suffix: str = 
 
 # Offered under the chat. They lean on the conversation so far, so "they"
 # and "demand" mean the market that is being talked about.
-SUGGESTIONS = ["Who are the main competitors?", "What do they charge?", "Is demand rising?"]
+SUGGESTIONS = ["ask.suggest.0", "ask.suggest.1", "ask.suggest.2"]
 
 
 def _open_report(thread_id: str) -> None:
@@ -228,6 +229,19 @@ def question_bubble(question: str) -> None:
 def answer_head() -> None:
     """The assistant's robot face and name at the top of an answer."""
     st.html(fill("answer_head.html", app=APP_NAME))
+
+
+def summary_line(block) -> str:
+    """One or two lines about an answer, for the chat. For a report the
+    line is the app's own wording, so it follows the language."""
+    if block is None or not block.report:
+        return t("ask.no_answer") if block is None or not block.text else reply_summary(block)
+    sources = counted("ask.sources", len(block.sources))
+    if block.problems is None:
+        return t("ask.ready", sources=sources)
+    if not block.problems:
+        return t("ask.ready_passed", sources=sources)
+    return t("ask.ready_points", sources=sources, points=len(block.problems))
 
 
 def steps_above_answer(activity: list[str]) -> None:
@@ -256,7 +270,7 @@ def render_ask_view(turns: list[Turn], thread_id: str, waiting: Pause | None) ->
 
     if waiting is None:
         with st.container(key="ask_suggestions", horizontal=True):
-            for number, suggestion in enumerate(SUGGESTIONS):
+            for number, suggestion in enumerate(t(name) for name in SUGGESTIONS):
                 if st.button(suggestion, key=f"suggest_{number}"):
                     outcome.question = suggestion
     return outcome
@@ -273,17 +287,17 @@ def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
             outcome.answer = render_pause(waiting)
             return
         if block is None or not (block.report or block.text):
-            st.caption("No answer was written for this question.")
+            st.caption(t("ask.no_answer"))
             return
         if block.report:
             # The report is in the Report view; here it is one line.
-            st.markdown(reply_summary(block))
-            st.button("Open report", icon=":material/description:", key=f"open_report_{index}",
+            st.markdown(summary_line(block))
+            st.button(t("ask.open_report"), icon=":material/description:", key=f"open_report_{index}",
                       type="primary", on_click=_open_report, args=(thread_id,))
         else:
             st.markdown(block.cited)
             if sources_cited(block):
-                st.caption(DISCLAIMER)
+                st.caption(t("disclaimer"))
 
     elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
     with st.container(key=f"page_foot_{next(_serial)}"):
@@ -291,7 +305,7 @@ def _answer(turn: Turn, index: int, thread_id: str, waiting: Pause | None,
                       used_is_partial=block.usage_is_partial, waiting=False)
         if not block.report:
             if block.sources:
-                with st.expander(plural(len(block.sources), "source"), type="compact"):
+                with st.expander(counted("ask.sources", len(block.sources)), type="compact"):
                     st.html(sources_html(block.sources, empty=""))
             downloads(turn, index)
 
@@ -311,10 +325,12 @@ def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
     block = turn.answer
     title = report_title(block.report)
     title = title[:1].upper() + title[1:]
-    intro, sections = report_sections(block.cited)
+    language = current_language()
+    # The saved report is English; its fixed wording follows the language.
+    intro, sections = report_sections(localize(block.cited, language))
 
     # The heading is plain text from the report: fill() shows it as text.
-    st.html(fill("ask_head.html", kicker="Report", title=title))
+    st.html(fill("ask_head.html", kicker=t("view.report"), title=title))
     cards, side = st.columns([2.1, 1], gap="medium")
     # The side is drawn first in the code, because the format chosen there
     # decides what the cards show. On the page it still sits on the right.
@@ -324,13 +340,18 @@ def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
             # so a report without them has the full report only.
             layout = FULL
             if block.snapshot:
-                layout = st.selectbox("Format", [FULL, ONE_PAGER, SLIDES], key="report_format",
-                                      help="How the same findings are laid out. Changing it "
-                                           "starts no new research.")
-            page = one_pager(title, block.snapshot, block.sources) if layout == ONE_PAGER else None
-            deck = slides(title, block.snapshot, block.sources) if layout == SLIDES else None
+                # A format is shown by its name in the chosen language; the
+                # choice itself stays the same in every language.
+                layout = st.selectbox(
+                    t("report.format"), [FULL, ONE_PAGER, SLIDES], key="report_format",
+                    format_func=lambda name: t(f"format.{name}", language=language),
+                    help=t("report.format_help"))
+            page = one_pager(title, block.snapshot, block.sources, language) \
+                if layout == ONE_PAGER else None
+            deck = slides(title, block.snapshot, block.sources, language) \
+                if layout == SLIDES else None
             if page is None and deck is None:
-                st.html(fill("contents.html", title=title,
+                st.html(fill("contents.html", label=t("report.contents"), title=title,
                              items=join(fill("contents_item.html", title=section.title)
                                         for section in sections)))
             elapsed = st.session_state.get("elapsed", {}).get(f"{thread_id}:{index}")
@@ -345,34 +366,39 @@ def render_report_view(turns: list[Turn], thread_id: str) -> Outcome:
             else:
                 downloads(turn, index, content=page, suffix="one-pager" if page else "")
             if index == len(turns) - 1 and st.button(
-                    "Save to reports folder", icon=":material/save:", key=f"save_{index}",
+                    t("report.save"), icon=":material/save:", key=f"save_{index}",
                     type="primary", width="stretch"):
                 outcome.question = SAVE_QUESTION
     with cards:
         if deck is not None:
             _slides_on_the_page(deck)
-            st.caption(DISCLAIMER)
+            st.caption(t("disclaimer"))
         elif page is not None:
             # One page: everything after its title line, which the heading
             # of the view already shows.
             with panel("one_pager"):
                 st.markdown(page.split("\n", 1)[1])
-            st.caption(DISCLAIMER)
+            st.caption(t("disclaimer"))
         else:
             if block.problems is not None:
                 if block.problems:
-                    st.warning(format_check(block.problems), title="Report check")
+                    st.warning(format_check(block.problems), title=t("report.check"))
                 else:
-                    st.badge("Report check passed", icon=":material/check:", color="green")
+                    st.badge(t("report.check_passed"), icon=":material/check:", color="green")
             if intro:
                 st.caption(intro)
             for section in sections:
-                status = section_status(section.body)
-                tag = fill("section_tag.html", text=status[0], kind=status[1]) if status else Html("")
+                status = section_counts(section.body)
+                tag = Html("")
+                if status:
+                    kind, count = status
+                    tag = fill("section_tag.html", kind=kind,
+                               text=t("report.not_found", count=count) if kind == "warn"
+                               else counted("ask.sources", count))
                 with panel("report_section"):
                     st.html(fill("section_head.html", title=section.title, tag=tag))
                     st.markdown(section.body)
-            st.caption(DISCLAIMER)
+            st.caption(t("disclaimer"))
             sources_panel(block.sources)
     st.html(script_tag("start_at_top.js"), unsafe_allow_javascript=True)
     return outcome
@@ -425,7 +451,8 @@ def render_snapshot_view(turns: list[Turn], thread_id: str) -> Outcome:
         if rows:
             st.html(fill("snap_table.html", competitor=t("snapshot.col.competitor"),
                          offer=t("snapshot.col.offer"), size=t("snapshot.col.size"), rows=join(
-                fill("snap_row.html", company=row["name"], offer=row["offer"], size=row["size"])
+                fill("snap_row.html", company=row["name"], offer=row["offer"],
+                     size=localize_phrase(row["size"], current_language()))
                 for row in rows)))
         else:
             st.html(fill("snap_empty.html", head=t("snapshot.tab.competitors"),
@@ -435,7 +462,8 @@ def render_snapshot_view(turns: list[Turn], thread_id: str) -> Outcome:
             # What was not found is said, not left out.
             st.html(fill("snap_prices.html", competitor=t("snapshot.col.competitor"),
                          price=t("snapshot.col.price"), rows=join(
-                fill("snap_price_row.html", company=row["name"], price=row["price"])
+                fill("snap_price_row.html", company=row["name"],
+                     price=localize_phrase(row["price"], current_language()))
                 for row in rows)))
         else:
             st.html(fill("snap_empty.html", head=t("snapshot.tab.pricing"),
@@ -490,7 +518,8 @@ def _trend_chart(trend: dict | None) -> None:
         st.html(fill("snap_empty.html", head=t("snapshot.trend"), text=t("snapshot.no_trend")))
         return
     top = max(value for _, value in bars) or 1
-    direction = trend["direction"] or t("snapshot.measured")
+    direction = localize_phrase(trend["direction"], current_language()) \
+        or t("snapshot.measured")
     if not trend["reliable"]:
         direction += t("snapshot.caution")
     st.html(fill(
@@ -527,17 +556,18 @@ def took_and_cost(step_count: int, source_count: int, elapsed: float | None,
     the steps, sources, tokens and time. The steps themselves are listed
     in the chat panel."""
     cost = usage.cost_text(used) if used else ""
-    tokens = usage.tokens_text(used) if used else ""
+    tokens = t("cost.tokens", count=f"{used.total_tokens:,}") if used and used.calls else ""
     with st.container(horizontal=True, vertical_alignment="center"):
         if cost:
             # Pointing at the pill shows the figures behind it.
-            st.html(fill("cost_pill.html", cost=cost, details=usage.details(used)), width="content")
+            st.html(fill("cost_pill.html", label=t("cost.label"), cost=cost,
+                         details=usage.details(used)), width="content")
         if waiting:
-            parts = ["Waiting for you"]
+            parts = [t("cost.waiting")]
         elif step_count:
-            parts = [plural(step_count, "step"), plural(source_count, "source")]
+            parts = [counted("cost.steps", step_count), counted("ask.sources", source_count)]
         else:
-            parts = ["Answered from this conversation, without a new search"]
+            parts = [t("cost.from_conversation")]
         took = format_seconds(elapsed)
         parts += [part for part in (tokens, took) if part]
         st.caption(":material/check_circle: " + " · ".join(parts))
@@ -576,18 +606,18 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
             question_bubble(turn.question)
             # A short line only: the finished view, drawn earlier in this
             # same run, already used the keys of the full answers.
-            st.caption(reply_summary(turn.answer))
+            st.caption(summary_line(turn.answer))
         question_bubble(title)
         steps_slot = st.empty()
         with panel("answer_panel"):
             answer_head()
-            st.markdown(":shimmer[Writing the answer.] It appears here when it is ready.")
+            st.markdown(t("live.writing"))
             st.html(load("skeleton.html"))
         sources_slot = st.empty()
         # Pressing any button makes Streamlit start the page again, which
         # ends this run. The page then tidies the half-finished turn
         # (app.py).
-        st.button("Stop", icon=":material/stop_circle:", key=f"stop_{thread_id}_{turn_index}",
+        st.button(t("live.stop"), icon=":material/stop_circle:", key=f"stop_{thread_id}_{turn_index}",
                   on_click=_mark_stopped, args=(thread_id,))
 
     steps = [step.removeprefix("Workflow: ") for step in (earlier_steps or [])]
@@ -596,7 +626,7 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
 
     def redraw() -> None:
         with steps_slot.container():
-            st.html(fill("thread_working.html",
+            st.html(fill("thread_working.html", word=t("live.researching"),
                          steps=join(fill("thread_step.html", text=step)
                                     for step in steps_while_working(steps)),
                          took=format_seconds(time.monotonic() - started)))
@@ -609,7 +639,7 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
     def stay_with_message() -> None:
         """Keep an error on screen. Any button draws the page again from
         the saved conversation, where the question box works again."""
-        st.button("Back to the conversation", key=f"back_{thread_id}_{turn_index}")
+        st.button(t("live.back"), key=f"back_{thread_id}_{turn_index}")
         st.stop()
 
     redraw()
@@ -630,11 +660,10 @@ def run_live(agent, thread_id: str, context, title: str, turn_index: int,
                 pass                    # the caller shows the form after redrawing
             redraw()
     except GraphRecursionError:
-        st.error("The assistant reached its step limit before finishing. "
-                 "Try a narrower question.")
+        st.error(t("live.step_limit"))
         stay_with_message()
     except Exception as error:          # model or network failure
-        st.error(friendly_error(error), title="The assistant could not answer")
+        st.error(friendly_error(error), title=t("live.failed"))
         stay_with_message()
 
     # Remember how long it took, for the "Done" panel.

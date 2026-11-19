@@ -71,6 +71,8 @@ class UserContext:
     # The most tokens one chat answer may have (agent/answer_length.py).
     # None means no limit.
     max_answer_tokens: int | None = None
+    # The language the models write in (agent/language.py). None is English.
+    language: str | None = None
 
 
 def checkpoint_serializer() -> JsonPlusSerializer:

@@ -14,7 +14,7 @@ from agent.guards import check_question, friendly_error
 from agent.side_assistant import ask
 from agent.usage import Usage
 from ui.assets import AVATAR, fill
-from ui.texts import t
+from ui.texts import current_language, t
 
 TITLE_MAX_CHARS = 34
 
@@ -93,7 +93,8 @@ def render_assistant(thread_id: str, title: str, context: str, get_model) -> Non
         _message(len(chat["messages"]), asked)
         with st.spinner(t("assistant.thinking")):
             try:
-                text, used = ask(get_model(), asked["text"], chat["messages"], context)
+                text, used = ask(get_model(), asked["text"], chat["messages"], context,
+                                  language=current_language())
             except Exception as error:  # noqa: BLE001  (any failure is explained, not raised)
                 text, used = friendly_error(error), Usage()
     chat["messages"] += [asked, {"role": "assistant", "text": text}]

@@ -11,7 +11,7 @@ def test_values_from_the_web_are_escaped_when_put_into_a_template():
 
 
 def test_html_that_is_already_safe_is_not_escaped_twice():
-    badge = fill("source_badge.html")
+    badge = fill("source_badge.html", word="Official")
 
     row = fill("source_row.html", url="https://a.example", title="T", number=1,
                domain="a.example", letter="A", icon=Html(""), badge=badge)

@@ -11,6 +11,7 @@ research did not find is reported as "not found".
 """
 
 from agent.currency import converted_note
+from agent.report.render import FIGURE_LINES, MISSING
 
 FIGURES_SHOWN = 4
 OPPORTUNITIES_SHOWN = 4
@@ -40,7 +41,11 @@ def _figures(final: dict) -> list[dict]:
 
 def _size(figures_text: str) -> str:
     """A company's figures on one line, shortened."""
-    line = "; ".join(part.strip() for part in figures_text.splitlines() if part.strip())
+    # Only the figures themselves: the lines that say where they came from
+    # and which company was looked up are left out, and so is a figure
+    # that was not found.
+    line = "; ".join(part.strip() for part in figures_text.splitlines()
+                     if part.strip().startswith(FIGURE_LINES) and not part.strip().endswith(MISSING))
     if not line:
         return NOT_FOUND
     return line if len(line) <= SIZE_MAX_CHARS else line[:SIZE_MAX_CHARS].rstrip() + "…"

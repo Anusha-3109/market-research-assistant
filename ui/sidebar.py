@@ -56,6 +56,7 @@ def current_settings() -> dict:
         "temperature": chosen["temperature"],
         "review_competitors": chosen["review"],
         "answer_style": chosen["style"],
+        "language": chosen["language"],
         # The slider shows a word; the agent is given the number behind it.
         "max_answer_tokens": LENGTH_CHOICES.get(chosen["length"]),
     }

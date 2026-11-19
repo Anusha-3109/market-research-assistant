@@ -4,10 +4,14 @@ The full report is the text the workflow wrote. The layouts here are put
 together by code from the figures kept with the report (its snapshot, see
 snapshot.py). No model is asked, so a layout costs nothing and holds
 nothing the report did not find; what was not found is said, not left out.
+
+A layout can be made in English or in German. Only its own wording changes:
+what the research found stays as it was kept.
 """
 
 from dataclasses import dataclass, field
 
+from agent.report.localize import localize_phrase
 from agent.report.snapshot import trend_bars
 
 FULL = "Full market report"
@@ -17,22 +21,67 @@ SLIDES = "Pitch deck slides"
 # A line longer than this is cut, so that a slide stays readable.
 SLIDE_LINE_MAX_CHARS = 180
 
+# The layouts' own wording. (one, many) pairs name a number of things.
+WORDS = {
+    "en": {
+        "one_pager": "Investor one-pager", "deck": "Market research",
+        "source": ("source", "sources"), "candidate": ("candidate", "candidates"),
+        "confirmed": "Competitors confirmed", "of": "of",
+        "figures": "Key figures", "competitors": "Competitors", "demand": "Demand",
+        "opportunities": "Opportunities", "risks": "Risks", "sources": "Sources",
+        "size": "Size", "price": "Price",
+        "interest": 'Search interest for "{term}"', "measured": "measured",
+        "caution": " (few searches, so treat this with caution)",
+        "market": "The market", "prices": "Prices", "outlook": "Opportunities and risks",
+        "opportunity": "Opportunity", "risk": "Risk",
+    },
+    "de": {
+        "one_pager": "Investoren-Einseiter", "deck": "Marktforschung",
+        "source": ("Quelle", "Quellen"), "candidate": ("Kandidat", "Kandidaten"),
+        "confirmed": "Bestätigte Wettbewerber", "of": "von",
+        "figures": "Kennzahlen", "competitors": "Wettbewerber", "demand": "Nachfrage",
+        "opportunities": "Chancen", "risks": "Risiken", "sources": "Quellen",
+        "size": "Größe", "price": "Preis",
+        "interest": 'Suchinteresse für "{term}"', "measured": "gemessen",
+        "caution": " (wenige Suchanfragen, daher mit Vorsicht zu lesen)",
+        "market": "Der Markt", "prices": "Preise", "outlook": "Chancen und Risiken",
+        "opportunity": "Chance", "risk": "Risiko",
+    },
+}
+
+
+def _words(language: str) -> dict:
+    return WORDS.get(language, WORDS["en"])
+
+
+def _count(words: dict, name: str, count: int) -> str:
+    one, many = words[name]
+    return f"{count} {one if count == 1 else many}"
+
 
 def _section(heading: str, lines: list[str]) -> list[str]:
     """A heading with its lines, or nothing if there are no lines."""
     return [f"## {heading}", "", *lines, ""] if lines else []
 
 
-def one_pager(title: str, snapshot: dict, sources: list) -> str:
+def _demand(trend: dict, words: dict, language: str) -> str:
+    """One line about the search trend."""
+    direction = localize_phrase(trend["direction"], language) if trend["direction"] \
+        else words["measured"]
+    caution = "" if trend["reliable"] else words["caution"]
+    return f"{words['interest'].format(term=trend['term'])}: {direction}{caution}"
+
+
+def one_pager(title: str, snapshot: dict, sources: list, language: str = "en") -> str:
     """The report on one page, as markdown: its key figures, the
     competitors, the demand trend, opportunities and risks, and the sources.
 
     title:   the report's title, such as "Oat milk in Germany".
     sources: the numbered pages the report cites (agent.citations.Source).
     """
-    count = len(sources)
+    words = _words(language)
     lines = [f"# {title}", "",
-             f"Investor one-pager · {count} source" + ("" if count == 1 else "s"), ""]
+             f"{words['one_pager']} · {_count(words, 'source', len(sources))}", ""]
 
     figures = []
     for figure in snapshot["figures"]:
@@ -42,27 +91,28 @@ def one_pager(title: str, snapshot: dict, sources: list) -> str:
         if figure.get("converted"):
             line += f"; {figure['converted']}"
         figures.append(line)
-    candidates = snapshot["candidates"]
-    figures.append(f"- Competitors confirmed: **{snapshot['confirmed']}** of {candidates} "
-                   + ("candidate" if candidates == 1 else "candidates"))
-    lines += _section("Key figures", figures)
+    figures.append(f"- {words['confirmed']}: **{snapshot['confirmed']}** {words['of']} "
+                   f"{_count(words, 'candidate', snapshot['candidates'])}")
+    lines += _section(words["figures"], figures)
 
-    lines += _section("Competitors", [
-        f"- **{row['name']}**: {row['offer'].rstrip('.')}. Size: {row['size'].rstrip('.')}. "
-        f"Price: {row['price'].rstrip('.')}."
+    def value(text: str) -> str:
+        return localize_phrase(text, language).rstrip(".")
+
+    lines += _section(words["competitors"], [
+        f"- **{row['name']}**: {row['offer'].rstrip('.')}. {words['size']}: {value(row['size'])}. "
+        f"{words['price']}: {value(row['price'])}."
         for row in snapshot["competitors"]])
 
     trend = snapshot.get("trend")
     if trend:
-        caution = "" if trend["reliable"] else " (few searches, so treat this with caution)"
-        lines += _section("Demand", [
-            f'- Search interest for "{trend["term"]}": {trend["direction"] or "measured"}{caution}'])
+        lines += _section(words["demand"], [f"- {_demand(trend, words, language)}"])
 
-    lines += _section("Opportunities", [f"- {text}" for text in snapshot["opportunities"]])
+    lines += _section(words["opportunities"], [f"- {text}" for text in snapshot["opportunities"]])
     # A snapshot saved before risks were kept has no "threats".
-    lines += _section("Risks", [f"- {text}" for text in snapshot.get("threats", [])])
-    lines += _section("Sources", [f"{source.number}. [{source.title}]({source.url}) ({source.domain})"
-                                  for source in sources])
+    lines += _section(words["risks"], [f"- {text}" for text in snapshot.get("threats", [])])
+    lines += _section(words["sources"],
+                      [f"{source.number}. [{source.title}]({source.url}) ({source.domain})"
+                       for source in sources])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -86,12 +136,12 @@ def _fit(line: str) -> str:
     return line[:SLIDE_LINE_MAX_CHARS].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
 
 
-def slides(title: str, snapshot: dict, sources: list) -> list[Slide]:
+def slides(title: str, snapshot: dict, sources: list, language: str = "en") -> list[Slide]:
     """The report as a handful of slides: the title, the market, the
     competitors, their prices, the demand, opportunities and risks, and the
     sources. A slide that would be empty is left out."""
-    count = len(sources)
-    deck = [Slide(title, [f"Market research · {count} source" + ("" if count == 1 else "s")])]
+    words = _words(language)
+    deck = [Slide(title, [f"{words['deck']} · {_count(words, 'source', len(sources))}"])]
 
     market = []
     for figure in snapshot["figures"]:
@@ -101,33 +151,32 @@ def slides(title: str, snapshot: dict, sources: list) -> list[Slide]:
         if figure.get("converted"):
             line += f"; {figure['converted']}"
         market.append(line)
-    candidates = snapshot["candidates"]
-    market.append(f"Competitors confirmed: {snapshot['confirmed']} of {candidates} "
-                  + ("candidate" if candidates == 1 else "candidates"))
-    deck.append(Slide("The market", market))
+    market.append(f"{words['confirmed']}: {snapshot['confirmed']} {words['of']} "
+                  f"{_count(words, 'candidate', snapshot['candidates'])}")
+    deck.append(Slide(words["market"], market))
 
     competitors = snapshot["competitors"]
     if competitors:
-        deck.append(Slide("Competitors", [f"{row['name']}: {row['offer']}" for row in competitors]))
+        deck.append(Slide(words["competitors"],
+                          [f"{row['name']}: {row['offer']}" for row in competitors]))
         # What was not found is said, not left out.
-        deck.append(Slide("Prices", [f"{row['name']}: {row['price']}" for row in competitors]))
+        deck.append(Slide(words["prices"],
+                          [f"{row['name']}: {localize_phrase(row['price'], language)}"
+                           for row in competitors]))
 
     trend = snapshot.get("trend")
     if trend:
-        caution = "" if trend["reliable"] else " (few searches, so treat this with caution)"
-        deck.append(Slide(
-            "Demand",
-            [f'Search interest for "{trend["term"]}": {trend["direction"] or "measured"}{caution}'],
-            bars=trend_bars(trend["points"])))
+        deck.append(Slide(words["demand"], [_demand(trend, words, language)],
+                          bars=trend_bars(trend["points"])))
 
-    outlook = ([f"Opportunity: {text}" for text in snapshot["opportunities"]]
-               + [f"Risk: {text}" for text in snapshot.get("threats", [])])
+    outlook = ([f"{words['opportunity']}: {text}" for text in snapshot["opportunities"]]
+               + [f"{words['risk']}: {text}" for text in snapshot.get("threats", [])])
     if outlook:
-        deck.append(Slide("Opportunities and risks", outlook))
+        deck.append(Slide(words["outlook"], outlook))
 
     if sources:
-        deck.append(Slide("Sources", [f"{source.number}. {source.title} ({source.domain})"
-                                      for source in sources], numbered=True))
+        deck.append(Slide(words["sources"], [f"{source.number}. {source.title} ({source.domain})"
+                                             for source in sources], numbered=True))
     for slide in deck:
         slide.bullets = [_fit(bullet) for bullet in slide.bullets]
     return deck

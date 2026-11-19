@@ -13,7 +13,8 @@ from agent.citations import domain_of
 from agent.config import MODEL_NAME, REVIEW_COMPETITORS, TEMPERATURE
 from agent.countries import find_country
 from agent.memory import UserContext
-from agent.report.deps import default_deps
+from agent.language import known_language
+from agent.report.deps import default_deps, in_language
 from agent import usage
 from agent.report.snapshot import build_snapshot
 from agent.report.graph import build_report_graph
@@ -25,11 +26,12 @@ CANCELLED_MESSAGE = ("The report was cancelled at the competitor review. No "
 
 
 @lru_cache(maxsize=8)
-def report_graph(review: bool = False, model_name: str = MODEL_NAME,
+def report_graph(review: bool = False, model_name: str = MODEL_NAME, language: str = "en",
                  temperature: float = TEMPERATURE):
     """Build each version of the workflow once and reuse it. There is one
     version per combination of settings."""
-    return build_report_graph(default_deps(model_name, temperature), review=review)
+    return build_report_graph(in_language(default_deps(model_name, temperature), language),
+                              review=review)
 
 
 def own_sites(final: dict) -> list[str]:
@@ -49,7 +51,7 @@ def run_report(product: str, country: str, idea: str, graph=None,
                review: bool = False, on_progress=None,
                model_name: str = MODEL_NAME,
                temperature: float = TEMPERATURE,
-               style: str | None = None) -> tuple[str, dict]:
+               style: str | None = None, language: str | None = None) -> tuple[str, dict]:
     """Run the workflow and return (text for the user, details).
 
     The details hold the report check result and the progress log, for the
@@ -73,7 +75,8 @@ def run_report(product: str, country: str, idea: str, graph=None,
         # Two views of the same run: "updates" gives each step's result as it
         # finishes (for progress), "values" gives the whole state after each
         # step (the last one is the final result).
-        workflow = graph or report_graph(review, model_name, temperature)
+        workflow = graph or report_graph(review, model_name, known_language(language),
+                                         temperature=temperature)
         for mode, chunk in workflow.stream(
                 request, stream_mode=["updates", "values"]):
             if mode == "values":
@@ -150,4 +153,5 @@ def create_market_report(product: str, country: str, idea: str = "",
         model_name=getattr(context, "model_name", None) or MODEL_NAME,
         temperature=TEMPERATURE if getattr(context, "temperature", None) is None
         else context.temperature,
-        style=getattr(context, "answer_style", None))
+        style=getattr(context, "answer_style", None),
+        language=getattr(context, "language", None))

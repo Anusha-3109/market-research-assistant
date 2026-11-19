@@ -6,13 +6,14 @@ default_deps(); the tests pass in fakes, so the whole workflow can be tested
 without the internet and without cost.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
 from langchain_core.exceptions import OutputParserException
 from pydantic import ValidationError
 
 from agent import usage
+from agent.language import report_instruction
 from agent.config import MODEL_NAME, TEMPERATURE
 from agent.fallback import try_sources
 from agent.models import make_model
@@ -62,6 +63,19 @@ def ask_with_retry(structured, instructions: str, material: str):
                 "content": f"Your last answer was rejected: {str(error)[:300]} "
                            f"Answer again and fill in every required field.",
             }]
+
+
+def in_language(deps: Deps, language: str | None) -> Deps:
+    """The same deps, with every request to the model asking for the
+    language chosen in the app. English changes nothing."""
+    note = report_instruction(language)
+    if not note:
+        return deps
+
+    def ask(schema, instructions: str, material: str):
+        return deps.ask(schema, instructions + note, material)
+
+    return replace(deps, ask=ask)
 
 
 def default_deps(model_name: str = MODEL_NAME,

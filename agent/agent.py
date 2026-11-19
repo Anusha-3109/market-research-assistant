@@ -48,6 +48,7 @@ from agent.models import make_model
 from agent.prompts import build_system_prompt
 from agent.report.tool import create_market_report
 from agent.source_check import check_answer
+from agent.language import answer_instruction
 from agent.styles import style_for_prompt
 from agent.tools import TOOLS
 
@@ -67,6 +68,8 @@ def prompt_with_profile(request: ModelRequest) -> str:
     # The answer style comes last, so the model reads it after the saved
     # profile and knows it overrides a remembered style.
     how_to_write = style_for_prompt(getattr(request.runtime.context, "answer_style", None))
+    # The language comes after everything else: it applies to the whole answer.
+    how_to_write += answer_instruction(getattr(request.runtime.context, "language", None))
     store = request.runtime.store
     if store is None:
         return prompt + how_to_write

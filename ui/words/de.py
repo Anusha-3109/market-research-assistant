@@ -62,7 +62,7 @@ TEXTS = {
 
     # The help panel.
     "help.title": "Hilfe",
-    "help.body": "**Fordern Sie einen Bericht an**, indem Sie ein Produkt und ein Land nennen, zum Beispiel *gesunde Essenslieferung in Deutschland*.\n\n**Stellen Sie eine einzelne Frage** zu Preisen, Wettbewerbern, Nachrichten, Nachfrage oder einem Unternehmen.\n\n**Die App gibt keine** Anlageberatung und erfindet keine Zahlen. Was sie nicht findet, wird als \"not found\" gemeldet.\n\n**Berichte** können heruntergeladen oder nach Ihrer Bestätigung im Berichtsordner gespeichert werden.",
+    "help.body": "**Fordern Sie einen Bericht an**, indem Sie ein Produkt und ein Land nennen, zum Beispiel *gesunde Essenslieferung in Deutschland*.\n\n**Stellen Sie eine einzelne Frage** zu Preisen, Wettbewerbern, Nachrichten, Nachfrage oder einem Unternehmen.\n\n**Die App gibt keine** Anlageberatung und erfindet keine Zahlen. Was sie nicht findet, wird als \"nicht gefunden\" gemeldet.\n\n**Berichte** können heruntergeladen oder nach Ihrer Bestätigung im Berichtsordner gespeichert werden.",
     "help.how": "So funktioniert es",
 
     # --- the Snapshot view ---------------------------------------------------
@@ -112,4 +112,58 @@ TEXTS = {
     "assistant.cost": "Dieser Chat: {cost}",
     "assistant.not_added": "Wird nicht zur Unterhaltung hinzugefügt",
     "assistant.thinking": "Denkt nach…",
+    # --- the Ask view ---------------------------------------------------------
+    "ask.questions_one": "{count} Frage",
+    "ask.questions_many": "{count} Fragen",
+    "ask.new": "Neu",
+    "ask.new_help": "Eine neue Unterhaltung beginnen. Diese bleibt erhalten.",
+    "ask.close_help": "Diese Unterhaltung schließen. Sie bleibt in der Liste.",
+    "ask.no_answer": "Für diese Frage wurde keine Antwort geschrieben.",
+    "ask.open_report": "Bericht öffnen",
+    "ask.ready": "Der Bericht ist fertig: {sources}.",
+    "ask.ready_passed": "Der Bericht ist fertig: {sources}, Berichtsprüfung bestanden.",
+    "ask.ready_points": "Der Bericht ist fertig: {sources}, die Berichtsprüfung fand {points} Punkt(e).",
+    "ask.sources_one": "{count} Quelle",
+    "ask.sources_many": "{count} Quellen",
+    "ask.suggest.0": "Wer sind die wichtigsten Wettbewerber?",
+    "ask.suggest.1": "Was verlangen sie?",
+    "ask.suggest.2": "Steigt die Nachfrage?",
+    "ask.box_working": "In Arbeit. Sie können eine Anschlussfrage stellen, sobald es fertig ist.",
+    "ask.box_waiting": "Beantworten Sie die Frage oben, um fortzufahren",
+    "ask.box_follow_up": "Stellen Sie eine Anschlussfrage",
+    "ask.box_first": "Fragen Sie nach einem Markt",
+    "disclaimer": "Recherche-Zusammenfassung aus öffentlichen Quellen, keine Anlageberatung.",
+
+    # The row under an answer: cost, steps, sources, tokens, time.
+    "cost.label": "LLM-Kosten",
+    "cost.waiting": "Wartet auf Sie",
+    "cost.steps_one": "{count} Schritt",
+    "cost.steps_many": "{count} Schritte",
+    "cost.from_conversation": "Aus dieser Unterhaltung beantwortet, ohne neue Suche",
+    "cost.tokens": "{count} Tokens",
+
+    # The list of sources.
+    "sources.title": "Quellen",
+    "sources.none": "Es wurden keine Seiten zitiert.",
+    "sources.official": "Offiziell",
+
+    # While the agent is working.
+    "live.writing": ":shimmer[Die Antwort wird geschrieben.] Sie erscheint hier, sobald sie fertig ist.",
+    "live.researching": "Recherche läuft",
+    "live.stop": "Stopp",
+    "live.back": "Zurück zur Unterhaltung",
+    "live.step_limit": "Der Assistent hat seine Schrittgrenze erreicht, bevor er fertig war. Versuchen Sie eine engere Frage.",
+    "live.failed": "Der Assistent konnte nicht antworten",
+
+    # --- the Report view -------------------------------------------------------
+    "report.format": "Format",
+    "report.format_help": "Wie dieselben Ergebnisse dargestellt werden. Eine Änderung startet keine neue Recherche.",
+    "format.Full market report": "Vollständiger Marktbericht",
+    "format.Investor one-pager": "Investoren-Einseiter",
+    "format.Pitch deck slides": "Pitch-Deck-Folien",
+    "report.contents": "Inhalt",
+    "report.save": "Im Berichtsordner speichern",
+    "report.check": "Berichtsprüfung",
+    "report.check_passed": "Berichtsprüfung bestanden",
+    "report.not_found": "{count} nicht gefunden",
 }
