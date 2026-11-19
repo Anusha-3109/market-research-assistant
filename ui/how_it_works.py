@@ -38,18 +38,27 @@ DATA = ["competitors", "prices", "figures", "demand", "news", "company", "rates"
 def _chart_html() -> str:
     words = {part: t(f"how.chart.{part}").replace('"', "'") for part in CHART_PARTS}
     source = CHART.format(**words)
-    # The library is loaded first and the chart drawn when it is ready; a
-    # script tag with a src would run the drawing code before it arrived.
+    # The library is loaded first. A chart is drawn only once it can be seen:
+    # in a tab that is not open, Mermaid would draw it at zero size and leave
+    # a blank box. So the script looks every half second for a chart that is
+    # on screen and not drawn yet, for example when the Documentation tab of
+    # the Admin page is opened.
     script = ("(function () {"
-              " function draw() {"
+              " function ready() {"
               "  mermaid.initialize({startOnLoad: false, theme: 'base', themeVariables: {"
               "   primaryColor: '#fff8f4', primaryBorderColor: '#ec8f6a', primaryTextColor: '#1f2a2e',"
               "   lineColor: '#8a979b', fontSize: '15px'}, flowchart: {curve: 'basis'}});"
-              "  mermaid.run({nodes: document.querySelectorAll('.gw-flow:not([data-processed])')});"
+              "  if (window.gwFlowTimer) { return; }"
+              "  window.gwFlowTimer = setInterval(function () {"
+              "   var shown = Array.prototype.filter.call("
+              "    document.querySelectorAll('.gw-flow:not([data-processed])'),"
+              "    function (chart) { return chart.offsetParent !== null; });"
+              "   if (shown.length) { mermaid.run({nodes: shown}); }"
+              "  }, 500);"
               " }"
-              " if (window.mermaid) { draw(); return; }"
+              " if (window.mermaid) { ready(); return; }"
               " var tag = document.createElement('script');"
-              f" tag.src = '{MERMAID}'; tag.onload = draw; document.head.appendChild(tag);"
+              f" tag.src = '{MERMAID}'; tag.onload = ready; document.head.appendChild(tag);"
               "})();")
     return f'<pre class="mermaid gw-flow">{source}</pre><script>{script}</script>'
 
