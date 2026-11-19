@@ -312,228 +312,35 @@ Every file, with what it is for, is in
 
 ## Known limitations
 
-**Token usage and cost**
-
-- Only model calls are counted. Web searches and page reading are billed by
-  Tavily in its own credits; a report uses about 20 searches.
-- A report written before this feature shows the chat part only, and says
-  so. The workflow's calls were not recorded then.
-- A run that was stopped shows what had been saved up to the stop. A model
-  call that was in progress at that moment may be missing.
-
-**Feedback loop**
-
-- Learning is a fixed rule, not training: five set tips, switched on by
-  repeated reasons. The model itself does not change, and nothing new is
-  learned from a typed comment.
-- The tips reach chat answers only. The report workflow sets its own length
-  and sources and is not changed by them.
-- Whether the tips make answers better is not measured. That needs an
-  evaluation set (see "What I would improve").
-- The settings kept with a rating are the ones in use when it was given,
-  which is nearly always what the answer was written with.
-- Questions and comments are kept with the ratings, and with tracing on
-  they are also sent to LangSmith. Personal data typed into a comment is
-  stored there too.
-- A rating that fails to reach LangSmith is not sent again; it is still
-  saved in the app.
-- Each account can rate as often as it likes, so one active account can
-  tip the figures on the Admin page.
-
-**Maximum answer length**
-
-- The limit counts tokens, so the word counts next to each position are
-  approximate and differ between languages and models.
-- An answer that reaches the limit stops in the middle of a sentence. It is
-  marked as cut off, not completed.
-- The limit was tried with the default model. The two other models in the
-  settings are reached through the same service and should behave the same,
-  but that was not checked.
-
-**Answer styles**
-
-- A style's wording is followed by the model, not enforced by code. Only
-  one part is enforced: a missing source link is put back by the source
-  check.
-- The source check adds the pages the tools reported, not the exact page
-  behind each sentence. After a search that is up to five pages, and the
-  answer may rest on only one of them.
-- It checks whether an answer has any link at all. An answer with one link
-  and one unsourced figure passes.
-- Whether an answer "sounds formal" is not tested automatically; it was
-  judged by reading real answers.
-- The styles were tried with the default model. The other two models in the
-  settings may follow them more or less closely.
-
-**The deployed copy**
-
-- Signing in lasts for one browser session. A refresh of the page signs
-  you out.
-- An account cannot be deleted from the app.
-- An email address is not verified. A mistyped one means the link for a
-  forgotten password never arrives; it can be corrected on the sign-in
-  page by someone who still knows the password.
-- An account made before email was added has no address until its owner
-  adds one, and cannot reset a forgotten password until then.
-- Changing a password does not sign out other browsers where the account
-  is open; they stay in until closed or refreshed.
-- Email sent from a personal mail account can land in the spam folder.
-- Email addresses are personal data. They are stored with the accounts in
-  the bucket, readable by the author of the app.
-- Everyone who has the invite code can create any number of accounts, and
-  all accounts spend the same API credit. There is no limit per account.
-- The author of the app, who can read the bucket, can read every
-  account's conversations. They are separated from each other, not
-  encrypted.
-- Wrong tries are counted per username, so someone who knows a username
-  can make its owner wait a minute by guessing five times.
-- The first visit after a quiet period takes several seconds, while the
-  service starts.
-- A deploy, or the service shutting down while idle, signs everyone out.
-- If the service stops in the middle of an answer, that answer is lost.
-
-**The three views and the converted figures**
-
-- A report written before the Snapshot view existed has no saved figures,
-  so it has no Snapshot. The figures cannot be rebuilt afterwards.
-- A Snapshot saved before all four parts of the SWOT were kept shows only
-  the parts it has, usually the opportunities alone.
-- There is no tab about customers: the report does no customer research.
-- The Snapshot shows what the research found, without correcting it. A
-  competitor matched to the wrong company, or a price for the wrong
-  product, stands out more there than in the report text.
-- Figure labels are the source's own wording and can be long sentences.
-  Values are copied as written, also in another language.
-- The status on a report card is a count of words and source numbers in
-  the section. It says nothing about whether the section is right.
-- A converted amount is a number no source published. It uses the latest
-  exchange rate, also for a figure about another year, so it is a rough
-  guide. Ranges and texts with several numbers are not converted. About
-  thirty countries have a currency in the table.
-- The converted amount is on the Snapshot, the one-pager and the slides.
-  The full report text and its downloads keep the original figures alone.
-- The one-pager and the slides repeat what the research found, mistakes
-  included, and are not rewritten for an investor: the wording is the
-  report's own. A slide line longer than 180 characters is cut.
-- The slides have a fixed layout and order. Very long reports can still
-  make a crowded slide; the PowerPoint file can be edited afterwards.
-- The three suggestions under the chat are the same for every
-  conversation.
-- The heading font is fetched from Google Fonts by the visitor's browser.
-
-**The language switch**
-
-- With German chosen, every screen is German, apart from the step lines
-  above an answer and the password-reset email.
-- The chat agent, the assistant and the report workflow are told to write
-  in German. That is an instruction to the model, not a check in code.
-- A saved report is never changed. Its fixed wording (headings, table
-  heads, "not found", standard sentences) is replaced when it is shown or
-  downloaded (`agent/report/localize.py`). What the research found is not
-  translated, so a report written while English was chosen keeps its
-  English statements under German headings.
-- In a German report the title keeps the product and country as they were
-  asked for, and numbers keep their source's style.
-- A language picked on the sign-in screen is replaced by the account's
-  saved language after signing in.
-
-**The pages**
-
-- The Dashboard and the Admin cards read a usage log that started when the
-  pages were added. Conversations from before then are not in the figures.
-- Dark mode turns the page's colours around with a style rule, because
-  Streamlit cannot change its theme while it runs. Some colours look
-  slightly different from a theme made for dark.
-- How it works is in the Admin page's Documentation tab, so only admins see
-  it. Its Mermaid chart is drawn by a library loaded from a CDN.
-  Without internet access the chart stays empty; the steps under it still
-  explain the flow.
-- The settings on the Admin page apply to everyone at once. The lock that
-  kept them unchanged while an approval form was waiting is gone.
-
-**The assistant**
-
-- Its chat is kept in the browser session only. It is gone after a
-  refresh, after signing out, or when the tab is closed.
-- It has no web search, so it cannot check or add to a report, and it
-  repeats a mistake that is in the report.
-- A report longer than 24,000 characters is cut before it is sent, and
-  only the last ten messages of a chat are sent with a question.
-- It is told not to state figures from memory. That is an instruction to
-  the model, not a check in code.
-
-**The web app**
-
-- A report takes 30 to 60 seconds after the competitor review, and the
-  page cannot be used for another question meanwhile.
-- The floating cards need a main area at least about 700 pixels wide and a
-  window at least about 620 pixels tall. Below that they sit in rows.
-- The look depends on Streamlit's internal page structure in a few places
-  (the page background, the bottom bar, leftovers hidden during a live run), so a Streamlit
-  upgrade may need small styling fixes.
-- The time a run took is shown only in the browser session that ran it.
-- The PDF uses built-in fonts that cover Western European text. Other
-  scripts are replaced with "?".
-- Styling and other changes to files in `ui/` and `ui/static/` only take effect after the
-  app is restarted.
-- At the competitor review, some companies show "no website found yet".
-  Their sites are usually found later, during the price research.
-
-**Report quality**
-
-- Reports are accurate but sometimes sparse. A price that cannot be read
-  from the company's own site is reported as "not found", with the reason;
-  an older third-party figure is not substituted. HelloFresh's prices, for
-  example, load with JavaScript and cannot be read.
-- Brands sold in supermarkets (plant-based meat, drinks, snacks) almost
-  never show prices on their own site, so their prices are usually "not
-  found". Their prices are on the shops' pages, but those were tried and
-  could not be read: Auchan loads its prices with JavaScript, and
-  Carrefour and Monoprix block automated reading.
-- Small private companies have no public figures.
-- A demand trend is found in some runs and not others, because the search
-  words the model proposes vary.
-- A price can be real and correctly sourced, yet for a different product
-  than the one asked about.
-- A product name can occasionally be mistaken for a company. The competitor
-  review exists partly to catch this.
-- Reports differ between runs: the competitors chosen and the wording vary.
-- The research searches in English, so some local-language sources are
-  missed.
-- Market-size figures come from public summaries of paid reports. They are
-  estimates published by others, not verified statistics.
-
-**The chat outside a report**
-
-- A direct question answered without the workflow does not get the
-  workflow's verification. In testing, such an answer once named a US
-  company as a competitor in Germany.
-
-**Technical**
-
-- All models are reached through OpenRouter, which is a single point of
-  failure: if it is down, or the credit runs out, no model answers.
-- Backup sources give thinner results than the main ones.
-- Without an invite code set there is one user: everything is stored
-  under one profile, and anyone who opens the app sees the same
-  conversations.
-- Conversations are never shortened, so a very long one costs more per
-  turn.
-- The address check for the page reader does not defend against a domain
-  whose address changes between the check and the download.
-- The prompt rule against injected instructions reduces that risk; it does
-  not remove it.
+1. **Prices come only from a company's own website.** A price is never
+   taken from an article or a comparison site. Brands sold in supermarkets
+   rarely show prices on their own site, and some sites load prices with
+   JavaScript, so those prices show as "not found", with the reason.
+2. **Reports differ between runs.** The competitors chosen and the wording
+   vary, market sizes come from public summaries of paid reports, and small
+   private companies publish no figures.
+3. **Single questions are not checked like reports.** An answer outside the
+   report workflow does not get its competitor verification; in testing,
+   one named a US company as a competitor in Germany.
+4. **Some rules are instructions to the model, not checks in code:** the
+   answer style, writing in German, the tips learned from ratings, and not
+   quoting figures from memory. Whether they make answers better is not
+   measured yet.
+5. **It depends on outside services.** All models are reached through
+   OpenRouter, and searches use Tavily, which runs on credits. When either
+   is unavailable, free backups take over with thinner results.
 
 ## What I would improve
 
-1. Let a person delete their account, and verify email addresses.
-2. Measure report quality with an evaluation set, so changes can be judged
-   by numbers and not by reading reports.
-3. Read prices from pages that need JavaScript, with a headless browser,
+1. Measure report quality with an evaluation set (Ragas or DeepEval), so
+   changes, and the effect of the ratings, are judged by numbers.
+2. Read prices from pages that need JavaScript with a headless browser,
    including supermarket pages for brands that do not sell on their own
    site.
-4. Add a second model provider key to remove the OpenRouter dependency.
-5. Give the single-question path the same competitor verification as the
+3. Give single questions the same competitor verification as the report
    workflow.
-6. Keep a person signed in across a refresh, with a signed cookie.
-7. Summarise long conversations to control cost.
+4. Add a second model provider, so the app does not depend on OpenRouter
+   alone.
+5. Keep people signed in across a refresh, let them delete their account,
+   verify email addresses, and set a usage limit per account.
+6. Summarise long conversations, so a long one does not cost more per turn.
