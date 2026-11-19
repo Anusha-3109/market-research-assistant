@@ -86,8 +86,9 @@ agent with tools can decide what to look up next.
 | Accounts | On a deployed copy each person signs in to their own account, with their own conversations, remembered profile, settings and saved reports |
 | Cost shown | Every answer and report shows what its model calls cost, as reported by the model service |
 | Tracing | With a LangSmith key, every run is recorded step by step for debugging |
-| Pages | Links at the top of the sidebar to Research, a **Dashboard** (requests, wait, tokens, cost and tool calls per day) and **Admin** |
-| Admin page | Developer settings for the whole app: model, temperature, answer length and style, competitor review, the system prompt, and a switch for each tool. Its Documentation tab explains how it works (the flow as a Mermaid chart, the tools and data sources). Only admins see it |
+| Feedback loop | 👍 / 👎 under every answer; a 👎 asks what could be better (six reasons and a comment). A reason an account gives again and again becomes a tip in that account's system prompt, and every rating is added to the answer's LangSmith trace |
+| Pages | Links at the top of the sidebar to Research, a **Dashboard** (requests, wait, tokens, cost, tool calls and the share rated helpful) and **Admin** |
+| Admin page | Developer settings for the whole app: model, temperature, answer length and style, competitor review, the system prompt, and a switch for each tool. A Feedback tab shows how answers were rated and why, which settings did best, and the latest 👎, with a switch for learning from feedback. Its Documentation tab explains how it works (the flow as a Mermaid chart, the tools and data sources). Only admins see it |
 | Light and dark | A Light / Dark choice on the Admin page, for the whole app |
 | Deployed | Runs on Google Cloud Run behind a sign-in screen, and redeploys itself after the tests pass |
 
@@ -175,8 +176,14 @@ points where a person approves: the competitor list and saving a file.
 Conversations, the remembered profile and accounts are kept in a memory
 file, and every source has a fallback.
 
-The parts in detail, with the data sources, middleware and approval steps,
-are in [`docs/how-it-works.md`](docs/how-it-works.md).
+Answers improve from people's ratings. A 👎 asks what could be better; a
+reason that comes up in two or more of an account's last ten ratings adds a
+fixed tip to that account's system prompt, such as "Keep answers short".
+Only these fixed sentences reach the prompt, never a typed comment. The
+Admin page shows what was rated down, to guide changes for everyone.
+
+The parts in detail, with the data sources, middleware, approval steps and
+the feedback loop, are in [`docs/how-it-works.md`](docs/how-it-works.md).
 
 ## Technical decisions
 
@@ -206,6 +213,7 @@ trace answers "why did the agent do that?" after the fact.
 | Projects | A copy on your own computer traces to `markavi-local`, the deployed copy to `markavi-live`, so experiments and visitors' runs are not mixed. `LANGSMITH_PROJECT` names another |
 | Names | A chat turn is the run "Markavi chat"; a report's steps appear inside the turn that asked for it. The assistant's calls are "Markavi assistant" |
 | Labels | The conversation id (LangSmith groups a conversation by it), the account's internal id, the model and the language |
+| Ratings | A 👍 or 👎 is added to the answer's trace as feedback `user_rating` (1 or 0), with the reasons and the comment, so traces can be filtered by it. Rating again replaces it |
 | In the app | The Help panel says whether runs are traced |
 | Tests | Never trace: `tests/conftest.py` switches tracing off before anything is loaded |
 
@@ -236,7 +244,7 @@ The full list is in
 pytest
 ```
 
-995 tests, none of which use the internet or cost anything: the
+1040 tests, none of which use the internet or cost anything: the
 model and the outside services are replaced with fakes. They run on every
 push, and the app is deployed only when they pass.
 
@@ -268,6 +276,7 @@ MARKET-RESEARCH-ASSISTANT
 │   ├── report/          the report workflow (LangGraph)
 │   ├── sources/         one file per outside service, with fallbacks
 │   ├── memory           conversations, profile, accounts
+│   ├── feedback         ratings, tips from ratings, ratings to LangSmith
 │   └── outputs          citations, PDF, PowerPoint, report check
 │
 ├── STREAMLIT            app.py, .streamlit/
@@ -291,8 +300,11 @@ flowchart TD
     report --> sources
     report --> layouts["snapshot, one-pager, slides"]
     chat --> memory[("agent/memory.py<br/>conversations, profile, accounts")]
+    ui --> feedback["agent/feedback.py<br/>👍 👎 ratings"]
+    feedback -- "tips in the prompt" --> chat
     chat -.-> tracing["agent/tracing.py<br/>LangSmith"]
     helper -.-> tracing
+    feedback -.-> tracing
 ```
 
 Every file, with what it is for, is in
@@ -312,6 +324,23 @@ Every file, with what it is for, is in
 - A run that was stopped shows what had been saved up to the stop. A model
   call that was in progress at that moment may be missing.
 - The elapsed time of an answer is not saved, but its cost is.
+
+**Feedback loop**
+
+- Learning is a fixed rule, not training: five set tips, switched on by
+  repeated reasons. The model itself does not change, and nothing new is
+  learned from a typed comment.
+- The tips reach chat answers only. The report workflow sets its own length
+  and sources and is not changed by them.
+- Whether the tips make answers better is not measured. That needs an
+  evaluation set (see "What I would improve").
+- The settings kept with a rating are the ones in use when it was given,
+  which is nearly always what the answer was written with.
+- Questions and comments are kept with the ratings, and with tracing on
+  they are also sent to LangSmith. Personal data typed into a comment is
+  stored there too.
+- A rating that fails to reach LangSmith is not sent again; it is still
+  saved in the app.
 
 **Maximum answer length**
 

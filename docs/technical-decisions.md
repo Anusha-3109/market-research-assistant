@@ -161,6 +161,22 @@ its own reader that knows where the app's lines are in that tool's result,
 and a tool without a reader adds nothing. Search titles are kept on one line
 for the same reason. Two tests failed on exactly this before the fix.
 
+**Learning from ratings with fixed tips, not with the model.** One way to
+learn from feedback is to let a model read the 👎 and their comments and
+rewrite the prompt. That was not done: a comment is text from a user, and
+whatever reaches the prompt can steer the agent, so a comment like "ignore
+your rules" would become an instruction. A rewritten prompt is also hard to
+test and costs a model call. Instead, each of the six reasons maps to one
+fixed sentence written in advance, and a sentence is added only when its
+reason comes up in two or more of the account's last ten ratings. It is
+predictable, tested, free, and forgets on its own once the complaints stop.
+The comments still matter: the Admin page shows them, so the person who
+owns the prompt can act on them for everyone.
+
+The tips are per account, because "too long" from one person says nothing
+about another. They come before the answer style in the prompt, so a style
+chosen on the Admin page still has the last word.
+
 **The pickers are data.** What each start card offers (its headline, its
 chip rows and the question they build) is one entry in `PICKERS` in
 `ui/picker.py`, and the chip lists are plain lists above it. Adding a

@@ -133,7 +133,7 @@ Middleware is code that runs around the agent's model and tool calls.
 | Middleware | What it does |
 |---|---|
 | `capture_profile` | Before answering, extracts lasting facts from your message and saves them |
-| `prompt_with_profile` | Adds your saved profile to the system prompt on every call |
+| `prompt_with_profile` | Adds your saved profile, and the tips learned from your ratings, to the system prompt on every call |
 | `require_country_from_user` | Blocks a market tool call for a country you never named |
 | `ModelFallbackMiddleware` | Repeats a failed call with a backup model (off by default) |
 | `HumanInTheLoopMiddleware` | Pauses for approval before a report is saved |
@@ -152,3 +152,30 @@ in two ways:
 While waiting, the state is saved, so you can close the page and answer
 later. The workflow runs as a sub-graph that saves its own progress, so
 continuing does not repeat the searches done before the pause.
+
+## The feedback loop
+
+Every answer can be rated 👍 or 👎. A 👎 asks what could be better: six
+fixed reasons and a comment.
+
+```mermaid
+flowchart LR
+    answer["Answer"] --> rate["👍 / 👎<br/>+ reasons, comment"]
+    rate --> store[("Store<br/>(feedback, account)")]
+    store --> rule{"Same reason in 2+<br/>of last 10 ratings?"}
+    rule -- yes --> tip["Fixed tip in that<br/>account's system prompt"]
+    tip --> next["Next answers"]
+    store --> admin["Admin → Feedback<br/>for everyone's settings"]
+    rate -.-> trace["LangSmith trace<br/>user_rating"]
+```
+
+| Part | How it works |
+|---|---|
+| Saving | One rating per answer under ("feedback", account id), with the question, the model, style and length, and whether it was a report (`agent/feedback.py`) |
+| Learning | `lessons()` looks at the account's last ten ratings. A reason given in two or more adds its tip; "Other" has none, and "Too long" with "Too short" cancel out. `prompt_with_profile` adds the tips after the profile and before the answer style |
+| What reaches the prompt | Only five fixed sentences, one per reason. A typed comment never does, so it cannot steer the agent |
+| Forgetting | Ten answers without a complaint push it out of the window, and its tip goes away |
+| Switch | "Learn from feedback" on the Admin page, saved with the app settings; on at first |
+| Admin | The Feedback tab: share helpful, 👎 and reasons, model × style compared, latest 👎 with comments (shown as text) |
+| Dashboard | Each account's own share rated helpful |
+| LangSmith | Each run gets an id chosen by the page. The rating is sent to that trace as `user_rating` (1 or 0) with the reasons and comment, in the background, and replaced when the rating changes (`agent/trace_feedback.py`) |

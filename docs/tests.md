@@ -6,7 +6,7 @@
 pytest
 ```
 
-995 tests, none of which use the internet or cost anything: outside
+1040 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -44,6 +44,10 @@ services and the model are replaced with fakes.
 | `test_usage_log.py` | The usage log, its figures per day, what the app writes to it, and the Dashboard page |
 | `test_admin.py` | The Admin page: app-wide settings, the system prompt, the tool switches, and who may open it |
 | `test_theme.py` | Light / Dark on the Admin page, for every account |
+| `test_feedback.py` | Rating an answer: saving, changing and taking back a rating, the thumbs in the chat and the Report view, the reasons and comment after a 👎, German, and the Dashboard's Helpful card |
+| `test_feedback_tips.py` | Learning from ratings: which reasons become tips, the last-ten window, each account apart, and that a typed comment never reaches the prompt |
+| `test_feedback_admin.py` | The Admin page's Feedback tab: its figures, the settings compared, the latest 👎 shown as text, and the Learn from feedback switch |
+| `test_trace_feedback.py` | Ratings sent to LangSmith: the run id given to each run, one rating per trace, nothing sent with tracing off, a failure kept from the user |
 | `test_language_start.py` | German on the start screen, pickers, guide, approval forms and sign-in; German country names |
 | `test_assistant.py` | The assistant: what the model is sent, the panel in every view, that its questions stay out of the conversation, the cost, and a failure explained |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |

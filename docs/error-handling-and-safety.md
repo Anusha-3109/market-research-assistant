@@ -24,6 +24,10 @@
 - **An answer without its source**: if the tools reported a source and the
   answer links to nothing, code adds the link. Only addresses the app wrote
   itself are used, so text on a web page cannot add a link of its own.
+- **Feedback**: a typed comment never reaches the agent's prompt; only
+  fixed tips do. Questions and comments are shown on the Admin page as
+  text, never as markup. A rating that cannot reach LangSmith is still
+  saved, and the user sees no error.
 - **Saving files**: only into `reports/`; a title can never contain a path;
   nothing is written without approval.
 - **Privacy**: only four fixed kinds of fact can be remembered; names,

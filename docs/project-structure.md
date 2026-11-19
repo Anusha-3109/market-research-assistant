@@ -20,7 +20,9 @@ MARKET-RESEARCH-ASSISTANT
 │   │   ├── pages.py, page_sidebar.py   the page links in the sidebar
 │   │   ├── dashboard.py         the Dashboard page
 │   │   ├── how_it_works.py      How it works (Admin → Documentation) and its Mermaid chart
-│   │   └── admin.py             the Admin page
+│   │   ├── admin.py             the Admin page
+│   │   ├── admin_feedback.py    the Admin page's Feedback tab
+│   │   └── feedback.py          the 👍 / 👎 under an answer, and the reasons after a 👎
 │   ├── On every screen
 │   │   ├── sidebar.py           conversations, memory, settings, help
 │   │   ├── assistant.py         the floating assistant (robot icon)
@@ -60,6 +62,8 @@ MARKET-RESEARCH-ASSISTANT
 │   │   ├── memory.py            conversations, profile, saved settings
 │   │   ├── app_settings.py      the Admin page's settings, for every account
 │   │   ├── usage_log.py         one line per question, for the Dashboard
+│   │   ├── feedback.py          ratings, and the tips learned from them
+│   │   ├── trace_feedback.py    ratings sent to the answer's LangSmith trace
 │   │   ├── accounts.py, mailer.py   accounts and the password email
 │   │   └── session.py           questions and answers, for any interface
 │   ├── What comes out
