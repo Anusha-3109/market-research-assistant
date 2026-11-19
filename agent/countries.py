@@ -58,7 +58,18 @@ def find_country(name: str):
     try:
         return pycountry.countries.lookup(cleaned)
     except LookupError:
-        return None
+        # A German name, as the German pickers and answers write it.
+        code = _german_names().get(cleaned.lower())
+        return pycountry.countries.get(alpha_2=code) if code else None
+
+
+@lru_cache(maxsize=1)
+def _german_names() -> dict[str, str]:
+    """German country names, in lower case, with their two-letter codes."""
+    names = {_german()(country.name).lower(): country.alpha_2 for country in pycountry.countries}
+    for code, forms in GERMAN_FORMS.items():
+        names.update({form: code for form in forms})
+    return names
 
 
 # German forms a sentence needs that the standard list does not have, such
