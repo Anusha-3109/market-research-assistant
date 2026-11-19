@@ -50,6 +50,7 @@ from agent.report.tool import create_market_report
 from agent.source_check import check_answer
 from agent.language import answer_instruction
 from agent.styles import style_for_prompt
+from agent.tracing import trace_labels
 from agent.tools import TOOLS
 
 # The chat agent's tools: the report workflow, the single-question tools
@@ -259,6 +260,8 @@ def _run(agent, payload, thread_id: str, context: UserContext):
     line while a long tool is working, and a Pause if the agent stops to
     wait for the user."""
     config = {
+        # How the run is named and labelled in a trace (agent/tracing.py).
+        **trace_labels("Markavi chat", "chat", thread_id, context),
         "configurable": {"thread_id": thread_id},
         # Each tool round is two graph steps (model, then tools), plus one
         # final model step for the answer.

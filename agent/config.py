@@ -12,6 +12,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Tracing is switched on or off here, before anything that would trace is
+# created (agent/tracing.py).
+from agent.tracing import configure_tracing  # noqa: E402
+
+configure_tracing()
+
 # The name shown in the app. Change it here and it changes everywhere.
 APP_NAME = "Markavi"
 APP_TAGLINE = "Market research before you launch"

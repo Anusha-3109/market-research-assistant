@@ -17,6 +17,7 @@ The Sprint 3 task description is in [`135.md`](135.md).
 - [Example use cases](#example-use-cases)
 - [How it works](#how-it-works)
 - [Technical decisions](#technical-decisions)
+- [Observability](#observability)
 - [Error handling and safety](#error-handling-and-safety)
 - [Tests](#tests)
 - [Deployment](#deployment)
@@ -751,6 +752,27 @@ file.
 **Dependencies are passed in.** The workflow receives its model and data
 sources as plain functions, so the tests replace them with fakes.
 
+## Observability
+
+Every run can be sent to [LangSmith](https://smith.langchain.com) as a
+trace: each call to the model, each tool call and each step of the report
+workflow, with how long it took, its tokens and cost, and any error. A
+trace answers "why did the agent do that?" after the fact.
+
+| | |
+|---|---|
+| Switching it on | Set `LANGSMITH_API_KEY` in `.env`. Without a key nothing is sent. `LANGSMITH_TRACING=false` switches it off with the key in place |
+| EU accounts | Also set `LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com` |
+| Projects | A copy on your own computer traces to `markavi-local`, the deployed copy to `markavi-live`, so experiments and visitors' runs are not mixed. `LANGSMITH_PROJECT` names another |
+| Names | A chat turn is the run "Markavi chat"; a report's steps appear inside the turn that asked for it. The assistant's calls are "Markavi assistant" |
+| Labels | The conversation id (LangSmith groups a conversation by it), the account's internal id, the model and the language |
+| In the app | The Help panel says whether runs are traced |
+| Tests | Never trace: `tests/conftest.py` switches tracing off before anything is loaded |
+
+A trace holds the questions people typed and the answers. It is labelled
+with the account's internal id only, never a name or an email address. The
+code is in `agent/tracing.py`.
+
 ## Error handling and safety
 
 - **Missing API key**: the app shows setup instructions, no crash.
@@ -793,7 +815,7 @@ sources as plain functions, so the tests replace them with fakes.
 pytest
 ```
 
-937 tests, none of which use the internet or cost anything: outside
+949 tests, none of which use the internet or cost anything: outside
 services and the model are replaced with fakes.
 
 | Test file | Covers |
@@ -826,6 +848,7 @@ services and the model are replaced with fakes.
 | `test_language_frame.py` | German in the sidebar, the settings, the Snapshot and the assistant panel; settings keep their saved values |
 | `test_language_views.py` | German in the Ask and Report views; a report format keeps its value |
 | `test_language_agent.py` | What the models are told with German chosen, a report's fixed wording in German, and the German one-pager and slides |
+| `test_tracing.py` | Tracing: on only with a key, a project per copy, what a trace is labelled with, and that tests never trace |
 | `test_assistant.py` | The assistant: what the model is sent, the panel in every view, that its questions stay out of the conversation, the cost, and a failure explained |
 | `test_ask_view.py` | The Ask view: every question and answer in the chat, folding sources, a report as one line, the suggestions, the short reply and the steps |
 | `test_report_view.py` | The Report view: splitting a report into sections, the status of a section, the cards, the contents box |
@@ -979,6 +1002,7 @@ market-research-assistant/
 │   ├── prompts.py           the system prompt
 │   ├── side_assistant.py    the assistant's one model call, without tools
 │   ├── tools.py             the single-question tools
+│   ├── tracing.py           switches LangSmith tracing on and labels the runs
 │   ├── memory.py            checkpointer, store, user profile, saved settings
 │   ├── accounts.py          user accounts: creating one, signing in, password and email
 │   ├── mailer.py            the email with a link for a forgotten password
@@ -1029,7 +1053,6 @@ market-research-assistant/
 
 **Not built yet**
 
-- Tracing with LangSmith is prepared in `.env.example` but not switched on.
 
 **Token usage and cost**
 
@@ -1211,13 +1234,12 @@ market-research-assistant/
 
 ## What I would improve
 
-1. Switch on tracing with LangSmith.
-2. Let a person delete their account, and verify email addresses.
-3. Measure report quality with an evaluation set, so changes can be judged
+1. Let a person delete their account, and verify email addresses.
+2. Measure report quality with an evaluation set, so changes can be judged
    by numbers and not by reading reports.
-4. Read prices from pages that need JavaScript, with a headless browser.
-5. Add a second model provider key to remove the OpenRouter dependency.
-6. Give the single-question path the same competitor verification as the
+3. Read prices from pages that need JavaScript, with a headless browser.
+4. Add a second model provider key to remove the OpenRouter dependency.
+5. Give the single-question path the same competitor verification as the
    workflow.
-7. Keep a person signed in across a refresh, with a signed cookie.
-8. Summarise long conversations to control cost.
+6. Keep a person signed in across a refresh, with a signed cookie.
+7. Summarise long conversations to control cost.

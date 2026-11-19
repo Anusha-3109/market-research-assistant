@@ -65,6 +65,8 @@ TEXTS = {
     "help.title": "Help",
     "help.body": "**Ask for a report** by naming a product and a country, for example *healthy meal delivery in Germany*.\n\n**Ask a single question** about prices, competitors, news, demand or a company.\n\n**It will not** give investment advice or invent numbers. What it cannot find is reported as \"not found\".\n\n**Reports** can be downloaded, or saved to the reports folder after you approve.",
     "help.how": "How it works",
+    "help.tracing_on": "Runs are traced with LangSmith for debugging.",
+    "help.tracing_off": "Tracing is off.",
 
     # --- the Snapshot view ---------------------------------------------------
     "snapshot.open_report": "Open report",

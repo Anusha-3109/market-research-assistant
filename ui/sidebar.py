@@ -11,6 +11,7 @@ from agent.config import (
 )
 from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
+from agent.tracing import tracing_is_on
 from ui.assets import brand
 from ui.texts import current_language, t
 
@@ -261,6 +262,7 @@ def _settings_panel(waiting: bool) -> None:
 def _help_panel() -> str | None:
     with st.expander(t("help.title"), icon=":material/help:"):
         st.markdown(t("help.body"))
+        st.caption(t("help.tracing_on") if tracing_is_on() else t("help.tracing_off"))
         if st.button(t("help.how"), icon=":material/travel_explore:", key="help_guide"):
             return GUIDE
     return None

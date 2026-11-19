@@ -1,5 +1,12 @@
 """Settings shared by all tests."""
 
+import os
+
+# No test may send a trace to LangSmith, whatever the developer's own .env
+# says. This line runs before any test file is imported, so it is in place
+# before agent.config reads the settings (agent/tracing.py).
+os.environ["LANGSMITH_TRACING"] = "false"
+
 from unittest.mock import patch
 
 import pytest

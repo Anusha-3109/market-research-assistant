@@ -9,6 +9,7 @@ asked here is not added to the conversation.
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from agent.language import answer_instruction
+from agent.tracing import trace_labels
 from agent.usage import Usage, usage_of
 
 # A longer report is cut before it is sent, so one question stays cheap.
@@ -50,6 +51,6 @@ def ask(model, question: str, history: list[dict], context: str,
         kind = HumanMessage if entry["role"] == "user" else AIMessage
         messages.append(kind(entry["text"]))
     messages.append(HumanMessage(question))
-    reply = model.invoke(messages)
+    reply = model.invoke(messages, config=trace_labels("Markavi assistant", "assistant"))
     text = reply.content if isinstance(reply.content, str) else str(reply.content)
     return text.strip(), usage_of(reply)

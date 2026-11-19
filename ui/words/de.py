@@ -64,6 +64,8 @@ TEXTS = {
     "help.title": "Hilfe",
     "help.body": "**Fordern Sie einen Bericht an**, indem Sie ein Produkt und ein Land nennen, zum Beispiel *gesunde Essenslieferung in Deutschland*.\n\n**Stellen Sie eine einzelne Frage** zu Preisen, Wettbewerbern, Nachrichten, Nachfrage oder einem Unternehmen.\n\n**Die App gibt keine** Anlageberatung und erfindet keine Zahlen. Was sie nicht findet, wird als \"nicht gefunden\" gemeldet.\n\n**Berichte** können heruntergeladen oder nach Ihrer Bestätigung im Berichtsordner gespeichert werden.",
     "help.how": "So funktioniert es",
+    "help.tracing_on": "Abläufe werden zur Fehlersuche mit LangSmith aufgezeichnet.",
+    "help.tracing_off": "Die Aufzeichnung ist aus.",
 
     # --- the Snapshot view ---------------------------------------------------
     "snapshot.open_report": "Bericht öffnen",

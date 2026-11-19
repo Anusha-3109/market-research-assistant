@@ -23,9 +23,11 @@ class RecordingModel:
     def __init__(self, *replies):
         self.replies = list(replies)
         self.sent = []
+        self.configs = []
 
-    def invoke(self, messages):
+    def invoke(self, messages, config=None):
         self.sent.append(messages)
+        self.configs.append(config)
         reply = self.replies.pop(0)
         if isinstance(reply, Exception):
             raise reply
