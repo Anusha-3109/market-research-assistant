@@ -37,7 +37,6 @@ from agent.session import (
     to_blocks,
     to_turns,
 )
-from ui.account_badge import render_account_badge
 from ui.assistant import render_assistant
 from ui.assets import LOGO
 from ui.guide import render_guide
@@ -136,10 +135,6 @@ render_language_switch()
 open_page = current_page(account)
 if open_page != RESEARCH:
     render_page_sidebar(open_page, account)
-    if account and render_account_badge(account):
-        st.session_state.clear()
-        st.query_params.clear()
-        st.rerun()
     if open_page == ADMIN:
         render_admin(runtime.store)
     elif open_page == DASHBOARD:
@@ -208,14 +203,7 @@ action = render_sidebar(
     profile=load_profile(runtime.store, user_id), waiting=waiting is not None,
     title=short_title(turns[0].question) if turns else "", views=views,
     shown_view=open_view, account=account)
-# The round badge at the top right says who is signed in.
-if account and render_account_badge(account):
-    # Everything this browser session held goes: who was signed in, their
-    # settings, and the address of the conversation that was open.
-    st.session_state.clear()
-    st.query_params.clear()
-    st.rerun()
-elif action == NEW:
+if action == NEW:
     st.query_params["c"] = new_thread_id()
     st.rerun()
 elif action == FORGET:

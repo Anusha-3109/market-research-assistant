@@ -207,6 +207,9 @@ The links at the top of the sidebar open the pages:
 At the top right, **EN / DE** changes the language and **Light / Dark** the
 look. Both are kept with your account.
 
+On a deployed copy, the round badge with your initial is at the bottom of
+the sidebar, under Help. Click it to see who is signed in and to **Sign out**.
+
 The settings below are on the **Admin** page and apply to every account.
 Help is in the sidebar.
 

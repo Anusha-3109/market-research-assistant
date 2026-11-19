@@ -4,6 +4,7 @@ the help panel."""
 import streamlit as st
 
 from agent.config import APP_NAME
+from ui.account_badge import render_account_badge
 from ui.assets import brand
 from ui.pages import render_page_links
 from ui.texts import t
@@ -15,3 +16,7 @@ def render_page_sidebar(page: str, account) -> None:
             st.html(brand(APP_NAME))
             st.caption(t("sidebar.tagline"))
             render_page_links(page, account)
+        # The round badge of the signed-in account, at the bottom.
+        if account is not None:
+            with st.container(key="sidebar_foot"):
+                render_account_badge(account)

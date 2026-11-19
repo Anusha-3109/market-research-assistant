@@ -363,13 +363,6 @@
 /* The account badge: a round button with one letter, kept in the top right
    corner of the page. Streamlit wraps it in a box of its own; that box is
    taken out of the page's flow, so it leaves no gap where it was written. */
-[data-testid="stLayoutWrapper"]:has(> .st-key-account_badge) {
-    position: fixed;
-    top: 0.75rem;
-    right: 1.1rem;
-    width: auto;
-    z-index: 1000;
-}
 .st-key-account_badge [data-testid="stPopover"] button {
     width: 2.5rem;
     height: 2.5rem;
@@ -1147,8 +1140,6 @@ body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant
 /* Streamlit's own bar lies across the top of the page, over the corner. The
    switch and the badge are lifted above it, or it would take their clicks. */
 [data-testid="stLayoutWrapper"]:has(> .st-key-language_box),
-[data-testid="stLayoutWrapper"]:has(> .st-key-account_badge) { z-index: 999995; }
-body:has(.st-key-account_badge) [data-testid="stLayoutWrapper"]:has(> .st-key-language_box) { right: 4.4rem; }
 .st-key-language_box [data-testid="stButtonGroup"] {
     background: #fff; border-radius: 10px; padding: 3px; gap: 0;
     box-shadow: 0 1px 4px rgba(20, 40, 40, 0.14);
@@ -1191,3 +1182,11 @@ body:has(.st-key-account_badge) [data-testid="stLayoutWrapper"]:has(> .st-key-la
                  color: var(--peach-text); background: var(--peach); border-radius: 999px; padding: 0.3rem 0.8rem; }
 .st-key-admin_cost, .st-key-admin_models, .st-key-admin_prompt_card, .st-key-admin_tools { background: #fff; border-radius: 14px; }
 .st-key-admin_prompt textarea { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; }
+
+/* The account badge sits at the bottom of the sidebar, under Help: the round
+   letter, then the name and the username. */
+.st-key-account_badge { gap: 0.6rem; padding: 0.35rem 0 0.1rem; }
+.st-key-account_badge [data-testid="stPopover"] { width: auto; flex: 0 0 auto; }
+.gw-account-row { display: flex; flex-direction: column; line-height: 1.2; }
+.gw-account-row-name { font-size: 0.9rem; font-weight: 600; color: #1f2a2e; }
+.gw-account-row-line { font-size: 0.74rem; color: #6b7a7f; }

@@ -185,8 +185,9 @@ def position(sequence: list[str], words: str) -> int:
 
 
 def badge(app):
-    """The round badge: a folding menu whose label is one letter."""
-    return next(block for block in app.main.get("popover"))
+    """The round badge at the bottom of the sidebar: a folding menu whose
+    label is one letter."""
+    return next(block for block in app.sidebar.get("popover"))
 
 
 def letter_on(popover) -> str:
@@ -210,16 +211,28 @@ def test_the_badge_opens_to_who_is_signed_in_and_sign_out(site):  # noqa: F811
     assert not any("Ben" in text for text in inside)
 
 
-def test_the_sidebar_no_longer_says_who_is_signed_in(site):  # noqa: F811
+def test_the_badge_is_at_the_bottom_of_the_sidebar_under_help(site):  # noqa: F811
     two_accounts(site)
     memory.save_preference(site.store, ANNA, "region", "Portugal")
 
     app = visit_as(site, "anna")
     sidebar = in_order(app.sidebar)
 
-    assert not any("Signed in as" in text or "Sign out" in text for text in sidebar)
     assert (position(sidebar, "New conversation") < position(sidebar, "What I remember")
-            < position(sidebar, "Forget me") < position(sidebar, "Help"))
+            < position(sidebar, "Forget me") < position(sidebar, "Help")
+            < position(sidebar, "Signed in as") < position(sidebar, "Sign out"))
+    assert list(app.main.get("popover")) == []           # no badge at the top right any more
+
+
+def test_the_badge_is_in_the_sidebar_of_the_other_pages_too(site):  # noqa: F811
+    two_accounts(site)
+    app = visit_as(site, "anna")
+
+    button(app, "page_dashboard").click().run()
+
+    assert letter_on(badge(app)) == "A"
+    button(app, "sign_out").click().run()
+    assert [tab.label for tab in app.tabs] == ["Sign in", "Create account"]
 
 
 def test_signing_out_brings_back_the_sign_in_screen(site):  # noqa: F811

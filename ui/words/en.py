@@ -452,4 +452,5 @@ TEXTS = {
     "theme.label": "Theme",
     "theme.light": ":material/light_mode: Light",
     "theme.dark": ":material/dark_mode: Dark",
+    "account.signed_in_line": "Signed in as {username}",
 }

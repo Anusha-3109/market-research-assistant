@@ -24,7 +24,7 @@ MARKET-RESEARCH-ASSISTANT
 │   ├── On every screen
 │   │   ├── sidebar.py           conversations, memory, settings, help
 │   │   ├── assistant.py         the floating assistant (robot icon)
-│   │   ├── account_badge.py     who is signed in, sign out
+│   │   ├── account_badge.py     the round badge under Help: who is signed in, sign out
 │   │   ├── language.py          the EN | DE and Light | Dark switches
 │   │   └── approvals.py         the two approval forms
 │   └── Look and words

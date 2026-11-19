@@ -13,6 +13,7 @@ from agent.memory import SETTING_DEFAULTS
 from agent.session import Conversation
 from agent.tracing import tracing_is_on
 from ui.assets import brand
+from ui.account_badge import render_account_badge
 from ui.pages import RESEARCH, render_page_links
 from ui.texts import current_language, t
 
@@ -189,6 +190,9 @@ def render_sidebar(conversations: list[Conversation], current: str,
         # The foot: two plain rows.
         with st.container(key="sidebar_foot"):
             action = _help_panel() or action
+            # The round badge of the signed-in account, under Help.
+            if account is not None:
+                render_account_badge(account)
     return action
 
 
