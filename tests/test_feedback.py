@@ -11,8 +11,8 @@ from langchain_core.messages import AIMessage
 from langgraph.store.memory import InMemoryStore
 from streamlit.testing.v1 import AppTest
 
-from agent.feedback import DOWN, UP, rate, rating_of, ratings
-from tests.test_app import APP, page  # noqa: F401  (page is a fixture)
+from agent.feedback import DOWN, UP, explain, rate, rating_of, ratings
+from tests.test_app import APP, page, texts  # noqa: F401  (page is a fixture)
 from tests.test_ask_view import ask, two_questions
 from tests.test_language import switch as language_switch
 from tests.test_views import with_a_report
@@ -20,6 +20,8 @@ from ui import runtime as ui_runtime
 
 NOW = datetime(2026, 11, 19, 12, 0, tzinfo=timezone.utc)
 SETTINGS = {"model": "openai/gpt-4.1-mini", "style": "balanced", "length": "medium"}
+REASON_LABELS = ["Wrong or old facts", "Missing sources", "Too long", "Too short",
+                 "Not what I asked", "Other"]
 
 
 def thumbs(app, index: int):
@@ -121,3 +123,99 @@ def test_an_answer_still_being_written_has_no_thumbs(page):  # noqa: F811
     app = page()
 
     assert list(app.feedback) == []
+
+
+# --- what could be better (a thumbs down) ----------------------------------------------------------
+
+def why(app, index: int):
+    return next(widget for widget in app.button_group
+                if widget.key.startswith("why_") and widget.key.endswith(f"_{index}"))
+
+
+def comment_box(app, index: int):
+    return next(area for area in app.text_area
+                if area.key.startswith("why_comment_") and area.key.endswith(f"_{index}"))
+
+
+def send_button(app, index: int):
+    return next(b for b in app.button
+                if (b.key or "").startswith("why_send_") and b.key.endswith(f"_{index}"))
+
+
+def test_reasons_and_a_comment_are_kept_with_a_thumbs_down():
+    store = InMemoryStore()
+    rate(store, "u-anna", "t1", 0, DOWN, question="Q", settings=SETTINGS)
+
+    explain(store, "u-anna", "t1", 0, ["too_long", "missing_sources"], "Just the top 3, please.")
+
+    [line] = ratings(store, "u-anna")
+    # Kept in the order the reasons are shown, whatever order they were picked in.
+    assert (line["reasons"], line["comment"]) == (["missing_sources", "too_long"],
+                                                  "Just the top 3, please.")
+
+
+def test_unknown_reasons_are_dropped_and_a_long_comment_is_cut_short():
+    store = InMemoryStore()
+    rate(store, "u-anna", "t1", 0, DOWN, question="Q", settings=SETTINGS)
+
+    explain(store, "u-anna", "t1", 0, ["too_long", "made_up"], "y" * 5000)
+
+    [line] = ratings(store, "u-anna")
+    assert line["reasons"] == ["too_long"]
+    assert len(line["comment"]) <= 500
+
+
+def test_reasons_are_not_kept_for_an_answer_that_was_not_rated_down():
+    store = InMemoryStore()
+    rate(store, "u-anna", "t1", 0, UP, question="Q", settings=SETTINGS)
+
+    explain(store, "u-anna", "t1", 0, ["too_long"], "")
+    explain(store, "u-anna", "t9", 0, ["too_long"], "")       # never rated
+
+    assert [line.get("reasons", []) for line in ratings(store, "u-anna")] == [[]]
+
+
+def test_changing_to_thumbs_up_drops_the_reasons():
+    store = InMemoryStore()
+    rate(store, "u-anna", "t1", 0, DOWN, question="Q", settings=SETTINGS)
+    explain(store, "u-anna", "t1", 0, ["too_long"], "Shorter")
+
+    rate(store, "u-anna", "t1", 0, UP, question="Q", settings=SETTINGS)
+
+    [line] = ratings(store, "u-anna")
+    assert (line.get("reasons", []), line.get("comment", "")) == ([], "")
+
+
+def test_a_thumbs_down_asks_what_could_be_better(page):  # noqa: F811
+    app = ask(page([AIMessage("An answer.")]), "A question")
+    assert [widget.key for widget in app.button_group if widget.key.startswith("why_")] == []
+
+    thumbs(app, 0).set_value(DOWN).run()
+
+    assert why(app, 0).options == REASON_LABELS
+    assert "What could be better?" in texts(app)
+
+
+def test_sending_the_reasons_saves_them_and_says_thanks(page):  # noqa: F811
+    app = ask(page([AIMessage("An answer.")]), "A question")
+    thumbs(app, 0).set_value(DOWN).run()
+
+    why(app, 0).set_value(["too_long", "missing_sources"])
+    comment_box(app, 0).input("Top 3 only.")
+    send_button(app, 0).click().run()
+
+    assert not app.exception
+    [line] = ratings(app.runtime.store, None)
+    assert (line["reasons"], line["comment"]) == (["missing_sources", "too_long"], "Top 3 only.")
+    assert any("Thanks!" in box.value for box in app.success)
+    # Once sent, the question is not asked again.
+    assert [widget.key for widget in app.button_group if widget.key.startswith("why_")] == []
+
+
+def test_the_reasons_are_named_in_german(page):  # noqa: F811
+    app = ask(page([AIMessage("An answer.")]), "A question")
+    language_switch(app).set_value("de").run()
+
+    thumbs(app, 0).set_value(DOWN).run()
+
+    assert why(app, 0).options[:3] == ["Falsche oder veraltete Fakten", "Quellen fehlen", "Zu lang"]

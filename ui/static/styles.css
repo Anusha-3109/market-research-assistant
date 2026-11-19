@@ -1193,3 +1193,8 @@ body:has([data-testid="stBottom"] [data-testid="stChatInput"]) .st-key-assistant
 .gw-account-row { display: flex; flex-direction: column; line-height: 1.2; }
 .gw-account-row-name { font-size: 0.9rem; font-weight: 600; color: #1f2a2e; }
 .gw-account-row-line { font-size: 0.74rem; color: #6b7a7f; }
+
+/* "What could be better?" after a thumbs down: the picked reasons are coral. */
+[class*="st-key-why_panel_"] { background: #fff8f4; border-color: #f3c9b6; }
+[class*="st-key-why_panel_"] [data-testid="stButtonGroup"] button[aria-pressed="true"] {
+    background: var(--coral); border-color: var(--coral); color: var(--coral-text); font-weight: 600; }
