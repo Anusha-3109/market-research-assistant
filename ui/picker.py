@@ -15,6 +15,8 @@ from urllib.parse import quote
 
 import streamlit as st
 
+from ui.texts import current_language, t
+
 # --- the chips ----------------------------------------------------------------------------
 # Each entry is (what is shown in front of the name, the name).
 # For products, ideas and industries that is an icon; for countries a
@@ -332,6 +334,219 @@ def missing_hint(picker: Picker, picks: dict[str, str]) -> str:
     return f"Now pick {wanted}."
 
 
+# --- German ------------------------------------------------------------------------------------
+# With German chosen, a chip shows its German name and the picks become a
+# German question. What is kept as the pick is still the English name, so
+# everything else (industries, toggling a chip) works as in English.
+# The questions name the product and the country after a colon, so the
+# sentence is right whatever the gender or case of the word.
+
+CHIPS_DE = {
+    "Food and drink": "Essen und Trinken",
+    "Beauty and skincare": "Beauty und Hautpflege",
+    "Pet care": "Tierbedarf",
+    "Health and fitness": "Gesundheit und Fitness",
+    "Baby and kids": "Baby und Kinder",
+    "Fashion": "Mode",
+    "Home and living": "Wohnen",
+    "Meal delivery": "Essenslieferung",
+    "Germany": "Deutschland",
+    "United Kingdom": "Vereinigtes Königreich",
+    "France": "Frankreich",
+    "Netherlands": "Niederlande",
+    "Spain": "Spanien",
+    "Italy": "Italien",
+    "Poland": "Polen",
+    "Austria": "Österreich",
+    "Switzerland": "Schweiz",
+    "Sweden": "Schweden",
+    "Belgium": "Belgien",
+    "United States": "Vereinigte Staaten",
+    "Meal kits": "Kochboxen",
+    "Oat milk": "Hafermilch",
+    "Vegan snacks": "Vegane Snacks",
+    "Specialty coffee": "Spezialitätenkaffee",
+    "Protein bars": "Proteinriegel",
+    "Kombucha": "Kombucha-Getränke",
+    "Plant-based meat": "Pflanzliches Fleisch",
+    "Frozen ready meals": "Tiefkühl-Fertiggerichte",
+    "Gluten-free bread": "Glutenfreies Brot",
+    "Alcohol-free beer": "Alkoholfreies Bier",
+    "Vegan bakery": "Vegane Bäckerei",
+    "Specialty coffee shop": "Spezialitäten-Café",
+    "Meal prep service": "Meal-Prep-Service",
+    "Plant-based ice cream shop": "Pflanzliche Eisdiele",
+    "Natural skincare": "Naturkosmetik",
+    "Sunscreen": "Sonnenschutz",
+    "Face serum": "Gesichtsserum",
+    "Hair care": "Haarpflege",
+    "Solid shampoo": "Festes Shampoo",
+    "Men's grooming": "Männerpflege",
+    "Vegan makeup": "Veganes Make-up",
+    "Perfume": "Parfüm",
+    "Hand cream": "Handcreme",
+    "Bath and body care": "Bad- und Körperpflege",
+    "Online skincare brand": "Online-Hautpflegemarke",
+    "Refill shampoo shop": "Nachfüll-Shampoo-Laden",
+    "Men's grooming subscription": "Pflege-Abo für Männer",
+    "Natural perfume brand": "Naturparfüm-Marke",
+    "Pet food": "Tiernahrung",
+    "Dog treats": "Hundeleckerlis",
+    "Cat litter": "Katzenstreu",
+    "Pet supplements": "Nahrungsergänzung für Tiere",
+    "Pet insurance": "Tierversicherung",
+    "Dog toys": "Hundespielzeug",
+    "Fresh dog food": "Frisches Hundefutter",
+    "Pet grooming products": "Tierpflegeprodukte",
+    "Dog beds": "Hundebetten",
+    "Pet trackers": "GPS-Tracker für Tiere",
+    "Dog food subscription": "Hundefutter-Abo",
+    "Dog daycare": "Hundetagesstätte",
+    "Mobile pet grooming service": "Mobiler Tierpflegeservice",
+    "Pet accessories shop": "Laden für Tierzubehör",
+    "Protein powder": "Proteinpulver",
+    "Vitamins and supplements": "Vitamine und Nahrungsergänzung",
+    "Fitness trackers": "Fitnesstracker",
+    "Yoga mats": "Yogamatten",
+    "Home gym equipment": "Fitnessgeräte für zu Hause",
+    "Electrolyte drinks": "Elektrolytgetränke",
+    "Running shoes": "Laufschuhe",
+    "Meal replacement shakes": "Mahlzeitenersatz-Shakes",
+    "Sleep aids": "Schlafhilfen",
+    "Exercise bikes": "Heimtrainer",
+    "Protein snack brand": "Marke für Proteinsnacks",
+    "Boutique yoga studio": "Boutique-Yogastudio",
+    "Online fitness coaching service": "Online-Fitnesscoaching",
+    "Supplement subscription": "Nahrungsergänzungs-Abo",
+    "Organic baby food": "Bio-Babynahrung",
+    "Diapers": "Windeln",
+    "Baby formula": "Säuglingsnahrung",
+    "Strollers": "Kinderwagen",
+    "Wooden toys": "Holzspielzeug",
+    "Baby skincare": "Babypflege",
+    "Kids' clothing": "Kinderkleidung",
+    "Baby monitors": "Babyphones",
+    "Children's books": "Kinderbücher",
+    "Car seats": "Kindersitze",
+    "Organic baby food brand": "Marke für Bio-Babynahrung",
+    "Baby clothing rental": "Babykleidung zum Mieten",
+    "Wooden toy shop": "Holzspielzeugladen",
+    "Kids' cooking school": "Kochschule für Kinder",
+    "Sustainable clothing": "Nachhaltige Kleidung",
+    "Sneakers": "Sneaker",
+    "Second-hand fashion": "Second-Hand-Mode",
+    "Activewear": "Sportbekleidung",
+    "Handbags": "Handtaschen",
+    "Jewellery": "Schmuck",
+    "Eyewear": "Brillen",
+    "Outdoor jackets": "Outdoorjacken",
+    "Watches": "Uhren",
+    "Workwear": "Arbeitskleidung",
+    "Second-hand clothing shop": "Second-Hand-Laden",
+    "Sustainable activewear brand": "Nachhaltige Sportmodemarke",
+    "Custom jewellery shop": "Laden für individuellen Schmuck",
+    "Sneaker cleaning service": "Sneaker-Reinigung",
+    "Mattresses": "Matratzen",
+    "Scented candles": "Duftkerzen",
+    "Houseplants": "Zimmerpflanzen",
+    "Smart home devices": "Smart-Home-Geräte",
+    "Cleaning products": "Reinigungsmittel",
+    "Kitchen appliances": "Küchengeräte",
+    "Bed linen": "Bettwäsche",
+    "Furniture": "Möbel",
+    "Laundry detergent": "Waschmittel",
+    "Garden tools": "Gartengeräte",
+    "Flower delivery service": "Blumenlieferdienst",
+    "Scented candle brand": "Duftkerzenmarke",
+    "Houseplant subscription": "Zimmerpflanzen-Abo",
+    "Refill cleaning products shop": "Nachfüllladen für Reinigungsmittel"
+}
+
+# card -> (title, line under it, question template, example in the empty box)
+PICKERS_DE = {
+    "Write a report": (
+        "Einen **Bericht** schreiben.",
+        "Sechs Abschnitte, geprüfte Wettbewerber, jede Angabe mit Quelle.",
+        "Erstellen Sie einen Marktforschungsbericht. Produkt: {product}. Land: {country}.",
+        "Selbst schreiben, z. B. ein Marktforschungsbericht für Kochboxen in Deutschland"
+    ),
+    "Check demand": (
+        "**Nachfrage** prüfen.",
+        "Steigt, fällt oder stagniert das Suchinteresse in den letzten 12 Monaten?",
+        "Steigt das Interesse an diesem Produkt? Produkt: {product}. Land: {country}.",
+        "Selbst schreiben, z. B. Steigt das Interesse an Kochboxen in Deutschland?"
+    ),
+    "Compare prices": (
+        "**Preise** vergleichen.",
+        "Von der eigenen Website des Unternehmens, mit der Seite, von der sie stammen.",
+        "Was verlangt {company}?",
+        "Selbst schreiben, z. B. Was verlangt Prepmymeal?"
+    ),
+    "Follow the news": (
+        "**Nachrichten** verfolgen.",
+        "Markteinführungen, Schließungen, Finanzierungen und Regeln aus dem letzten Monat.",
+        "Was hat sich zuletzt in diesem Markt geändert? Produkt: {product}. Land: {country}.",
+        "Selbst schreiben, z. B. Was hat sich bei Bio-Babynahrung in Frankreich geändert?"
+    ),
+    "Find competitors": (
+        "**Wettbewerber** finden.",
+        "Unternehmen, die dieses Produkt in diesem Land verkaufen, jedes geprüft.",
+        "Welche Unternehmen verkaufen dieses Produkt? Produkt: {product}. Land: {country}.",
+        "Selbst schreiben, z. B. Wer verkauft vegane Proteinsnacks im Vereinigten Königreich?"
+    ),
+    "Research a company": (
+        "Ein **Unternehmen** recherchieren.",
+        "Umsatz, Beschäftigte und Marktwert, aus öffentlichen Zahlen.",
+        "Wie groß ist {company}? Nennen Sie Umsatz und Zahl der Beschäftigten.",
+        "Selbst schreiben, z. B. Wie groß ist HelloFresh?"
+    ),
+    "Size a market": (
+        "Einen **Markt** einschätzen.",
+        "Marktwert und Wachstum, mit dem Gebiet und dem Jahr, für das sie gelten.",
+        "Wie groß ist dieser Markt? Produkt: {product}. Land: {country}.",
+        "Selbst schreiben, z. B. Wie groß ist der Markt für vegane Snacks im Vereinigten Königreich?"
+    ),
+    "Test my idea": (
+        "Meine **Idee** testen.",
+        "Ein vollständiger Bericht für Ihre Geschäftsidee, mit SWOT-Analyse.",
+        "Ich möchte ein Unternehmen gründen. Idee: {idea}. Land: {country}. Erstellen Sie einen Marktforschungsbericht.",
+        "Selbst schreiben, z. B. Ich möchte eine vegane Bäckerei in den Niederlanden eröffnen"
+    ),
+    "Set your market": (
+        "Ihren **Markt** festlegen.",
+        "Einmal sagen; spätere Unterhaltungen kennen es, ohne zu fragen.",
+        "Mein Land: {country}. Meine Branche: {industry}.",
+        "Selbst schreiben, z. B. Ich bin in Deutschland und arbeite in der Essenslieferung"
+    )
+}
+
+ROWS_DE = {
+    "Then a product": "Dann ein Produkt",
+    "And a country": "Und ein Land",
+    "Then a company": "Dann ein Unternehmen",
+    "Then an idea": "Dann eine Idee",
+    "Pick your country": "Ihr Land wählen",
+    "And your industry": "Und Ihre Branche"
+}
+
+
+def chip_name(name: str, language: str = "en") -> str:
+    """A chip's name in the language asked for. Company names stay as they are."""
+    return CHIPS_DE.get(name, name) if language == "de" else name
+
+
+def sentence_for(card: str, picks: dict[str, str], language: str = "en") -> str | None:
+    """The question the picks make, in the language asked for, or None while
+    a row has nothing picked yet."""
+    picker = PICKERS[card]
+    if language != "de":
+        return sentence(picker, picks)
+    groups = [group for _, group in picker.rows]
+    if any(group not in picks for group in groups):
+        return None
+    return PICKERS_DE[card][2].format(**{group: chip_name(picks[group], "de") for group in groups})
+
+
 # --- drawing --------------------------------------------------------------------------------
 
 TEXT_KEY = "picker_text"
@@ -361,7 +576,7 @@ def _clicked(state: dict, picker: Picker, group: str, name: str) -> None:
     """A chip was clicked. Runs before the page is drawn again, which is
     the only moment the text in the box may be changed from code."""
     state["picks"] = toggle(state["picks"], group, name)
-    built = sentence(picker, state["picks"])
+    built = sentence_for(state["card"], state["picks"], current_language())
     if built:
         st.session_state[TEXT_KEY] = built
 
@@ -389,7 +604,8 @@ def _chip(state: dict, picker: Picker, group: str, index: int) -> None:
     chosen = state["picks"].get(group) == name
     mark = "✓" if chosen else "+"
     icon = lead if group in ("product", "idea", "industry") else None
-    label = f"`{lead}` {name} {mark}" if group == "country" else f"{name} {mark}"
+    shown = chip_name(name, current_language())
+    label = f"`{lead}` {shown} {mark}" if group == "country" else f"{shown} {mark}"
     st.button(label, key=f"pick_{group}_{index}", icon=icon,
               type="primary" if chosen else "secondary",
               on_click=_clicked, args=(state, picker, group, name))
@@ -397,11 +613,12 @@ def _chip(state: dict, picker: Picker, group: str, index: int) -> None:
 
 def _industry_row(state: dict) -> None:
     """The first row: which industry's products, companies or ideas to show."""
-    st.caption("PICK AN INDUSTRY")
+    st.caption(t("picker.industry_row"))
     with st.container(key="picker_row_field", horizontal=True,
                       horizontal_alignment="center", gap="small"):
         for index, industry in enumerate(CATALOGUE):
-            st.button(industry.name, key=f"field_{index}", icon=industry.icon,
+            st.button(chip_name(industry.name, current_language()), key=f"field_{index}",
+                      icon=industry.icon,
                       type="primary" if state["industry"] == industry.name else "secondary",
                       on_click=change_industry, args=(state, industry.name))
 
@@ -410,18 +627,22 @@ def render_picker(state: dict) -> str | None:
     """Draw the open picker. Returns the sentence to send when the button
     is pressed, BACK when "Back to start" is pressed, otherwise None."""
     picker = PICKERS[state["card"]]
+    language = current_language()
+    title, line, _, placeholder = PICKERS_DE[state["card"]] if language == "de" else (
+        picker.title, picker.line, picker.template, picker.placeholder)
 
-    if st.button("Back to start", key="picker_back", icon=":material/arrow_back:"):
+    if st.button(t("picker.back"), key="picker_back", icon=":material/arrow_back:"):
         return BACK
 
     with st.container(key="picker_head"):
-        st.title(picker.title, anchor=False)
-        st.markdown(picker.line)
+        st.title(title, anchor=False)
+        st.markdown(line)
 
     with st.container(key="picker_box", horizontal=True, vertical_alignment="center"):
-        typed = st.text_input("Your question", key=TEXT_KEY, placeholder=picker.placeholder,
+        typed = st.text_input(t("picker.your_question"), key=TEXT_KEY, placeholder=placeholder,
                               icon=picker.icon, label_visibility="collapsed")
-        pressed = st.button(picker.button, key="picker_go", type="primary",
+        pressed = st.button(t("picker.save") if picker.button == "Save" else t("picker.research"),
+                            key="picker_go", type="primary",
                             icon=":material/check:" if picker.button == "Save"
                             else ":material/arrow_forward:", icon_position="right")
 
@@ -429,12 +650,15 @@ def render_picker(state: dict) -> str | None:
         if uses_industry(picker):
             _industry_row(state)
         for label, group in picker.rows:
-            st.caption(label.upper())
+            st.caption((ROWS_DE.get(label, label) if language == "de" else label).upper())
             with st.container(key=f"picker_row_{group}", horizontal=True,
                               horizontal_alignment="center", gap="small"):
                 for index in range(len(chips(group, state["industry"]))):
                     _chip(state, picker, group, index)
         hint = missing_hint(picker, state["picks"])
+        if hint and language == "de":
+            waiting = next(group for _, group in picker.rows if group not in state["picks"])
+            hint = t(f"picker.hint.{waiting}")
         if hint:
             st.caption(hint)
     if any(group == "company" for _, group in picker.rows):
@@ -443,5 +667,5 @@ def render_picker(state: dict) -> str | None:
     if pressed:
         if typed and typed.strip():
             return typed.strip()
-        st.warning("Pick the chips or type your own words first.")
+        st.warning(t("picker.empty"))
     return None

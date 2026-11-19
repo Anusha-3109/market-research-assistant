@@ -49,6 +49,16 @@ def test_the_bar_and_the_question_box_are_in_german(page, tmp_path):  # noqa: F8
     assert app.chat_input[0].placeholder == "Stellen Sie eine Anschlussfrage"
 
 
+def test_an_answer_without_a_search_says_so_in_german(page, tmp_path):  # noqa: F811
+    from langchain_core.messages import AIMessage
+
+    app = german(page([AIMessage("Eine Antwort.")]))
+    app.chat_input[0].set_value("Was ist CAGR?").run()
+
+    assert any("Aus dieser Unterhaltung beantwortet, ohne neue Suche" in line
+               for line in captions(app))
+
+
 def test_the_report_line_and_the_cost_row_are_in_german(page, tmp_path):  # noqa: F811
     app = ask_view(page, tmp_path)
 

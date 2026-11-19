@@ -61,6 +61,13 @@ def test_a_language_the_app_does_not_have_never_reaches_the_model():
     assert "Klingon" not in told_in_chat("Klingon") and "German" not in told_in_chat("Klingon")
 
 
+def test_a_language_the_app_does_not_have_counts_as_english():
+    from agent.language import known_language
+
+    assert [known_language(name) for name in ("de", "en", "fr", None, "")] == \
+        ["de", "en", "en", "en", "en"]
+
+
 def test_the_assistant_is_told_to_answer_in_german():
     model = RecordingModel("ok", "ok")
 

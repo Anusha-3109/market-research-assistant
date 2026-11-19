@@ -1,7 +1,9 @@
 """Turn a country name typed by a person or the model into a standard
 country record, so every source can ask for the code it needs."""
 
+import gettext
 import re
+from functools import lru_cache
 
 import pycountry
 
@@ -59,10 +61,28 @@ def find_country(name: str):
         return None
 
 
+# German forms a sentence needs that the standard list does not have, such
+# as the dative "in den Niederlanden".
+GERMAN_FORMS = {"NL": ("niederlanden",), "US": ("vereinigten staaten", "usa"),
+                "GB": ("vereinigten königreich", "großbritannien", "england"),
+                "CH": ("schweiz",), "CZ": ("tschechien",)}
+
+
+@lru_cache(maxsize=1)
+def _german():
+    """German country names from pycountry's own translations (no internet)."""
+    try:
+        return gettext.translation("iso3166-1", pycountry.LOCALES_DIR, languages=["de"]).gettext
+    except OSError:
+        return lambda name: name
+
+
 def country_names(country) -> set[str]:
-    """The names and everyday aliases of a country, in lower case."""
+    """The names and everyday aliases of a country, in lower case, in
+    English and in German."""
     names = {country.name, getattr(country, "official_name", ""),
              getattr(country, "common_name", "")}
+    names |= {_german()(country.name), *GERMAN_FORMS.get(country.alpha_2, ())}
     names |= {alias for alias, code in ALIASES.items() if code == country.alpha_2}
     return {name.lower() for name in names if name}
 

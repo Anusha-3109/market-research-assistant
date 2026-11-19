@@ -40,6 +40,7 @@ from ui.assistant import render_assistant
 from ui.assets import LOGO
 from ui.guide import render_guide
 from ui.language import render_language_switch
+from ui.texts import t
 from ui.research import (
     question_box_text,
     render_ask_view,
@@ -258,7 +259,7 @@ if not turns:
                 st.rerun()
             question = chosen
         else:
-            hello = "Welcome" if st.session_state.get("account_is_new") else "Welcome back"
+            hello = t("start.welcome") if st.session_state.get("account_is_new") else t("start.welcome_back")
             chosen = render_start_screen(greeting=(hello, account.name) if account else None)
             if chosen == OPEN_GUIDE:
                 open_guide(thread_id)

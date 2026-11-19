@@ -15,6 +15,7 @@ from agent.approval import (
     save_answer_from_form,
 )
 from agent.tools import safe_filename
+from ui.texts import t
 
 
 def render_pause(pause: Pause) -> dict | None:
@@ -28,39 +29,37 @@ def render_pause(pause: Pause) -> dict | None:
 def _review_form(data: dict) -> dict | None:
     """Competitor review: tick boxes, add companies, continue or cancel."""
     with st.container(key="approval_review"):
-        st.markdown(f"**Review the competitors** for {data['product']} in {data['country']}")
-        st.caption("Untick any that do not belong, add any that are missing, "
-                   "then continue. The detailed research starts after this.")
+        st.markdown(t("review.title", product=data["product"], country=data["country"]))
+        st.caption(t("review.help"))
 
         # A form sends all its inputs together when a button is pressed, so
         # ticking a box does not rerun the page each time.
         with st.form("review_form", border=False):
             kept = {}
             for index, competitor in enumerate(data["competitors"]):
-                website = competitor["website"] or "no website found yet"
+                website = competitor["website"] or t("review.no_website")
                 kept[competitor["name"]] = st.checkbox(
                     f"**{competitor['name']}** :gray[{website}]",
                     value=True, key=f"keep_{index}")
 
             extra = {}
             if data["left_out"]:
-                st.caption("Also verified, but left out to keep the list short")
+                st.caption(t("review.left_out"))
                 for index, name in enumerate(data["left_out"]):
                     extra[name] = st.checkbox(name, value=False, key=f"extra_{index}")
 
             typed = st.text_input(
-                "Add a company", key="review_add",
-                placeholder="For example Marley Spoon, EatFitter")
+                t("review.add"), key="review_add", placeholder=t("review.add_example"))
 
             if data["dropped"]:
-                with st.expander(f"{len(data['dropped'])} dropped, see why", type="compact"):
+                with st.expander(t("review.dropped", count=len(data["dropped"])), type="compact"):
                     for dropped in data["dropped"]:
                         st.caption(f"**{dropped['name']}**: {dropped['reason']}")
 
             with st.container(horizontal=True):
-                go = st.form_submit_button("Continue", type="primary",
+                go = st.form_submit_button(t("review.continue"), type="primary",
                                            icon=":material/arrow_forward:")
-                cancel = st.form_submit_button("Cancel report")
+                cancel = st.form_submit_button(t("review.cancel"))
 
     if cancel:
         return review_answer("cancel")
@@ -72,16 +71,14 @@ def _review_form(data: dict) -> dict | None:
 def _save_form(data: dict) -> dict | None:
     """Save approval: an editable title, save or don't save."""
     with st.container(key="approval_save"):
-        st.markdown("**Save this report to a file?**")
+        st.markdown(t("save.title"))
         with st.form("save_form", border=False):
-            title = st.text_input("Title", value=data["title"], key="save_title")
-            st.caption(f"It will be saved in the reports folder as "
-                       f"`{safe_filename(title or data['title'])}`. Changing the "
-                       f"title changes the file name.")
+            title = st.text_input(t("save.field"), value=data["title"], key="save_title")
+            st.caption(t("save.where", file=safe_filename(title or data["title"])))
             with st.container(horizontal=True):
-                save = st.form_submit_button("Save", type="primary",
+                save = st.form_submit_button(t("save.save"), type="primary",
                                              icon=":material/save:")
-                skip = st.form_submit_button("Don't save")
+                skip = st.form_submit_button(t("save.skip"))
 
     if save or skip:
         return save_answer_from_form(data["title"], title, save=save)

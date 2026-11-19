@@ -14,6 +14,7 @@ import streamlit as st
 
 from agent.config import APP_NAME
 from ui.assets import Html, fill, join, script_tag
+from ui.texts import TEXTS, current_language, t
 
 EXAMPLE_REPORT = "Give me a market research report for healthy meal delivery in Germany."
 
@@ -120,7 +121,12 @@ def steps_html() -> Html:
     """The row of numbered step cards, as HTML. The markup of one card is
     in ui/static/guide_step.html; the classes are styled in styles.css."""
     cards = []
+    german = current_language() == "de"
     for number, (title, line, tags, dots) in enumerate(STEPS, start=1):
+        if german:
+            title, line = t(f"guide.step.{number - 1}.title"), t(f"guide.step.{number - 1}.line")
+            tags = [t(f"guide.tag.{tag}") if f"guide.tag.{tag}" in TEXTS["en"] else tag
+                    for tag in tags]
         extras = [Html(f'<span class="gw-tag">{escape(tag)}</span>') for tag in tags]
         extras += [Html(f'<span class="gw-dot">{dot}</span>') for dot in range(1, dots + 1)]
         cards.append(fill("guide_step.html", number=number, title=title, line=line,
@@ -131,13 +137,13 @@ def steps_html() -> Html:
 def render_topic(name: str) -> None:
     """One question bubble and its answer panel."""
     topic = TOPICS[name]
-    st.html(fill("guide_question.html", question=topic["question"]))
+    st.html(fill("guide_question.html", question=t(f"guide.{name}.question", app=APP_NAME)))
     with st.container(key=f"guide_panel_{name}"):
         if topic["steps"]:
             st.html(steps_html())
-        st.markdown(topic["answer"])
-        st.caption("GOOD TO KNOW")
-        st.caption(topic["note"])
+        st.markdown(t(f"guide.{name}.answer", app=APP_NAME))
+        st.caption(t("guide.good_to_know"))
+        st.caption(t(f"guide.{name}.note"))
 
 
 def render_guide(guide: dict) -> str | None:
@@ -159,15 +165,15 @@ def render_guide(guide: dict) -> str | None:
     with st.container(horizontal=True, key="guide_chips"):
         for name in FOLLOW_UPS:
             if name not in shown and st.button(
-                    TOPICS[name]["question"], key=f"chip_{name}",
+                    t(f"guide.{name}.question", app=APP_NAME), key=f"chip_{name}",
                     icon=":material/arrow_outward:", icon_position="right"):
                 shown.append(name)
                 guide["scroll"] = True
                 st.rerun()
-        if st.button("Try it: healthy meal delivery in Germany", key="chip_try",
+        if st.button(t("guide.try"), key="chip_try",
                      icon=":material/arrow_outward:", icon_position="right"):
-            result = EXAMPLE_REPORT
-        if st.button("Back to start", key="chip_back", type="tertiary"):
+            result = t("guide.example")
+        if st.button(t("guide.back"), key="chip_back", type="tertiary"):
             result = "back"
 
     if guide.pop("scroll", False):

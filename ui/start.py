@@ -9,6 +9,7 @@ fall back to the plain rows of three built here.
 import streamlit as st
 
 from ui.assets import fill
+from ui.texts import t
 
 from agent.config import APP_NAME
 
@@ -58,8 +59,8 @@ def render_start_screen(greeting: tuple[str, str] | None = None) -> str | None:
         if greeting:
             # The name was typed by a person: fill() shows it as text.
             st.html(fill("hello.html", greeting=greeting[0], person=greeting[1]))
-        st.title("Research **any market**.", anchor=False)
-        st.markdown("Verified competitors, first-hand prices, every fact linked to its source.")
+        st.title(t("start.headline"), anchor=False)
+        st.markdown(t("start.subline"))
 
     with st.container(key="cards"):
         for start in range(0, len(EXAMPLES), CARDS_PER_ROW):
@@ -69,7 +70,7 @@ def render_start_screen(greeting: tuple[str, str] | None = None) -> str | None:
 
     # The wide card above the question box. It opens the guide; it does not
     # send a question to the assistant.
-    if st.button(f"Learn how **{APP_NAME}** works.", key="learn",
+    if st.button(t("start.learn", app=APP_NAME), key="learn",
                  icon=":material/travel_explore:"):
         return OPEN_GUIDE
 
@@ -79,8 +80,10 @@ def render_start_screen(greeting: tuple[str, str] | None = None) -> str | None:
 def _card(column, index: int) -> str | None:
     icon, title, example, question = EXAMPLES[index]
     with column:
-        # Two paragraphs in the label: a bold title, then the example.
-        if st.button(f"**{title}**\n\n{example}", key=f"card_{index}", icon=icon,
+        # Two paragraphs in the label: a bold title, then the example. The
+        # card opens its picker by the English title, in any language.
+        shown = f"**{t(f'start.card.{index}.title')}**\n\n{t(f'start.card.{index}.example')}"
+        if st.button(shown, key=f"card_{index}", icon=icon,
                      width="stretch", wrap=True):
             return OPEN_PICKER + title
     return None
