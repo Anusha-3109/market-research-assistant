@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # <img src="ui/static/logo.svg" alt="" height="34"> Markavi
 
 **Your AI market research assistant: verified competitors, first-hand prices, every fact linked to its source.**
@@ -344,3 +345,6 @@ Every file, with what it is for, is in
 5. Keep people signed in across a refresh, let them delete their account,
    verify email addresses, and set a usage limit per account.
 6. Summarise long conversations, so a long one does not cost more per turn.
+=======
+# AE.AFA.CAP.1
+>>>>>>> capstone/main
